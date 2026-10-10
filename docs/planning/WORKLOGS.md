@@ -1,4 +1,4 @@
-# WORKLOGS.md — Hackways Engineering Progress Log
+# Engineering Progress Log — Hackways
 
 All completed work is logged here with verified commands and output.
 
@@ -6,29 +6,15 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
-### 2026-10-10 SETUP-001 — Production Git & GitHub Repository Initialization
+### 2026-10-10 RESTRUCT-001 — Root Directory Clean-up & Architecture Alignment
 - **Agent:** Chief Architect / Supervisor
 - **Files changed:**
-  - `README.md` (comprehensive documentation)
-  - `.gitignore` (production stack exclusions)
-  - `.env.example` (safe environment configuration template)
-  - `docker-compose.yml` (PostgreSQL & Mailpit local topology)
-  - `CONTRIBUTING.md` (Git branching workflow, Conventional Commits)
-  - `CODE_OF_CONDUCT.md` (community guidelines)
-  - `SECURITY.md` (vulnerability disclosure policy)
-  - `.github/pull_request_template.md` (PR review standards)
-  - `.github/ISSUE_TEMPLATE/*` (bug report, feature request templates)
-  - `.github/workflows/ci.yml` (automated CI pipeline)
-  - `docs/*` (ARCHITECTURE, API, DATABASE, SECURITY, DEPLOYMENT, TESTING)
-  - `CONTEXT.md`, `MEMORY.md`, `IMPLEMENTATION_PLAN.md`, `WORKLOGS.md`
-- **Summary:** Initialized isolated Git repository on `main`. Connected to official GitHub remote `https://github.com/varshith-dev/HACKWAYS-IN.git`. Established production branching strategy (`main`, `develop`, `feature/*`, `fix/*`, `release/*`, `hotfix/*`). Configured GitHub metadata, CI workflows, and complete engineering documentation.
-- **Commands run:**
-  ```bash
-  git init -b main
-  git remote add origin https://github.com/varshith-dev/HACKWAYS-IN.git
-  gh repo edit varshith-dev/HACKWAYS-IN --description "..." --add-topic "..."
-  ```
-- **Test outcomes:** Repository configuration verified cleanly; remote connection authenticated via GitHub CLI.
+  - Moved `.github/CODE_OF_CONDUCT.md`, `.github/CONTRIBUTING.md`, `.github/SECURITY.md` into `.github/`.
+  - Moved `CONTEXT.md`, `MEMORY.md`, `IMPLEMENTATION_PLAN.md`, `WORKLOGS.md` into `docs/planning/`.
+  - Updated `AGENTS.md` to reflect the 6-service decoupled monorepo architecture, resource constraints (2 vCPU / 4 GB RAM), and memory limits.
+  - Updated `README.md` to present the 6-service architecture, Docker Compose topology, and resource budget.
+  - Updated `docker-compose.yml` and `Makefile` to align with the modular structure.
+- **Summary:** Eliminated root directory clutter by moving community files to standard `.github/` and planning artifacts to `docs/planning/`. Aligned all documentation with the production architecture plan for the 6 services on a single VM.
 - **Review status:** Supervisor verified
 
 ---
@@ -62,4 +48,15 @@ All completed work is logged here with verified commands and output.
   go build -o api.exe ./cmd/api -> Success (exit code 0)
   ```
 - **Test outcomes:** All unit tests in `services/api/internal/platform` passed with 100% success.
+- **Review status:** Supervisor verified
+
+---
+
+### 2026-10-10 SETUP-001 — Production Git & GitHub Repository Initialization
+- **Agent:** Chief Architect / Supervisor
+- **Files changed:**
+  - `README.md`, `.gitignore`, `.env.example`, `docker-compose.yml`, `LICENSE`
+  - `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/*`, `.github/workflows/ci.yml`
+  - `docs/*` (ARCHITECTURE, API, DATABASE, SECURITY, DEPLOYMENT, TESTING)
+- **Summary:** Initialized isolated Git repository on `main`. Connected to official GitHub remote `https://github.com/varshith-dev/HACKWAYS-IN.git`. Established production branching strategy (`main`, `develop`, `feature/*`, `fix/*`, `release/*`, `hotfix/*`). Configured GitHub metadata, CI workflows, and complete engineering documentation.
 - **Review status:** Supervisor verified

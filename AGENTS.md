@@ -1,232 +1,142 @@
 # AGENTS.md — Hackways Engineering Standards
 
-This file is the authoritative reference for all agents working on the Hackways platform.
-Every agent must read this before writing code, making architectural decisions, or claiming a task complete.
+This document is the authoritative engineering specification for all agents, contributors, and automated systems working on the **Hackways** platform.
+Every agent must review this specification before authoring code, modifying infrastructure, or declaring a task complete.
 
 ---
 
-## 1. Repository Structure
+## 1. Production Repository Structure
+
+Hackways is structured as a decoupled monorepo supporting 6 core production services running on a constrained VM target (2 vCPU, 4 GB RAM):
 
 ```
 hackways/
 ├── apps/
-│   └── web/                  # Next.js 14 App Router (TypeScript, Tailwind)
+│   ├── public-web/           # Next.js 14 SSG/ISR (hackways.in - landing & SEO)
+│   ├── core-web/             # Next.js 14 App Router (app.hackways.in - attendee & RSVP)
+│   ├── organizer-web/        # Next.js 14 App Router (organizer.hackways.in - event studio)
+│   └── admin-web/            # Next.js 14 App Router (admin.hackways.in - network-isolated)
 ├── services/
-│   └── api/                  # Go application (chi, pgx, sqlc)
-│       ├── cmd/api/          # main.go entrypoint
+│   ├── core-backend/         # Go 1.23+ Engine (core-backend:8081 - events & RSVP locking)
+│   │   ├── cmd/server/main.go
+│   │   ├── internal/
+│   │   │   ├── events/       # Event aggregate & lifecycle
+│   │   │   ├── rsvps/        # Concurrency-safe capacity & reservation engine
+│   │   │   └── platform/     # Config, health, middleware
+│   │   ├── queries/          # sqlc queries for core domain
+│   │   └── Dockerfile
+│   └── global-backend/       # Go 1.23+ Engine (global-backend:8082 - auth & platform)
+│       ├── cmd/server/main.go
 │       ├── internal/
-│       │   ├── auth/         # Session management, middleware
-│       │   ├── users/        # User accounts and profiles
-│       │   ├── organizers/   # Organizer profiles and permissions
-│       │   ├── events/       # Event domain (create, edit, publish)
-│       │   ├── rsvps/        # Registration and RSVP workflows
-│       │   ├── notifications/# Notification dispatch
-│       │   ├── platform/     # Health, config, shared middleware
-│       │   └── storage/      # File/asset storage interface
-│       ├── migrations/       # SQL migration files (up/down)
-│       └── db/               # sqlc-generated query code
+│       │   ├── auth/         # Sessions, RBAC, password security
+│       │   ├── users/        # User accounts & organizer profiles
+│       │   ├── notify/       # Asynchronous email & webhook workers
+│       │   └── storage/      # Media upload validation & storage interface
+│       ├── queries/          # sqlc queries for identity & platform
+│       └── Dockerfile
 ├── packages/
-│   └── api-client/           # Generated TypeScript API client (if needed)
+│   ├── api-client/           # Auto-generated TypeScript client
+│   └── shared-types/         # Shared domain contract types
+├── deploy/
+│   ├── docker/               # Production Docker Compose topologies & overrides
+│   ├── nginx/                # Reverse proxy, rate limiting, and subdomain routing
+│   └── scripts/              # Automated database backup, restore, and deploy scripts
 ├── docs/
 │   ├── adr/                  # Architecture Decision Records
+│   ├── planning/             # CONTEXT.md, MEMORY.md, WORKLOGS.md, IMPLEMENTATION_PLAN.md
+│   ├── ARCHITECTURE_PLAN.md  # Definitive 6-service production blueprint
 │   ├── ARCHITECTURE.md
 │   ├── API.md
 │   ├── DATABASE.md
 │   ├── SECURITY.md
 │   ├── DEPLOYMENT.md
 │   └── TESTING.md
-├── scripts/                  # Dev/ops scripts
-├── docker-compose.yml
-├── .env.example
-├── AGENTS.md                 ← this file
-├── MEMORY.md
-├── CONTEXT.md
-├── WORKLOGS.md
-└── IMPLEMENTATION_PLAN.md
+├── .github/                  # CI workflows, templates, CODE_OF_CONDUCT, CONTRIBUTING
+├── docker-compose.yml        # Local development topology (PostgreSQL + Mailpit)
+├── Makefile                  # Root task automation
+├── AGENTS.md                 ← this specification
+└── README.md
 ```
 
 ---
 
 ## 2. Agent Ownership Map
 
-| Agent Role                        | Owned Modules / Files                                                    |
-|-----------------------------------|--------------------------------------------------------------------------|
-| Chief Architect / Supervisor      | AGENTS.md, CONTEXT.md, WORKLOGS.md, IMPLEMENTATION_PLAN.md, docs/ARCHITECTURE.md, contracts |
-| Product & Domain Architect        | docs/adr/, product requirements, acceptance criteria                     |
-| Go Backend Engineer               | services/api/internal/*, services/api/cmd/                               |
-| PostgreSQL & Data Engineer        | services/api/migrations/, services/api/db/, docs/DATABASE.md             |
-| Frontend & Design Systems         | apps/web/                                                                 |
-| Security & Reliability Engineer   | docs/SECURITY.md, cross-cutting security review                          |
-| QA & Test Automation Engineer     | **/*.test.*, **/*_test.go, docs/TESTING.md                               |
-| DevOps & Release Engineer         | docker-compose.yml, Dockerfile*, .env.example, scripts/, CI config       |
-| Independent Code Reviewer         | Review all cross-module or cross-agent work; no self-approval            |
-
-**Agents must not edit files outside their agreed ownership without supervisor coordination.**
+| Agent Role | Owned Modules / Scopes |
+| :--- | :--- |
+| **Chief Architect / Supervisor** | `AGENTS.md`, `docs/planning/*`, `docs/ARCHITECTURE_PLAN.md`, API contracts |
+| **Product & Domain Architect** | `docs/adr/`, product requirements, acceptance criteria |
+| **Core Backend Engineer** | `services/core-backend/internal/*`, `services/core-backend/cmd/` |
+| **Global Backend Engineer** | `services/global-backend/internal/*`, `services/global-backend/cmd/` |
+| **PostgreSQL & Data Engineer** | Database migrations, queries, `docs/DATABASE.md` |
+| **Frontend & Design Systems** | `apps/*/`, UI design tokens, client packages |
+| **Security & Reliability Engineer** | `.github/SECURITY.md`, `docs/SECURITY.md`, auth/session reviews |
+| **QA & Test Automation** | `**/*.test.*`, `**/*_test.go`, k6 load tests, `docs/TESTING.md` |
+| **DevOps & Infrastructure** | `deploy/*`, `docker-compose.yml`, `.github/workflows/*` |
 
 ---
 
-## 3. Language and Framework Rules
+## 3. Language & Infrastructure Rules
 
-### Go (services/api/)
-- Go 1.23+, modules enabled (`go.mod`)
-- HTTP: `net/http` + `chi` router
-- Database: `pgx/v5` + `sqlc`-generated queries
-- Migrations: `golang-migrate/migrate`
-- Structured logging: `log/slog` (stdlib)
-- Configuration: environment variables via `os.Getenv` + a config struct; no config files committed with secrets
-- No global mutable state
-- No fat handlers — handlers call service functions; service functions call repository functions
-- Use `context.Context` everywhere for cancellation and deadlines
-- Interfaces only at genuine boundaries (storage, email, external providers)
-- Graceful shutdown on SIGTERM/SIGINT
+### Go Backend Engines (`services/*`)
+- Go 1.23+, modules enabled (`go.mod`).
+- HTTP Router: Standard library `net/http` + `github.com/go-chi/chi/v5`.
+- Database Driver: `jackc/pgx/v5` with connection pooling (`pgxpool`).
+- Queries: Compile-time verified `sqlc` queries only. No raw SQL strings or ORMs.
+- Logging: Standard library `log/slog` emitting structured JSON.
+- **Resource Constraints (4 GB VM Budget):**
+  - Run with `GOMEMLIMIT` environment variables (`100MiB` for core, `90MiB` for global).
+  - Hard Docker memory caps: Core Backend (120M), Global Backend (110M).
+  - Bounded connection pools: Core (max 28), Global (max 22). Total must not exceed 50.
+- **RSVP Concurrency Invariant:**
+  - Reservations MUST use pessimistic row-level locking: `SELECT ... FOR UPDATE` with `statement_timeout = '2000ms'`.
+  - Double-booking or overselling is strictly prohibited under any load condition.
 
-### Next.js (apps/web/)
-- Next.js 14+ App Router
-- TypeScript strict mode (`"strict": true`)
-- Tailwind CSS for all styling — no CSS Modules, no inline styles
-- `zod` for schema validation (forms and API response parsing)
-- `react-hook-form` for form state
-- Server Components by default; Client Components only where interaction requires them
-- No client-side global state stores unless justified (avoid Redux/Zustand for server data)
-- All protected API calls go through server actions or route handlers that validate sessions
-- No hardcoded user IDs, tokens, or credentials in frontend code
+### Next.js Frontends (`apps/*`)
+- Next.js 14+ App Router with TypeScript strict mode.
+- Tailwind CSS for all styling — no inline styles or CSS modules.
+- Form state & validation: `react-hook-form` and `zod`.
+- Server Components by default; Client Components only where direct DOM interaction is required.
+- **Production Build Policy:**
+  - `output: 'standalone'` in `next.config.js`.
+  - Next.js applications MUST be compiled in GitHub Actions CI off-node. Never run `npm run build` on the 4 GB production VM.
+  - Runtime memory caps: `--max-old-space-size=200` max.
 
-### Database
-- PostgreSQL 16+
-- All schema changes via numbered migration files (`000001_*.up.sql` / `000001_*.down.sql`)
-- `sqlc` generates all query code — no raw SQL strings in application code
-- All queries in `services/api/db/queries/*.sql`
-
----
-
-## 4. Formatting and Linting
-
-### Go
-```bash
-gofmt -w ./...
-go vet ./...
-# golangci-lint run (when installed)
-```
-
-### TypeScript / Next.js
-```bash
-npm run lint        # ESLint
-npm run type-check  # tsc --noEmit
-npm run format      # Prettier
-```
-
-All formatting must pass before a task is marked `verified`.
+### PostgreSQL 16
+- Managed via numbered migrations (`services/api/migrations/` or consolidated `deploy/migrations/`).
+- Primary keys: `UUID` (`gen_random_uuid()`) for entities; `BIGSERIAL` for internal link tables.
+- All timestamps: `TIMESTAMPTZ NOT NULL DEFAULT NOW()`.
+- Maximum database connections: 60 (`shared_buffers = 256MB`, `work_mem = 4MB`).
 
 ---
 
-## 5. Testing Commands and Acceptance Requirements
+## 4. Session & Network Security Standards
 
-### Go backend
-```bash
-cd services/api
-go test ./... -race -count=1
-go test ./... -race -count=1 -run Integration  # integration tests (requires DB)
-```
-
-### Frontend
-```bash
-cd apps/web
-npm test           # Vitest unit/component tests
-npm run test:e2e   # Playwright end-to-end
-```
-
-### Migrations
-```bash
-migrate -path services/api/migrations -database "$DATABASE_URL" up
-migrate -path services/api/migrations -database "$DATABASE_URL" down 1
-```
-
-**A task is not verified until its tests pass with real commands and real output.**
+- **Host-Scoped Cookies:** Attendee/Organizer apps use `__Host-hackways_session`; Admin app uses `__Host-hackways_admin_session`.
+- **Admin Isolation:** `admin.hackways.in` is restricted at the Nginx layer to VPN subnets / authorized IP ranges.
+- **Rate Limiting:** Enforced via Nginx zones (`auth_limit: 5r/s`, `rsvp_limit: 10r/s`, `general_limit: 30r/s`).
+- **No Secrets in Source Control:** `.env` is strictly gitignored; safe placeholders live in `.env.example`.
 
 ---
 
-## 6. Database and API Conventions
+## 5. Prohibited Shortcuts
 
-### Database
-- Primary keys: `UUID` (`gen_random_uuid()`) for user-facing entities; `BIGSERIAL` acceptable for internal junction tables
-- Timestamps: `TIMESTAMPTZ NOT NULL DEFAULT NOW()` for `created_at`; `TIMESTAMPTZ NOT NULL` for `updated_at` (updated by trigger or app)
-- Soft deletes: Use `deleted_at TIMESTAMPTZ` where records must not be hard-deleted (users, events)
-- All event times stored as `TIMESTAMPTZ`; `timezone TEXT NOT NULL` stored alongside for display
-- Snake_case column names
-- Never store passwords in plaintext — use `bcrypt` hash in a `password_hash` column
-
-### API
-- Base path: `/api/v1`
-- JSON request/response bodies
-- Consistent error envelope:
-  ```json
-  { "error": { "code": "EVENT_NOT_FOUND", "message": "Event not found", "details": {} } }
-  ```
-- HTTP status codes: 200 OK, 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict, 422 Unprocessable Entity, 500 Internal Server Error
-- Pagination: cursor-based for large sets; `?limit=20&cursor=<opaque>` on list endpoints
-- All list endpoints have a default and maximum page size
-- Versioned at `/api/v1` — breaking changes require a new version
+The following practices are **strictly prohibited**:
+1. In-memory maps, JSON files, or mocks as substitutes for PostgreSQL on production paths.
+2. Building frontend bundles directly on the production host (triggers OOM kills).
+3. Optimistic client-side RSVP checks without database-level transactional locks (`SELECT ... FOR UPDATE`).
+4. Storing or logging sensitive fields (passwords, tokens, cookies).
+5. Using `interface{}` or `any` to bypass type safety.
+6. Direct commits or unreviewed pushes to `main` or `develop`.
 
 ---
 
-## 7. Security Expectations
+## 6. Definition of Done
 
-- **No secrets in source control.** Use `.env` (gitignored) locally; environment variables in production.
-- **All protected endpoints require server-validated sessions.** Frontend visibility checks are cosmetic only.
-- **CSRF protection** on all state-changing cookie-authenticated endpoints.
-- **Rate limiting** on auth, RSVP, and file upload endpoints.
-- **SQL injection prevention**: use `sqlc`-generated parameterized queries; no `fmt.Sprintf` into SQL.
-- **File uploads**: validate MIME type and file size server-side; store in object storage, not local disk.
-- **Sensitive data** (emails, personal info) must never appear in logs.
-- **Session cookies**: `HttpOnly`, `Secure` (in production), `SameSite=Lax`.
-- **bcrypt** for password hashing (cost factor ≥ 12).
-- **Least-privilege DB credentials**: app user has SELECT/INSERT/UPDATE/DELETE only; migrations run as a separate user.
-
----
-
-## 8. Git and Collaboration Rules
-
-- Branch naming: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`
-- Commit messages: imperative mood, ≤72 chars subject, blank line, then body if needed
-- Do not push directly to `main`; use PRs with at least one review
-- Never commit: `.env`, `*.pem`, credentials, build artifacts, `node_modules/`, `vendor/` (Go modules cached elsewhere)
-- Each PR must reference a task ID from IMPLEMENTATION_PLAN.md
-
----
-
-## 9. Prohibited Shortcuts
-
-The following are **strictly prohibited** in any implementation:
-
-1. JSON files or in-memory maps as a substitute for PostgreSQL
-2. Hardcoded user IDs, tokens, or fake event data on production paths
-3. Mock API responses returned to real users
-4. Placeholder buttons, non-functional forms, or fake success messages
-5. `TODO: implement` stubs merged as "complete" without flagging as incomplete
-6. `interface{}` / `any` used to skip type safety
-7. Skipping database migrations — schema changes must have a migration file
-8. Printing or logging sensitive fields (passwords, tokens, full session secrets)
-9. Bypassing authorization with `// TODO: add auth check`
-10. Claiming a feature is done without executing the verification commands
-
----
-
-## 10. Definition of Done
-
-A task moves to `verified` only when ALL applicable conditions are met:
-
-- [ ] Intended behavior is implemented end-to-end
-- [ ] Backend and frontend contracts agree (schema, status codes, field names)
-- [ ] Real data persisted and retrieved from PostgreSQL
-- [ ] Input validation and authorization enforced on the server
-- [ ] Edge cases handled (duplicate, empty, capacity limit, unauthorized)
-- [ ] Tests written and passing (`go test ./... -race` or `npm test`)
-- [ ] Loading, error, empty, and success UI states implemented
-- [ ] Database migrations included for schema changes
-- [ ] No mock persistence on production path
-- [ ] No placeholder controls in delivered workflow
-- [ ] Implementation reviewed by at least one other agent or the supervisor
-- [ ] WORKLOGS.md updated with outcome, commands run, and test results
-- [ ] Remaining limitations explicitly documented
-
-A successful compile is not done. A visually complete page is not done. An agent's assertion is not evidence.
+A task moves to `verified` only when:
+- [ ] End-to-end functionality is implemented and verified against PostgreSQL.
+- [ ] Concurrency safety is maintained under load with zero race hazards.
+- [ ] Server-side input validation and authorization checks are enforced.
+- [ ] Automated tests pass with real commands (`go test ./... -race`, `npm test`).
+- [ ] Code formatting passes (`gofmt -w ./...`, `npm run lint`).
+- [ ] Documentation and work logs in `docs/planning/` are updated.
