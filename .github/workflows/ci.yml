@@ -1,0 +1,114 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-hygiene:
+    name: Repository Hygiene & Security Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Verify No Committed Secrets or .env Files
+        run: |
+          if [ -f .env ]; then
+            echo "ERROR: .env file was committed to repository!"
+            exit 1
+          fi
+          echo "No .env file found. Passed."
+
+      - name: Check for Leaked Private Keys
+        run: |
+          if grep -rn "BEGIN RSA PRIVATE KEY\|BEGIN OPENSSH PRIVATE KEY\|BEGIN PRIVATE KEY" . --exclude-dir=".git"; then
+            echo "ERROR: Potential private key found in repository!"
+            exit 1
+          fi
+          echo "No private keys detected. Passed."
+
+  backend-ci:
+    name: Go Backend CI
+    runs-on: ubuntu-latest
+    needs: [repo-hygiene]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hackways_test
+          POSTGRES_PASSWORD: hackways_test_password
+          POSTGRES_DB: hackways_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: false
+
+      - name: Check Go Formatting
+        run: |
+          if [ -d "services/api" ] && [ -f "services/api/go.mod" ]; then
+            cd services/api
+            UNFORMATTED=$(gofmt -l .)
+            if [ -n "$UNFORMATTED" ]; then
+              echo "Unformatted Go files detected:"
+              echo "$UNFORMATTED"
+              exit 1
+            fi
+            echo "Go formatting clean."
+          else
+            echo "services/api/go.mod not yet initialized; skipping Go check."
+          fi
+
+      - name: Run Go Vet & Unit Tests
+        run: |
+          if [ -d "services/api" ] && [ -f "services/api/go.mod" ]; then
+            cd services/api
+            go vet ./...
+            go test ./... -v -race -count=1
+          else
+            echo "Backend code scaffolded; test suite will execute once module is active."
+          fi
+
+  frontend-ci:
+    name: Next.js Frontend CI
+    runs-on: ubuntu-latest
+    needs: [repo-hygiene]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install & Lint Frontend
+        run: |
+          if [ -d "apps/web" ] && [ -f "apps/web/package.json" ]; then
+            cd apps/web
+            npm ci
+            npm run lint
+            npm run type-check
+            npm test
+          else
+            echo "apps/web/package.json not yet initialized; skipping frontend build."
+          fi

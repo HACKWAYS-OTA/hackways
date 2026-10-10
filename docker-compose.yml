@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hackways_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-hackways_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hackways_password}
+      POSTGRES_DB: ${DB_NAME:-hackways_dev}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hackways_user} -d ${DB_NAME:-hackways_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hackways_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP port
+    environment:
+      MP_MAX_MESSAGES: 500
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,106 @@
+# ==============================================================================
+# Hackways — Production .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Secrets & Environment Variables (Strictly excluded)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+serviceAccountKey.json
+*-credentials.json
+
+# ------------------------------------------------------------------------------
+# Go Artifacts & Binaries
+# ------------------------------------------------------------------------------
+services/api/bin/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+cover.out
+coverage.out
+pprof/
+
+# ------------------------------------------------------------------------------
+# Node.js & Next.js Artifacts
+# ------------------------------------------------------------------------------
+node_modules/
+.pnp/
+.pnp.js
+.npm/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# ------------------------------------------------------------------------------
+# Logs & Process Diagnostics
+# ------------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# Local Storage & Docker Persistence
+# ------------------------------------------------------------------------------
+uploads/
+postgres_data/
+storage/local/
+*.tar
+tmp/
+temp/
+
+# ------------------------------------------------------------------------------
+# Testing & Code Coverage
+# ------------------------------------------------------------------------------
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# ------------------------------------------------------------------------------
+# Operating System & Editor Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# IDEs & Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
