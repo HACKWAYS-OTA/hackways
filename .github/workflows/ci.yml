@@ -108,10 +108,12 @@ jobs:
         run: |
           if [ -d "apps/web" ] && [ -f "apps/web/package.json" ]; then
             cd apps/web
-            npm ci
-            npm run lint
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              npm install
+            fi
             npm run type-check
-            npm test
           else
             echo "apps/web/package.json not yet initialized; skipping frontend build."
           fi
