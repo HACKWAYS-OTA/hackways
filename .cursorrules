@@ -1,0 +1,14 @@
+# Cursor Rules — Hackways
+
+Before generating code, making edits, or modifying infrastructure in this repository, you MUST inspect and strictly follow the canonical engineering specification in:
+
+AGENTS.md
+
+Core Rules:
+1. Maintain the 6 independent services: apps/public-web, apps/core-web, apps/organizer-web, apps/admin-web, services/core-backend, services/global-backend. Never merge them.
+2. Adhere to Azure VM limits (2 vCPU, 4 GB RAM): never compile Next.js on the VM, obey GOMEMLIMIT, cap memory.
+3. Media uploads MUST use Azure Blob Storage direct SAS tokens. Never store uploads on the local VM disk.
+4. Transactional emails MUST use Azure Communication Services (ACS) Email via the PostgreSQL outbox pattern. Never add local SMTP daemons.
+5. RSVP capacity MUST enforce pessimistic locking via PostgreSQL: SELECT ... FOR UPDATE with statement_timeout = '2000ms'.
+6. Use compile-time verified sqlc queries only. No raw SQL strings or ORMs.
+7. Inspect existing code before patching; execute and verify real tests (go test ./... -race, npm test) before declaring complete.
