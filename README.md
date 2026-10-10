@@ -1,7 +1,6 @@
 # Hackways
 
 [![CI Pipeline](https://github.com/varshith-dev/HACKWAYS-IN/actions/workflows/ci.yml/badge.svg)](https://github.com/varshith-dev/HACKWAYS-IN/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go 1.23](https://img.shields.io/badge/Go-1.23%2B-00ADD8?logo=go)](https://golang.org)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14%20App%20Router-black?logo=next.js)](https://nextjs.org)
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org)
@@ -156,6 +155,7 @@ Consult **[.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)** for branch conven
 
 ---
 
-## License
+## Proprietary & Confidential
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Copyright © 2026 Hackways. All rights reserved.  
+This software, documentation, and associated assets are proprietary and confidential. Unauthorized copying, distribution, modification, public display, or reverse engineering of any portion of this repository is strictly prohibited.

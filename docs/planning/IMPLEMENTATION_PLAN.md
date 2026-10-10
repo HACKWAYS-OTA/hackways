@@ -10,7 +10,7 @@
 
 | ID | Task | Status | Acceptance Criteria |
 |---|---|---|---|
-| M0-001 | Repository Setup & Git Init | `verified` | Git initialized, `.gitignore`, `.env.example`, `LICENSE` |
+| M0-001 | Repository Setup & Git Init | `verified` | Git initialized, `.gitignore`, `.env.example` |
 | M0-002 | GitHub CI & Community Templates | `verified` | Workflows (`ci.yml`), PR/issue templates in `.github/` |
 | M0-003 | Architecture Blueprint | `verified` | 6-service architecture document in `docs/ARCHITECTURE_PLAN.md` |
 | M0-004 | Branch Strategy Deployment | `verified` | `main` and `develop` created, protected, and synchronized on GitHub |
