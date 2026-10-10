@@ -1,4 +1,4 @@
-# AGENTS.md — Hackways Authoritative Engineering & AI Agent Rules
+# AGENTS.md — Hackways Authoritative Engineering & Quality Enforcement Rules
 
 This document is the **canonical, permanent engineering specification and rule set** for all AI agents, automated coding assistants, contributors, and developers working on the **Hackways** platform.
 
@@ -6,31 +6,111 @@ Every agent **must read, understand, and strictly enforce** these rules before a
 
 ---
 
-## 1. Mandatory Operating Protocol for AI Agents
+## 1. Hackways Production Quality Enforcement Rules
 
-### 1.1 Pre-Change Inspection Rule (Inspect Before Modifying)
-Before proposing or applying **any patch, file creation, file modification, deletion, refactoring, dependency change, database migration, or infrastructure modification**, the agent **MUST**:
-1. Review the applicable architectural constraints in this document (`AGENTS.md`) and [`docs/ARCHITECTURE_PLAN.md`](docs/ARCHITECTURE_PLAN.md).
-2. Inspect the relevant existing code, schemas, and configurations in the repository using read/view tools.
-3. Validate that the proposed change:
-   - Complies with the 6-service architecture and domain boundaries.
-   - Preserves all existing features, interfaces, and backward compatibility.
-   - Adheres strictly to the 4 GB RAM and 50 GB NVMe Azure VM resource budget.
-   - Introduces zero security vulnerabilities, secret leaks, or race hazards.
+### 1.1 Real Functionality, Real Data
+- Never use mock data, dummy records, fabricated API responses, placeholder business logic, or simulated success states in application functionality.
+- Never replace a missing backend integration with hardcoded data or a fake implementation.
+- All features must use the actual approved APIs, PostgreSQL database, and required external services.
+- Never report a feature as complete unless its real functionality has been implemented and verified.
+- If a dependency, credential, or service is unavailable, report the blocker honestly.
+- Do not create test suites or test fixtures unless explicitly authorized or required by the existing mandatory CI workflow.
 
-### 1.2 Conflict Resolution & Non-Negotiable Boundaries
-If a user prompt, request, or suggested shortcut conflicts with any rule in this document:
-- The agent **MUST NOT** silently apply the conflicting change.
-- The agent **MUST** explicitly identify the conflict, explain the engineering trade-offs or risks to the user, and obtain explicit authorization before proceeding.
+### 1.2 Architecture and Technology Discipline
+- Preserve the four independent Next.js applications and two independent Go backend engines.
+- Go owns authoritative business logic, authorization, database operations, and API behavior.
+- TypeScript and TSX are for frontend implementation. Do not introduce duplicate TypeScript backend routing or business logic inside Next.js.
+- Python is permitted only for narrowly scoped utilities such as email delivery or PDF generation when appropriate. Do not turn it into a second general-purpose backend.
+- PostgreSQL is the authoritative database. Follow the approved `pgx` and `sqlc` workflow.
+- **Never introduce `lucide-react` anywhere in Hackways.**
+- Do not introduce unnecessary frameworks, ORMs, SQL translators, JSON-to-SQL engines, database adapters, routing layers, state-management libraries, or abstraction frameworks. **SQLGlot, `pgglot`, Psycopg, and `psycosql` are strictly prohibited.**
+- JSON is a data interchange format, not a reason to add another database or query framework.
+- Inspect the existing stack before proposing dependencies. Obtain explicit approval before changing architectural boundaries or approved technologies.
 
-### 1.3 Verifiable Claims Requirement
-- The agent **MUST NEVER** claim that a test, build, lint check, migration, or deployment succeeded unless the operation was actually executed and verified using real shell commands with successful exit codes and output.
-- Theoretical or assumed pass states are strictly prohibited.
+### 1.3 Data Integrity and Security
+- Enforce authentication, authorization, role checks, resource ownership, and input validation on the backend. Frontend visibility is never a security boundary.
+- Use parameterized SQL, approved migrations, database constraints, and transactions.
+- Preserve RSVP capacity invariants, concurrency safety, and idempotency. Client-side checks are never authoritative.
+- Prevent cross-user and cross-organizer data access.
+- Never expose secrets, session credentials, internal service ports, or privileged operations to unauthorized clients.
+- Never silently delete, reset, or overwrite real data.
+- Do not use local JSON files or in-memory maps as substitutes for PostgreSQL or Azure Blob Storage in production.
 
-### 1.4 Minimal Diffs & Incremental Changes
-- Keep changes incremental, focused, and scoped only to the assigned task.
-- Avoid broad unsolicited rewrites, gratuitous reformatting, or deleting existing tests and documentation.
-- Maintain documentation integrity: update relevant docs in `docs/` and `docs/planning/` whenever architecture or contracts evolve.
+### 1.4 First-Render UX and Freshness
+- Diagnose the actual rendering and data-loading path before fixing stale content, flicker, missing modules, or layout shifts.
+- Avoid rendering fabricated defaults or outdated values as if they were current.
+- Fetch essential data on the server before rendering when practical and consistent with the existing architecture.
+- Do not delay essential content until unnecessary client-side initialization or sequential API requests finish.
+- Fetch independent resources concurrently where appropriate.
+- Apply deliberate caching and revalidation policies based on data freshness, authorization, and privacy requirements.
+- Never serve stale personalized permissions, RSVP status, or organizer data as authoritative.
+- Use clear loading skeletons only when data is genuinely pending. Preserve layout space to avoid unnecessary shifts.
+- Prevent older network responses from overwriting newer state.
+- Avoid unnecessary full-page refreshes, component remounts, and duplicate requests.
+- Do not disable all caching or force every request to PostgreSQL as a blanket fix.
+
+### 1.5 Complete User Journeys
+- Implement the complete requested workflow, not just the visible screen or happy path.
+- Consider creation, editing, validation, cancellation, deletion, permissions, empty states, errors, retries, and recovery where relevant.
+- A success notification must follow confirmed success from the actual operation.
+- Preserve user input when recoverable operations fail.
+- Make retries safe for operations that may be repeated.
+- Ensure related views reflect consistent persisted state after mutations.
+- Do not silently omit requirements that are difficult to implement.
+
+### 1.6 Maintainable Code and Controlled Changes
+- Inspect existing code, callers, dependencies, data contracts, and configuration before modifying files.
+- Make the smallest safe change that solves the actual problem.
+- Reuse existing approved patterns instead of creating duplicate implementations.
+- Avoid giant components, duplicated business rules, circular dependencies, dead code, unnecessary wrappers, and speculative abstractions.
+- Do not rewrite working routing, authentication, database access, sessions, or API contracts without explicit approval.
+- Do not combine unrelated features, dependency upgrades, and broad refactors in one change.
+- Preserve backward compatibility unless a breaking change has been explicitly approved.
+
+### 1.7 Performance and Resource Limits
+- Respect the approved Azure VM limits of 2 vCPU, 4 GB RAM, and 50 GB NVMe disk.
+- Never run production frontend builds on the production VM when the approved architecture requires external CI builds.
+- Avoid unbounded database queries, excessive API requests, oversized frontend bundles, unnecessary polling, and unbounded connection pools.
+- Paginate large datasets and load expensive content only when appropriate.
+- Inspect database query plans and indexes when performance evidence indicates a problem.
+- Do not claim throughput, concurrency capacity, or resource safety without measurements.
+- Treat the single VM as a shared failure domain. One service must not consume all resources needed by the others.
+
+### 1.8 Failure Handling and Observability
+- Handle expected network, database, authentication, and external-service failures explicitly.
+- Do not swallow errors or report success after a failed operation.
+- Use bounded retries, timeouts, and backoff where appropriate. Avoid retry storms and duplicate side effects.
+- Record actionable server-side errors with useful request context without logging secrets or sensitive personal data.
+- Ensure health checks reflect actual service readiness rather than merely an open port.
+- Document unresolved failure modes and operational dependencies.
+
+### 1.9 Accessibility and Responsive Behavior
+- Preserve semantic HTML, keyboard accessibility, visible focus states, appropriate contrast, and accessible form labels.
+- Ensure layouts work across supported mobile, tablet, and desktop viewports.
+- Avoid interface patterns that depend exclusively on hover, color, or animation.
+- Respect reduced-motion preferences and prevent avoidable content shifts.
+- Reuse the existing design system and component patterns instead of introducing unnecessary UI dependencies.
+
+### 1.10 Verification and Honest Reporting
+- Do not fabricate test results, build output, deployment status, database responses, or successful integrations.
+- Execute the relevant available verification commands and report their actual outcomes.
+- Inspect errors and regressions instead of suppressing them to obtain a passing build.
+- Where tests are explicitly authorized or required by mandatory CI, keep test fixtures isolated from production data.
+- If verification cannot run, identify the exact missing service, credential, permission, or environment.
+- A successful compilation alone does not prove correct authorization, data integrity, concurrency safety, or complete user workflows.
+
+### 1.11 Mandatory Workflow Before Every Change
+1. Read the relevant `AGENTS.md` rules and architecture documentation.
+2. Inspect the actual implementation and reproduce or trace the reported problem where possible.
+3. Identify the root cause and the smallest compliant solution.
+4. Check security, data integrity, first-render behavior, failure handling, resource impact, and dependency changes.
+5. Implement only the authorized change.
+6. Run relevant verification commands and inspect their actual output.
+7. Review the final diff for unrelated changes, fake functionality, exposed secrets, and architectural violations.
+8. Update documentation when contracts, architecture, schemas, configuration, or deployment behavior change.
+9. Report what changed, what was verified, and what remains unresolved.
+
+*If the request conflicts with these rules, stop before making the conflicting change. Explain the conflict and obtain explicit approval.*
 
 ---
 
@@ -182,6 +262,7 @@ The following actions are **strictly prohibited** for all agents and contributor
 9. **Building on Production VM:** Invoking `npm run build` on the Azure VM host.
 10. **Bypassing Type Safety:** Using `any` in TypeScript or `interface{}` in Go to bypass type checking.
 11. **Claiming Unverified Success:** Stating that a test, migration, build, or deployment passed without executing real verification commands.
+12. **Introducing Prohibited Libraries:** Never import or install `lucide-react`, `SQLGlot`, `pgglot`, `Psycopg`, or `psycosql`.
 
 ---
 
@@ -189,6 +270,7 @@ The following actions are **strictly prohibited** for all agents and contributor
 
 A task or pull request moves to `verified` only when the following checklist is completed:
 
+- [ ] **Real Functionality:** Real requested functionality is implemented with real PostgreSQL data and Go APIs. Zero mock data or placeholder logic.
 - [ ] **Architecture Compliant:** Preserves 6 independent services, Azure VM limits, and domain boundaries.
 - [ ] **Database Verified:** All queries generated via `sqlc`; migrations numbered and reversible.
 - [ ] **Concurrency Safe:** Capacity logic uses transactional `SELECT ... FOR UPDATE` with `statement_timeout = '2000ms'`.
@@ -200,4 +282,5 @@ A task or pull request moves to `verified` only when the following checklist is 
 - [ ] **Code Formatting & Linting Pass:**
   - Go formatting: `gofmt -w ./...` and `go vet ./...`
   - TypeScript linting: `npm run lint`
+- [ ] **First-Render UX:** Layout space preserved, server rendering used where appropriate, zero stale-content flashes.
 - [ ] **Documentation Updated:** Changes logged in `docs/planning/WORKLOGS.md` and relevant `docs/` files.
