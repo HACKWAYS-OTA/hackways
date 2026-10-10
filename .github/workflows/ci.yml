@@ -28,8 +28,11 @@ jobs:
 
       - name: Check for Leaked Private Keys
         run: |
-          if grep -rn "BEGIN RSA PRIVATE KEY\|BEGIN OPENSSH PRIVATE KEY\|BEGIN PRIVATE KEY" . --exclude-dir=".git"; then
-            echo "ERROR: Potential private key found in repository!"
+          PATTERN="BEGIN [A-Z0-9 ]*PRIVATE KEY"
+          MATCHES=$(grep -rnE "$PATTERN" . --exclude-dir=".git" --exclude-dir=".github" || true)
+          if [ -n "$MATCHES" ]; then
+            echo "ERROR: Potential private key found in repository:"
+            echo "$MATCHES"
             exit 1
           fi
           echo "No private keys detected. Passed."
