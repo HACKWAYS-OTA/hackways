@@ -2,7 +2,10 @@ package platform
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // ErrorDetail represents specific field or parameter validation errors.
@@ -45,4 +48,37 @@ func RespondError(w http.ResponseWriter, status int, code, message string, detai
 		},
 	}
 	RespondJSON(w, status, envelope)
+}
+
+// MapDatabaseError maps PostgreSQL error codes to standard HTTP status, error code, and user message.
+func MapDatabaseError(err error) (int, string, string) {
+	if err == nil {
+		return http.StatusOK, "", ""
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505": // unique_violation
+			return http.StatusConflict, "CONFLICT", "Resource already exists or duplicate key violated"
+		case "23503": // foreign_key_violation
+			return http.StatusBadRequest, "INVALID_REFERENCE", "Referenced entity does not exist or constraint violated"
+		case "23514": // check_violation
+			return http.StatusUnprocessableEntity, "CHECK_VIOLATION", "Constraint check violated: invalid entity data"
+		case "57014": // query_canceled (e.g. statement_timeout)
+			return http.StatusServiceUnavailable, "STATEMENT_TIMEOUT", "Operation timed out under high load. Please retry."
+		case "55P03": // lock_not_available
+			return http.StatusServiceUnavailable, "LOCK_TIMEOUT", "Could not obtain lock on resource. Please retry."
+		case "40P01": // deadlock_detected
+			return http.StatusServiceUnavailable, "DEADLOCK_DETECTED", "Transaction conflict detected. Please retry."
+		}
+	}
+
+	return http.StatusInternalServerError, "INTERNAL_ERROR", "An unexpected database error occurred"
+}
+
+// RespondDatabaseError translates a database error and emits a formatted error response.
+func RespondDatabaseError(w http.ResponseWriter, err error) {
+	status, code, msg := MapDatabaseError(err)
+	RespondError(w, status, code, msg, nil)
 }

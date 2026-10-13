@@ -20,6 +20,10 @@ type Config struct {
 	CORSAllowedOrigins []string
 	StorageBackend     string
 	LocalStorageDir    string
+	DBMaxConns         int
+	DBMinConns         int
+	DBMaxConnLifetime  time.Duration
+	DBMaxConnIdleTime  time.Duration
 	ReadTimeout        time.Duration
 	WriteTimeout       time.Duration
 	IdleTimeout        time.Duration
@@ -46,6 +50,16 @@ func LoadConfig() (*Config, error) {
 		corsOrigins[i] = strings.TrimSpace(corsOrigins[i])
 	}
 
+	dbMaxConns, _ := strconv.Atoi(getEnv("DB_MAX_CONNS", "28"))
+	if dbMaxConns <= 0 || dbMaxConns > 60 {
+		dbMaxConns = 28
+	}
+
+	dbMinConns, _ := strconv.Atoi(getEnv("DB_MIN_CONNS", "4"))
+	if dbMinConns <= 0 || dbMinConns > dbMaxConns {
+		dbMinConns = 4
+	}
+
 	cfg := &Config{
 		AppEnv:             appEnv,
 		Port:               port,
@@ -57,6 +71,10 @@ func LoadConfig() (*Config, error) {
 		CORSAllowedOrigins: corsOrigins,
 		StorageBackend:     getEnv("STORAGE_BACKEND", "local"),
 		LocalStorageDir:    getEnv("LOCAL_STORAGE_DIR", "./uploads"),
+		DBMaxConns:         dbMaxConns,
+		DBMinConns:         dbMinConns,
+		DBMaxConnLifetime:  15 * time.Minute,
+		DBMaxConnIdleTime:  5 * time.Minute,
 		ReadTimeout:        10 * time.Second,
 		WriteTimeout:       30 * time.Second,
 		IdleTimeout:        60 * time.Second,

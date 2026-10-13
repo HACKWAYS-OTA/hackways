@@ -33,12 +33,15 @@ cd ../..
 echo "=========================================="
 echo " 2. Frontend: Syntax & Type Checking     "
 echo "=========================================="
-cd apps/web
-if [ -f "package-lock.json" ] || [ -d "node_modules" ]; then
-    echo "--> Running TypeScript check..."
-    npm run type-check
-fi
-cd ../..
+for APP in core-web public-web organizer-web admin-web; do
+    echo "--> Checking apps/$APP..."
+    cd "apps/$APP"
+    if [ -f "package-lock.json" ] || [ -d "node_modules" ]; then
+        npm run type-check
+        npm run lint
+    fi
+    cd ../..
+done
 
 echo "=========================================="
 echo " 3. Repository Hygiene & Secret Audit     "
