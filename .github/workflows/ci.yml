@@ -110,17 +110,20 @@ jobs:
         with:
           node-version: 22
 
+      - name: Build Shared API Client
+        run: |
+          cd packages/api-client
+          npm install
+          npm run build
+          cd ../..
+
       - name: Install & Lint Frontend Applications
         run: |
           for APP in core-web public-web organizer-web admin-web; do
             if [ -d "apps/$APP" ] && [ -f "apps/$APP/package.json" ]; then
               echo "=== Checking apps/$APP ==="
               cd apps/$APP
-              if [ -f "package-lock.json" ]; then
-                npm ci
-              else
-                npm install
-              fi
+              npm install
               npm run type-check
               npm run lint
               cd ../..
