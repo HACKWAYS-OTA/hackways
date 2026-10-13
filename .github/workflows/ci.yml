@@ -81,15 +81,21 @@ jobs:
             echo "services/api/go.mod not yet initialized; skipping Go check."
           fi
 
-      - name: Run Go Vet & Unit Tests
+      - name: Apply Database Migrations
+        env:
+          DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
         run: |
-          if [ -d "services/api" ] && [ -f "services/api/go.mod" ]; then
-            cd services/api
-            go vet ./...
-            go test ./... -v -race -count=1
-          else
-            echo "Backend code scaffolded; test suite will execute once module is active."
-          fi
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql "$DATABASE_URL" -f services/api/migrations/000001_initial_schema.up.sql
+
+      - name: Run Go Vet & Unit Tests with Race Detector
+        env:
+          DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
+          CGO_ENABLED: '1'
+        run: |
+          cd services/api
+          go vet ./...
+          go test ./... -v -race -count=1
 
   frontend-ci:
     name: Next.js Frontend CI
@@ -104,16 +110,19 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install & Lint Frontend
+      - name: Install & Lint Frontend Applications
         run: |
-          if [ -d "apps/web" ] && [ -f "apps/web/package.json" ]; then
-            cd apps/web
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              npm install
+          for APP in core-web public-web organizer-web admin-web; do
+            if [ -d "apps/$APP" ] && [ -f "apps/$APP/package.json" ]; then
+              echo "=== Checking apps/$APP ==="
+              cd apps/$APP
+              if [ -f "package-lock.json" ]; then
+                npm ci
+              else
+                npm install
+              fi
+              npm run type-check
+              npm run lint
+              cd ../..
             fi
-            npm run type-check
-          else
-            echo "apps/web/package.json not yet initialized; skipping frontend build."
-          fi
+          done

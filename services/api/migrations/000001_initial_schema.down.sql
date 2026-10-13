@@ -1,7 +1,7 @@
 -- 000001_initial_schema.down.sql
 
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS registrations;
+DROP TABLE IF EXISTS email_outbox;
+DROP TABLE IF EXISTS rsvps;
 DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS event_categories;
 DROP TABLE IF EXISTS organizers;

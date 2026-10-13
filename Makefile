@@ -20,9 +20,9 @@ dev: db-up
 dev-api:
 	cd services/api && go run ./cmd/api
 
-## dev-web: Run Next.js frontend application
+## dev-web: Run Next.js frontend application (core-web on port 3001)
 dev-web:
-	cd apps/web && npm run dev
+	cd apps/core-web && npm run dev
 
 ## db-up: Start local PostgreSQL and Mailpit containers in background
 db-up:
@@ -51,28 +51,40 @@ test: test-api test-web
 test-api:
 	cd services/api && go test ./... -v -race -count=1
 
-## test-web: Run Next.js frontend test suite
+## test-web: Run Next.js frontend test suite across all apps
 test-web:
-	cd apps/web && npm test
+	cd apps/core-web && npm test
+	cd apps/public-web && npm test
+	cd apps/organizer-web && npm test
+	cd apps/admin-web && npm test
 
 ## lint: Run static analysis and lint checks across the repository
 lint:
 	cd services/api && go vet ./...
-	cd apps/web && npm run lint && npm run type-check
+	cd apps/core-web && npm run lint && npm run type-check
+	cd apps/public-web && npm run lint && npm run type-check
+	cd apps/organizer-web && npm run lint && npm run type-check
+	cd apps/admin-web && npm run lint && npm run type-check
 
 ## format: Format source code across Go and TypeScript files
 format:
 	cd services/api && gofmt -w ./...
-	cd apps/web && npm run format 2>/dev/null || true
+	cd apps/core-web && npm run format 2>/dev/null || true
+	cd apps/public-web && npm run format 2>/dev/null || true
+	cd apps/organizer-web && npm run format 2>/dev/null || true
+	cd apps/admin-web && npm run format 2>/dev/null || true
 
-## build: Compile production Go binary and Next.js frontend application
+## build: Compile production Go binary and Next.js frontend applications
 build:
 	cd services/api && CGO_ENABLED=0 go build -o bin/api ./cmd/api
-	cd apps/web && npm run build
+	cd apps/core-web && npm run build
+	cd apps/public-web && npm run build
+	cd apps/organizer-web && npm run build
+	cd apps/admin-web && npm run build
 
 ## clean: Remove compiled binaries and build artifacts
 clean:
 	rm -rf services/api/bin/
-	rm -rf apps/web/.next/
-	rm -rf apps/web/out/
+	rm -rf apps/core-web/.next/ apps/public-web/.next/ apps/organizer-web/.next/ apps/admin-web/.next/
+	rm -rf apps/core-web/out/ apps/public-web/out/ apps/organizer-web/out/ apps/admin-web/out/
 	rm -f services/api/coverage.out

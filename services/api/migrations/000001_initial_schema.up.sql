@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS events (
     ends_at                 TIMESTAMPTZ NOT NULL,
     timezone                TEXT NOT NULL,
     capacity                INTEGER,
-    registration_count      INTEGER NOT NULL DEFAULT 0,
+    current_rsvp_count      INTEGER NOT NULL DEFAULT 0,
     registration_opens_at   TIMESTAMPTZ,
     registration_closes_at  TIMESTAMPTZ,
     tags                    TEXT[] NOT NULL DEFAULT '{}',
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS events (
     CONSTRAINT events_title_len CHECK (char_length(title) BETWEEN 1 AND 200),
     CONSTRAINT events_ends_after_starts CHECK (ends_at > starts_at),
     CONSTRAINT events_capacity_positive CHECK (capacity IS NULL OR capacity > 0),
-    CONSTRAINT events_registration_count_nonneg CHECK (registration_count >= 0)
+    CONSTRAINT events_current_rsvp_count_nonneg CHECK (current_rsvp_count >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS events_status_idx ON events (status) WHERE deleted_at IS NULL;
@@ -111,8 +111,8 @@ CREATE INDEX IF NOT EXISTS events_search_idx ON events
     USING gin(to_tsvector('english', title || ' ' || description))
     WHERE deleted_at IS NULL AND status = 'published';
 
--- Registrations table
-CREATE TABLE IF NOT EXISTS registrations (
+-- RSVPs table
+CREATE TABLE IF NOT EXISTS rsvps (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id        UUID NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
     user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -124,30 +124,34 @@ CREATE TABLE IF NOT EXISTS registrations (
     cancelled_at    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT registrations_identity_req CHECK (user_id IS NOT NULL OR guest_email IS NOT NULL),
-    CONSTRAINT registrations_user_event_unique UNIQUE (event_id, user_id),
-    CONSTRAINT registrations_guest_event_unique UNIQUE (event_id, guest_email)
+    CONSTRAINT rsvps_identity_req CHECK (user_id IS NOT NULL OR guest_email IS NOT NULL),
+    CONSTRAINT rsvps_user_event_unique UNIQUE (event_id, user_id),
+    CONSTRAINT rsvps_guest_event_unique UNIQUE (event_id, guest_email)
 );
 
-CREATE INDEX IF NOT EXISTS registrations_event_idx ON registrations (event_id);
-CREATE INDEX IF NOT EXISTS registrations_event_status_idx ON registrations (event_id, status);
+CREATE INDEX IF NOT EXISTS rsvps_event_idx ON rsvps (event_id);
+CREATE INDEX IF NOT EXISTS rsvps_event_status_idx ON rsvps (event_id, status);
+CREATE INDEX IF NOT EXISTS rsvps_user_idx ON rsvps (user_id);
 
--- Notifications table
-CREATE TABLE IF NOT EXISTS notifications (
+-- Email Outbox table (Transactional Outbox Pattern)
+CREATE TABLE IF NOT EXISTS email_outbox (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    registration_id UUID REFERENCES registrations(id) ON DELETE SET NULL,
+    rsvp_id         UUID REFERENCES rsvps(id) ON DELETE SET NULL,
     event_id        UUID REFERENCES events(id) ON DELETE SET NULL,
     recipient_email TEXT NOT NULL,
-    type            notification_type NOT NULL,
+    recipient_name  TEXT,
+    template_type   TEXT NOT NULL,
+    payload_json    JSONB NOT NULL DEFAULT '{}',
     status          notification_status NOT NULL DEFAULT 'pending',
-    subject         TEXT,
-    body_html       TEXT,
+    retry_count     INTEGER NOT NULL DEFAULT 0,
+    scheduled_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     sent_at         TIMESTAMPTZ,
+    error_message   TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS notifications_pending_idx ON notifications (status) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS email_outbox_pending_idx ON email_outbox (status, scheduled_at) WHERE status = 'pending';
 
 -- Seed initial categories
 INSERT INTO event_categories (name, slug, description, icon) VALUES

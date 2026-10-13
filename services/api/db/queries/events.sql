@@ -25,3 +25,7 @@ SET status = $2,
     cancelled_at = CASE WHEN $2 = 'cancelled' THEN NOW() ELSE cancelled_at END,
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: GetEventByIDAndOrganizer :one
+SELECT * FROM events
+WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL;
