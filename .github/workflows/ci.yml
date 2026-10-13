@@ -66,36 +66,48 @@ jobs:
           go-version: '1.23'
           cache: false
 
-      - name: Check Go Formatting
-        run: |
-          if [ -d "services/api" ] && [ -f "services/api/go.mod" ]; then
-            cd services/api
-            UNFORMATTED=$(gofmt -l .)
-            if [ -n "$UNFORMATTED" ]; then
-              echo "Unformatted Go files detected:"
-              echo "$UNFORMATTED"
-              exit 1
-            fi
-            echo "Go formatting clean."
-          else
-            echo "services/api/go.mod not yet initialized; skipping Go check."
-          fi
-
       - name: Apply Database Migrations
         env:
           DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql "$DATABASE_URL" -f services/api/migrations/000001_initial_schema.up.sql
+          if [ -f "deploy/migrations/000001_initial_schema.up.sql" ]; then
+            psql "$DATABASE_URL" -f deploy/migrations/000001_initial_schema.up.sql
+          elif [ -f "services/api/migrations/000001_initial_schema.up.sql" ]; then
+            psql "$DATABASE_URL" -f services/api/migrations/000001_initial_schema.up.sql
+          fi
+
+      - name: Check Go Formatting
+        run: |
+          for SVC in core-backend global-backend api; do
+            if [ -d "services/$SVC" ] && [ -f "services/$SVC/go.mod" ]; then
+              echo "=== Checking formatting for services/$SVC ==="
+              cd "services/$SVC"
+              UNFORMATTED=$(gofmt -l .)
+              if [ -n "$UNFORMATTED" ]; then
+                echo "Unformatted Go files detected in services/$SVC:"
+                echo "$UNFORMATTED"
+                exit 1
+              fi
+              echo "services/$SVC formatting clean."
+              cd ../..
+            fi
+          done
 
       - name: Run Go Vet & Unit Tests with Race Detector
         env:
           DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
           CGO_ENABLED: '1'
         run: |
-          cd services/api
-          go vet ./...
-          go test ./... -v -race -count=1
+          for SVC in core-backend global-backend api; do
+            if [ -d "services/$SVC" ] && [ -f "services/$SVC/go.mod" ]; then
+              echo "=== Running vet and tests for services/$SVC ==="
+              cd "services/$SVC"
+              go vet ./...
+              go test ./... -v -race -count=1
+              cd ../..
+            fi
+          done
 
   frontend-ci:
     name: Next.js Frontend CI

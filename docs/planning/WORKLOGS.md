@@ -6,7 +6,23 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
-### 2026-10-10 RESTRUCT-001 — Root Directory Clean-up & Architecture Alignment
+### 2026-10-13 PHASE-009 — Dual Go Backend Engines Decoupling & API Completion
+- **Agent:** Principal Backend Architect / SRE Lead
+- **Files changed:**
+  - `services/core-backend/` (independent module `github.com/hackways/core-backend`, port 8081, pool max 28, events & rsvps)
+  - `services/global-backend/` (independent module `github.com/hackways/global-backend`, port 8082, pool max 22, auth, storage SAS, outbox worker)
+  - `services/global-backend/internal/auth/handler.go`, `handler_test.go` (`register`, `login`, `logout`, `me`, `verify`)
+  - `services/global-backend/internal/storage/handler.go`, `handler_test.go` (`upload-intent` for Azure Blob SAS)
+  - `deploy/migrations/` (canonical schema migrations directory established)
+  - `scripts/verify.ps1`, `scripts/verify.sh`, `Makefile`, `.github/workflows/ci.yml` (multi-backend test suites with race detection)
+  - `docs/plans/phase9/` (8 canonical phase planning files authored)
+  - `docs/plans/MASTER_PLAN.md` (updated phase roadmap)
+- **Summary:** Enforced strict AGENTS.md architectural boundaries by decoupling the monolithic `services/api` into two independent Go engines (`core-backend:8081` and `global-backend:8082`). Implemented live PostgreSQL-backed Auth HTTP handlers with bcrypt password hashing and host-scoped sessions (`__Host-hackways_session`), Azure Blob write-only SAS upload handler, and bounded 2-goroutine ACS email outbox worker. All 27+ Go tests pass under the race detector, and all 4 Next.js applications type-check and lint cleanly.
+- **Commands run:**
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1` -> ALL CHECKS PASSED SUCCESSFULLY.
+- **Review status:** Supervisor verified
+
+---
 - **Agent:** Chief Architect / Supervisor
 - **Files changed:**
   - Moved `.github/CODE_OF_CONDUCT.md`, `.github/CONTRIBUTING.md`, `.github/SECURITY.md` into `.github/`.
