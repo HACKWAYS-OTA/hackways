@@ -87,13 +87,13 @@ export default function HomePage() {
 
         <div className="flex flex-wrap items-center justify-center gap-4">
           <a
-            href="http://localhost:3001"
+            href={process.env.NEXT_PUBLIC_APP_URL || "https://app.hackways.in"}
             className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-base shadow-lg shadow-indigo-600/25 transition"
           >
             Launch Attendee Portal (app.hackways.in)
           </a>
           <a
-            href="http://localhost:3002"
+            href={process.env.NEXT_PUBLIC_ORGANIZER_URL || "https://organizer.hackways.in"}
             className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-medium text-base transition"
           >
             Host with Organizer Studio

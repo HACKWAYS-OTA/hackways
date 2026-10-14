@@ -43,13 +43,13 @@ export default function RootLayout({
             </div>
             <div className="flex items-center gap-3">
               <a
-                href="http://localhost:3002"
+                href={process.env.NEXT_PUBLIC_ORGANIZER_URL || "https://organizer.hackways.in"}
                 className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
               >
                 Organizer Studio
               </a>
               <a
-                href="http://localhost:3001"
+                href={process.env.NEXT_PUBLIC_APP_URL || "https://app.hackways.in"}
                 className="text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition shadow-sm"
               >
                 Attendee Portal

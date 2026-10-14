@@ -33,14 +33,14 @@ export default function RootLayout({
                 <a href="#events" className="hover:text-white transition">
                   Events
                 </a>
-                <a href="http://localhost:3000" className="hover:text-white transition">
+                <a href={process.env.NEXT_PUBLIC_PUBLIC_URL || "https://hackways.in"} className="hover:text-white transition">
                   About
                 </a>
               </nav>
             </div>
             <div className="flex items-center gap-3">
               <a
-                href="http://localhost:3002"
+                href={process.env.NEXT_PUBLIC_ORGANIZER_URL || "https://organizer.hackways.in"}
                 className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
               >
                 Host an Event

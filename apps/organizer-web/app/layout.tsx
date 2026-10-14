@@ -43,7 +43,7 @@ export default function RootLayout({
             </div>
             <div className="flex items-center gap-3">
               <a
-                href="http://localhost:3000"
+                href={process.env.NEXT_PUBLIC_PUBLIC_URL || "https://hackways.in"}
                 className="text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition"
               >
                 Public Site
