@@ -1,0 +1,21 @@
+[Unit]
+Description=Hackways Vercel-like Auto Deployment Service
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/opt/hackways
+Environment=REPO_DIR=/opt/hackways
+Environment=BRANCH=develop
+Environment=PORT=9898
+ExecStart=/usr/local/bin/hackways-deployer
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

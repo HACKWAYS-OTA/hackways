@@ -16,24 +16,42 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-echo "=== 2. Pulling Pre-built Container Images from Registry ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull
+# Source environment
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+echo "=== 2. Pulling Base Images from Registry ==="
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull postgres nginx || true
+
+echo "=== 2b. Compiling Go Backend Engines ==="
+docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.core-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-core-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
+docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.global-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-global-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
 
 echo "=== 3. Ensuring PostgreSQL Database is Running ==="
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d postgres
 echo "Waiting for PostgreSQL healthcheck..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" wait --wait-healthy postgres
+sleep 2
 
 echo "=== 4. Applying Pending Database Migrations ==="
 for mig in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
     if [ -f "$mig" ]; then
         echo "Applying $(basename "$mig")..."
-        docker exec -i hackways-postgres psql -U hackways_prod -d hackways_prod < "$mig" || true
+        docker exec -i hackways-postgres psql -U "${POSTGRES_USER:-hackways_prod}" -d "${POSTGRES_DB:-hackways_prod}" < "$mig" || true
     fi
 done
 
 echo "=== 5. Launching Production Container Services ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --remove-orphans
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d core-backend global-backend nginx
+
+# If web app images are present, launch them
+for app in public-web core-web organizer-web admin-web; do
+    if docker image inspect "${DOCKER_REGISTRY:-hackways}/hackways-${app}:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
+        echo "Launching $app..."
+        docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d "$app"
+    fi
+done
 
 echo "=== 6. Pruning Dangling Images to Preserve NVMe Disk Cap ==="
 docker image prune -f
