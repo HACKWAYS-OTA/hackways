@@ -20,6 +20,7 @@ flowchart TD
     P6["Phase 6: Frontend Foundations"]
     P7["Phase 7: Testing & CI Enforcement"]
     P8["Phase 8: Production Deployment & Operational Readiness"]
+    P9["Phase 9: Dual Go Backend Engines Decoupling & API Completion"]
 
     P1 --> P2
     P2 --> P3
@@ -28,6 +29,7 @@ flowchart TD
     P5 --> P6
     P6 --> P7
     P7 --> P8
+    P8 --> P9
 ```
 
 | Phase | Phase Name | Primary Objective | Key Exit Deliverable | Status |
@@ -40,6 +42,7 @@ flowchart TD
 | **Phase 6** | **Frontend Foundations** | Establish all 4 independent Next.js applications (`public-web`, `core-web`, `organizer-web`, `admin-web`) with typed API contracts. | 4 independent frontend apps running with genuine server-rendered data and no mock data. | `VERIFIED` |
 | **Phase 7** | **Testing & CI Enforcement** | Build automated test suites: backend race detector, DB integration, frontend type-check, and k6 concurrency tests. | CI passing with 100% real command verification; zero simulated success states. | `VERIFIED` |
 | **Phase 8** | **Production Deployment & Operational Readiness** | Deploy production Docker Compose topology, Nginx ingress, memory caps, log rotation, and automated backup scripts. | Verified container stack running within Azure VM resource budget (< 2.5 GB RAM total). | `VERIFIED` |
+| **Phase 9** | **Dual Go Backend Engines Decoupling & API Completion** | Decouple into two independent Go engines (`core-backend:8081` and `global-backend:8082`) with dedicated connection pools and complete Auth/Storage APIs. | 2 independent Go modules running with race tests passing and real PostgreSQL integrations. | `VERIFIED` |
 
 ---
 

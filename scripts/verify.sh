@@ -7,28 +7,33 @@ set -euo pipefail
 echo "=========================================="
 echo " 1. Go Backend: Format, Vet, Tests, Build "
 echo "=========================================="
-cd services/api
-
-echo "--> Checking Go formatting..."
-UNFORMATTED=$(gofmt -l .)
-if [ -n "$UNFORMATTED" ]; then
-    echo "ERROR: Unformatted Go files:"
-    echo "$UNFORMATTED"
-    exit 1
-fi
-echo "Go formatting clean."
-
-echo "--> Running go vet..."
-go vet ./...
-
-echo "--> Running Go unit tests..."
-go test ./... -v -count=1
-
-echo "--> Compiling Go API binary..."
-go build -o /dev/null ./cmd/api
-echo "Backend checks passed."
-
-cd ../..
+for SVC in core-backend global-backend; do
+    if [ -d "services/$SVC" ]; then
+        echo "--> Checking services/$SVC..."
+        cd "services/$SVC"
+        
+        echo "--> Checking Go formatting..."
+        UNFORMATTED=$(gofmt -l .)
+        if [ -n "$UNFORMATTED" ]; then
+            echo "ERROR: Unformatted Go files in services/$SVC:"
+            echo "$UNFORMATTED"
+            exit 1
+        fi
+        echo "Go formatting clean."
+        
+        echo "--> Running go vet..."
+        go vet ./...
+        
+        echo "--> Running Go unit tests..."
+        go test ./... -v -count=1
+        
+        echo "--> Compiling Go binary..."
+        go build -o /dev/null ./cmd/server
+        echo "services/$SVC checks passed."
+        
+        cd ../..
+    fi
+done
 
 echo "=========================================="
 echo " 2. Frontend: Syntax & Type Checking     "

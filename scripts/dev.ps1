@@ -14,10 +14,13 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host "==> Starting backend Go API..." -ForegroundColor Green
-Start-Process -FilePath "go" -ArgumentList "run", "./cmd/api" -WorkingDirectory "services\api"
+Write-Host "==> Starting Core Backend (port 8081)..." -ForegroundColor Green
+Start-Process -FilePath "go" -ArgumentList "run", "./cmd/server" -WorkingDirectory "services\core-backend"
 
-Write-Host "==> Starting frontend Next.js dev server..." -ForegroundColor Green
-Start-Process -FilePath "npm" -ArgumentList "run", "dev" -WorkingDirectory "apps\web"
+Write-Host "==> Starting Global Backend (port 8082)..." -ForegroundColor Green
+Start-Process -FilePath "go" -ArgumentList "run", "./cmd/server" -WorkingDirectory "services\global-backend"
+
+Write-Host "==> Starting Core Web frontend (port 3001)..." -ForegroundColor Green
+Start-Process -FilePath "npm" -ArgumentList "run", "dev" -WorkingDirectory "apps\core-web"
 
 Write-Host "Services started." -ForegroundColor Green
