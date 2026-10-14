@@ -5,7 +5,9 @@ RUN apk add --no-cache libc6-compat
 
 FROM base AS deps
 WORKDIR /app
-COPY packages/api-client ./packages/api-client
+COPY packages/api-client/package.json ./packages/api-client/
+COPY packages/api-client/tsconfig.json ./packages/api-client/
+COPY packages/api-client/src ./packages/api-client/src
 RUN cd packages/api-client && npm install && npm run build
 
 COPY apps/admin-web/package.json ./apps/admin-web/
