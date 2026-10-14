@@ -53,6 +53,9 @@ for app in public-web core-web organizer-web admin-web; do
     fi
 done
 
+echo "Reloading Nginx ingress configuration..."
+docker exec hackways-nginx nginx -s reload || true
+
 echo "=== 6. Pruning Dangling Images to Preserve NVMe Disk Cap ==="
 docker image prune -f
 
