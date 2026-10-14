@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /src
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Cache Go modules
+COPY services/global-backend/go.mod services/global-backend/go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY services/global-backend/ ./
+
+# Build optimized, static binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w" \
+    -trimpath \
+    -o /bin/global-backend ./cmd/server/main.go
+
+# Minimal runtime stage
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata wget \
+    && addgroup -g 10001 -S hackways \
+    && adduser -u 10001 -S hackways -G hackways
+
+USER hackways:hackways
+
+COPY --from=builder /bin/global-backend /usr/local/bin/global-backend
+
+EXPOSE 8082
+
+ENV PORT=8082 \
+    ENV=production \
+    GOMEMLIMIT=90MiB \
+    GOGC=100
+
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+    CMD wget -qO- http://localhost:8082/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/global-backend"]

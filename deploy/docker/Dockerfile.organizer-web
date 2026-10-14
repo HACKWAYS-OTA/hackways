@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+FROM node:22-alpine AS base
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+
+FROM base AS deps
+WORKDIR /app
+COPY packages/api-client ./packages/api-client
+RUN cd packages/api-client && npm install && npm run build
+
+COPY apps/organizer-web/package.json ./apps/organizer-web/
+COPY apps/organizer-web/package-lock.json* ./apps/organizer-web/
+WORKDIR /app/apps/organizer-web
+RUN npm install
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/packages/api-client ./packages/api-client
+COPY --from=deps /app/apps/organizer-web/node_modules ./apps/organizer-web/node_modules
+COPY apps/organizer-web ./apps/organizer-web
+
+WORKDIR /app/apps/organizer-web
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3002
+ENV HOSTNAME="0.0.0.0"
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/apps/organizer-web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/organizer-web/.next/static ./apps/organizer-web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/organizer-web/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3002
+
+CMD ["sh", "-c", "if [ -f apps/organizer-web/server.js ]; then node apps/organizer-web/server.js; else node server.js; fi"]
