@@ -10,7 +10,6 @@ version: '3.8'
 networks:
   hackways-internal:
     driver: bridge
-    internal: true
   hackways-ingress:
     driver: bridge
 
