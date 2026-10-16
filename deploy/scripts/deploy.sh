@@ -22,25 +22,37 @@ set -a
 source "$ENV_FILE"
 set +a
 
-echo "=== 2. Pulling Base Images from Registry ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull postgres nginx || true
+echo "=== 2. Pulling Pre-Built Production Images from Registry ==="
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull nginx core-backend global-backend public-web core-web organizer-web admin-web || true
 
-echo "=== 2b. Compiling Go Backend Engines ==="
-docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.core-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-core-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
-docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.global-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-global-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
+# If pre-built images are not available in registry, fall back safely to local build
+if ! docker image inspect "${DOCKER_REGISTRY:-hackways}/hackways-core-backend:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
+    echo "Notice: Registry image missing, building core-backend fallback..."
+    docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.core-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-core-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
+fi
+if ! docker image inspect "${DOCKER_REGISTRY:-hackways}/hackways-global-backend:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
+    echo "Notice: Registry image missing, building global-backend fallback..."
+    docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.global-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-global-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
+fi
 
-echo "=== 3. Ensuring PostgreSQL Database is Running ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d postgres
-echo "Waiting for PostgreSQL healthcheck..."
-sleep 2
-
-echo "=== 4. Applying Pending Database Migrations ==="
-for mig in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
-    if [ -f "$mig" ]; then
-        echo "Applying $(basename "$mig")..."
-        docker exec -i hackways-postgres psql -U "${POSTGRES_USER:-hackways_prod}" -d "${POSTGRES_DB:-hackways_prod}" < "$mig" || true
-    fi
-done
+echo "=== 3. Database Connectivity & Migration ==="
+# Check if using Azure Database for PostgreSQL Flexible Server or local container profile
+if [ -n "${DATABASE_URL:-}" ]; then
+    echo "Connecting to authoritative database (${DATABASE_URL%%@*}@...)..."
+    for mig in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
+        if [ -f "$mig" ]; then
+            echo "Applying $(basename "$mig")..."
+            psql "$DATABASE_URL" -f "$mig" 2>/dev/null || docker run --rm --network host -v "$PROJECT_DIR/deploy/migrations:/migrations" postgres:16-alpine psql "$DATABASE_URL" -f "/migrations/$(basename "$mig")" || true
+        fi
+    done
+elif docker ps --format '{{.Names}}' | grep -q "hackways-postgres"; then
+    for mig in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
+        if [ -f "$mig" ]; then
+            echo "Applying $(basename "$mig") to local container..."
+            docker exec -i hackways-postgres psql -U "${POSTGRES_USER:-hackways_prod}" -d "${POSTGRES_DB:-hackways_prod}" < "$mig" || true
+        fi
+    done
+fi
 
 echo "=== 5. Launching Production Container Services ==="
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d core-backend global-backend nginx

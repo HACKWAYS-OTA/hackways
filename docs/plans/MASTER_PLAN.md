@@ -21,6 +21,7 @@ flowchart TD
     P7["Phase 7: Testing & CI Enforcement"]
     P8["Phase 8: Production Deployment & Operational Readiness"]
     P9["Phase 9: Dual Go Backend Engines Decoupling & API Completion"]
+    P10["Phase 10: Azure Managed Cloud Migration & Scalability Hardening"]
 
     P1 --> P2
     P2 --> P3
@@ -30,6 +31,7 @@ flowchart TD
     P6 --> P7
     P7 --> P8
     P8 --> P9
+    P9 --> P10
 ```
 
 | Phase | Phase Name | Primary Objective | Key Exit Deliverable | Status |
@@ -43,6 +45,7 @@ flowchart TD
 | **Phase 7** | **Testing & CI Enforcement** | Build automated test suites: backend race detector, DB integration, frontend type-check, and k6 concurrency tests. | CI passing with 100% real command verification; zero simulated success states. | `VERIFIED` |
 | **Phase 8** | **Production Deployment & Operational Readiness** | Deploy production Docker Compose topology, Nginx ingress, memory caps, log rotation, and automated backup scripts. | Verified container stack running within Azure VM resource budget (< 2.5 GB RAM total). | `VERIFIED` |
 | **Phase 9** | **Dual Go Backend Engines Decoupling & API Completion** | Decouple into two independent Go engines (`core-backend:8081` and `global-backend:8082`) with dedicated connection pools and complete Auth/Storage APIs. | 2 independent Go modules running with race tests passing and real PostgreSQL integrations. | `VERIFIED` |
+| **Phase 10** | **Azure Managed Cloud Migration & Scalability Hardening** | Migrate persistence to Azure Database for PostgreSQL Flexible Server, enforce zero-build off-node CI/CD, enable Nginx microcaching, and rebalance 4GB VM memory. | Production topology connected to Azure PostgreSQL over SSL; VM headroom expanded to > 2.3 GB; zero on-VM compile spikes. | `VERIFIED` |
 
 ---
 
@@ -51,11 +54,11 @@ flowchart TD
 Merging, combining, or blurring the boundaries of these six services is **strictly prohibited** by [`AGENTS.md` Section 2.1](../../AGENTS.md#L94-L117):
 
 1. **`apps/public-web`**: Next.js 14 SSG/ISR (`hackways.in`) — Marketing landing, event discovery, public SEO catalogs. (Memory cap: 140 MB).
-2. **`apps/core-web`**: Next.js 14 App Router (`app.hackways.in`) — Attendee event details, interactive tickets, and RSVP flows. (Memory cap: 250 MB).
-3. **`apps/organizer-web`**: Next.js 14 App Router (`organizer.hackways.in`) — Organizer event creation studio, ticket tier controls, roster management, CSV exports. (Memory cap: 230 MB).
+2. **`apps/core-web`**: Next.js 14 App Router (`app.hackways.in`) — Attendee event details, interactive tickets, and RSVP flows. (Memory cap: 260 MB).
+3. **`apps/organizer-web`**: Next.js 14 App Router (`organizer.hackways.in`) — Organizer event creation studio, ticket tier controls, roster management, CSV exports. (Memory cap: 240 MB).
 4. **`apps/admin-web`**: Next.js 14 App Router (`admin.hackways.in`) — Network/VPN-isolated administration, user moderation, event auditing. (Memory cap: 170 MB).
-5. **`services/core-backend`**: Go 1.23+ (`core-backend:8081`) — High-concurrency event lifecycle, ticket inventory, pessimistic RSVP capacity locks. (Memory cap: 120 MB).
-6. **`services/global-backend`**: Go 1.23+ (`global-backend:8082`) — Authentication, sessions, RBAC, Azure Blob SAS token signing, ACS email outbox worker. (Memory cap: 110 MB).
+5. **`services/core-backend`**: Go 1.23+ (`core-backend:8081`) — High-concurrency event lifecycle, ticket inventory, pessimistic RSVP capacity locks. (Memory cap: 180 MB, pool max 32).
+6. **`services/global-backend`**: Go 1.23+ (`global-backend:8082`) — Authentication, sessions, RBAC, Azure Blob SAS token signing, ACS email outbox worker. (Memory cap: 140 MB, pool max 24).
 
 ---
 

@@ -12,7 +12,7 @@ This document is the authoritative operations specification for deploying the Ha
                               └──────────────────────┬───────────────────────┘
                                                      │ HTTPS (TLS 1.3 / HTTP/2)
                               ┌──────────────────────▼───────────────────────┐
-                              │ Nginx Reverse Proxy (Port 80/443, 75 MB cap) │
+                              │ Nginx Reverse Proxy (Port 80/443, 80 MB cap) │
                               │ Rate Limits: Auth 5r/s | RSVP 10r/s | Gen 30r│
                               └──────┬──────────┬──────────┬──────────┬──────┘
                                      │          │          │          │
@@ -24,7 +24,7 @@ This document is the authoritative operations specification for deploying the Ha
                                                 │          │
                  app.hackways.in (Port 3001)    │          │ organizer.hackways.in (Port 3002)
               ┌─────────────────────────────────▼┐        ┌▼────────────────────────────────┐
-              │ Core Web (250 MB cap)            │        │ Organizer Web (230 MB cap)      │
+              │ Core Web (260 MB cap)            │        │ Organizer Web (240 MB cap)      │
               │ Next.js 14 Attendee App & RSVP   │        │ Next.js 14 Event Studio & Roster│
               └────────────────┬─────────────────┘        └─────────────────┬───────────────┘
                                │                                            │
@@ -36,37 +36,37 @@ This document is the authoritative operations specification for deploying the Ha
                          │                                                        │
            ┌─────────────▼────────────────┐                        ┌──────────────▼──────────────┐
            │ Core Backend (Go 1.23 Engine)│                        │ Global Backend (Go Engine)  │
-           │ Port 8081 | 120 MB RAM cap   │                        │ Port 8082 | 110 MB RAM cap  │
+           │ Port 8081 | 180 MB RAM cap   │                        │ Port 8082 | 140 MB RAM cap  │
            │ Concurrency Locks & Capacity │                        │ Sessions, SAS Signer, Worker│
            └─────────────┬────────────────┘                        └──────────────┬──────────────┘
                          │                                                        │
-                         │ pgxpool (Max 28 conns)                  pgxpool (Max 22 conns)
+                         │ pgxpool (Max 32 conns, SSL)             pgxpool (Max 24 conns, SSL)
                          └────────────────────────────┬───────────────────────────┘
                                                       │
-                                        ┌─────────────▼──────────────┐
-                                        │ PostgreSQL 16 (700 MB cap) │
-                                        │ Max 60 conns, 2000ms locks │
-                                        └────────────────────────────┘
+                                        ┌─────────────▼──────────────────────────────┐
+                                        │ Azure Database for PostgreSQL              │
+                                        │ (Flexible Server, Multi-AZ, Automated PITR)│
+                                        └────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 2. Azure VM Resource Budget (2 vCPU, 4.0 GB RAM, 50 GB NVMe)
 
-The host environment runs on a single Azure Virtual Machine (`Standard_B2s` or `Standard_D2s_v5`). All containers enforce strict resource caps in `deploy/docker/docker-compose.prod.yml`:
+The host compute runs on a single Azure Virtual Machine (`Standard_B2s` or `Standard_D2s_v5`). With PostgreSQL persistence offloaded to **Azure Database for PostgreSQL Flexible Server**, all compute containers enforce revised, high-headroom caps in `deploy/docker/docker-compose.prod.yml`:
 
 | Component | Resident RSS | Docker Hard Limit | CPU Quota (Max 2.0) | Memory Governance Strategy |
 | :--- | :--- | :--- | :--- | :--- |
-| **PostgreSQL 16** | ~220 MB | **700 MB** | 0.60 | `shared_buffers = 256MB`, `work_mem = 4MB`, `max_connections = 60` |
-| **Core Backend (Go)** | ~35 MB | **120 MB** | 0.70 | `GOMEMLIMIT=100MiB`, `GOGC=100` |
-| **Global Backend (Go)** | ~35 MB | **110 MB** | 0.40 | `GOMEMLIMIT=90MiB`, `GOGC=100`, bounded 2-routine worker |
-| **Core Web (Next.js)** | ~110 MB | **250 MB** | 0.50 | `NODE_OPTIONS="--max-old-space-size=190"`, standalone output |
-| **Organizer Web (Next.js)**| ~100 MB | **230 MB** | 0.40 | `NODE_OPTIONS="--max-old-space-size=180"`, standalone output |
+| **Azure PostgreSQL** | *Off-Node* | *Managed Azure* | *Dedicated* | Azure Flexible Server, 35-day PITR, SSL enforced |
+| **Core Backend (Go)** | ~45 MB | **180 MB** | 0.80 | `GOMEMLIMIT=150MiB`, `GOGC=100`, max 32 DB conns |
+| **Global Backend (Go)** | ~40 MB | **140 MB** | 0.50 | `GOMEMLIMIT=120MiB`, `GOGC=100`, max 24 DB conns, ACS worker |
+| **Core Web (Next.js)** | ~110 MB | **260 MB** | 0.50 | `NODE_OPTIONS="--max-old-space-size=190"`, standalone output |
+| **Organizer Web (Next.js)**| ~100 MB | **240 MB** | 0.40 | `NODE_OPTIONS="--max-old-space-size=180"`, standalone output |
 | **Admin Web (Next.js)** | ~80 MB | **170 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=130"`, standalone output |
 | **Public Web (Next.js)** | ~60 MB | **140 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=100"`, standalone output |
-| **Nginx Ingress** | ~25 MB | **75 MB** | 0.20 | Event loop worker processes: 2, worker_connections: 4096 |
-| **Linux Host & System** | ~350 MB | ~500 MB | 0.20 | Systemd, journald, Docker daemon |
-| **Ceiling Total** | **~1,215 MB** | **~2,495 MB** | **~3.50 (Burstable)** | **Safe Headroom: ~1,600 MB for disk page cache & spikes** |
+| **Nginx Ingress** | ~25 MB | **80 MB** | 0.20 | Event loop workers: 2, worker_connections: 4096, microcaching |
+| **Linux Host & System** | ~350 MB | ~450 MB | 0.20 | Systemd, journald, Docker daemon |
+| **Ceiling Total** | **~810 MB** | **~1,660 MB** | **~3.10 (Burstable)** | **Safe Headroom: ~2,436 MB free (~59% of RAM) for disk cache & spikes** |
 
 ---
 

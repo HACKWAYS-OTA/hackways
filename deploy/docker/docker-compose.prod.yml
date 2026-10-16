@@ -20,17 +20,19 @@ volumes:
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. Authoritative Database Engine
-  # Memory Limit: 700 MB | CPU Quota: 0.60
+  # 1. Authoritative Database Engine (Optional Local Container Profile)
+  # In Azure Production, this is replaced by Azure Database for PostgreSQL Flexible Server.
+  # Use profile 'local-db' only if simulating production with a local container.
   # ----------------------------------------------------------------------------
   postgres:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: hackways-postgres
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-hackways_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hackways_password}
+      POSTGRES_DB: ${POSTGRES_DB:-hackways_prod}
       PGDATA: /var/lib/postgresql/data/pgdata
     command: >
       postgres
@@ -51,7 +53,7 @@ services:
           cpus: '0.60'
           memory: 700M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hackways_user} -d ${POSTGRES_DB:-hackways_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,21 +65,18 @@ services:
 
   # ----------------------------------------------------------------------------
   # 2. Core Backend Engine (Events & RSVP Capacity Engine)
-  # Memory Limit: 120 MB | CPU Quota: 0.70
+  # Memory Limit: 180 MB | CPU Quota: 0.80
   # ----------------------------------------------------------------------------
   core-backend:
     image: ${DOCKER_REGISTRY}/hackways-core-backend:${IMAGE_TAG:-latest}
     container_name: hackways-core-backend
     restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       PORT: 8081
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      DB_MAX_CONNS: 28
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}?sslmode=${DB_SSLMODE:-require}}
+      DB_MAX_CONNS: 32
       DB_MIN_CONNS: 4
-      GOMEMLIMIT: 100MiB
+      GOMEMLIMIT: 150MiB
       GOGC: 100
       ENV: production
     networks:
@@ -85,8 +84,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.70'
-          memory: 120M
+          cpus: '0.80'
+          memory: 180M
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
       interval: 15s
@@ -100,21 +99,18 @@ services:
 
   # ----------------------------------------------------------------------------
   # 3. Global Backend Engine (Auth, Azure SAS Signer, ACS Outbox Worker)
-  # Memory Limit: 110 MB | CPU Quota: 0.40
+  # Memory Limit: 140 MB | CPU Quota: 0.50
   # ----------------------------------------------------------------------------
   global-backend:
     image: ${DOCKER_REGISTRY}/hackways-global-backend:${IMAGE_TAG:-latest}
     container_name: hackways-global-backend
     restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       PORT: 8082
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      DB_MAX_CONNS: 22
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}?sslmode=${DB_SSLMODE:-require}}
+      DB_MAX_CONNS: 24
       DB_MIN_CONNS: 3
-      GOMEMLIMIT: 90MiB
+      GOMEMLIMIT: 120MiB
       GOGC: 100
       AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT}
       AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
@@ -126,8 +122,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.40'
-          memory: 110M
+          cpus: '0.50'
+          memory: 140M
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
       interval: 15s
@@ -261,7 +257,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 75M
+          memory: 80M
     healthcheck:
       test: ["CMD-SHELL", "nginx -t || exit 1"]
       interval: 30s

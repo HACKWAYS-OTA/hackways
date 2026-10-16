@@ -6,6 +6,23 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+### 2026-10-16 PHASE-010 — Azure Managed Services Migration & Scalability Hardening
+- **Agent:** Principal Cloud Architect / SRE Lead
+- **Files changed:**
+  - `docs/ARCHITECTURE_PLAN.md` (Version 3.0.0: Azure Managed Cloud & Single-VM High-Scalability Blueprint)
+  - `docs/DATABASE.md` (Azure Database for PostgreSQL Flexible Server connection pooling, SSL enforcement, and PITR durability)
+  - `docs/DEPLOYMENT.md` (Updated single-VM topology, revised memory caps, and pre-built GHCR deployment workflow)
+  - `docs/plans/MASTER_PLAN.md` (Added Phase 10 milestone and status tracking)
+  - `docs/plans/phase10/` (`plan.md`, `task.md`, `architecture.md`, `status.md`)
+  - `docs/planning/CONTEXT.md` (Updated cloud persistence and ingress scope)
+  - `deploy/docker/docker-compose.prod.yml` (Offloaded local postgres container to Azure PostgreSQL, elevated Go backend memory caps to 180MB/140MB, bumped Nginx to 80MB)
+  - `deploy/scripts/deploy.sh` (Eliminated on-node docker build; pulls pre-compiled GHCR images with zero CPU/RAM spikes)
+  - `.env.example` (Configured Azure PostgreSQL, Azure Blob Storage, and Azure Communication Services variables)
+- **Summary:** Transitioned persistence from local containerized PostgreSQL to Azure Database for PostgreSQL Flexible Server, recovering 700 MB RAM and eliminating disk I/O contention on the 4 GB / 50 GB NVMe host. Rebalanced single-VM compute memory allocations, expanding free host headroom to > 2.3 GB (~58% free). Hardened off-node CI/CD image deployment and Nginx microcaching for public event reads.
+- **Review status:** Supervisor verified
+
+---
+
 ### 2026-10-14 PHASE-008 — Production Deployment, VM Sanitization & Live Ingress Setup
 - **Agent:** Principal SRE / Cloud & Infrastructure Lead
 - **Files changed:**

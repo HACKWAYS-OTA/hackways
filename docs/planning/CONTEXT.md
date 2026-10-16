@@ -1,8 +1,8 @@
 # Engineering Context — Hackways
 
-**Last Updated:** 2026-10-10  
+**Last Updated:** 2026-10-16  
 **Current Milestone:** Milestone 1 (Multi-Service Production Topology & Infrastructure)  
-**Target Environment:** Single VM (2 vCPU, 4 GB RAM, 50 GB NVMe SSD) with Cloudflare Edge CDN  
+**Target Environment:** Single Azure VM (Standard_B2als_v2, 2 vCPU, 4 GB RAM, 50 GB NVMe, IP: 52.140.58.115, Region: South India) with Cloudflare Edge CDN  
 
 ---
 
@@ -19,9 +19,11 @@ Hackways is a high-reliability event discovery, registration, and RSVP platform 
 - **2 Go Backend Engines:**
   - `Core Backend` (`core-backend:8081`): High-concurrency event lifecycle, ticket capacity limits, transactional RSVP locks (`SELECT ... FOR UPDATE`).
   - `Global API Backend` (`global-backend:8082`): Authentication, sessions, RBAC, background email notifications, media uploads.
-- **Persistence & Ingress:**
-  - PostgreSQL 16 (shared buffer 256MB, max 60 conns).
-  - Nginx Reverse Proxy with rate limiting and subdomain routing.
+- **Persistence & Cloud Integrations:**
+  - Azure Database for PostgreSQL (`mdb-hackways-db.postgres.database.azure.com`, Flexible Server, TLS 1.2+ `sslmode=require`).
+  - Azure Blob Storage (`hackwaysstorage`, Zero-Disk Upload Architecture via 15-minute write-only SAS tokens).
+  - Azure Communication Services Email (`hackways-comm-prod.india.communication.azure.com`, PostgreSQL outbox worker dispatch).
+  - Nginx Reverse Proxy with rate limiting, subdomain routing, and microcaching.
 
 ---
 
