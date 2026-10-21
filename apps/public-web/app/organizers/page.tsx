@@ -8,7 +8,7 @@ export default function OrganizersPage() {
     <Section id="start" title="Start with your account and host profile">
       <p>Sign in to the main Hackways app and choose Create event. Add your host profile if you have not set one up. Use a name guests will recognize and an email address you control.</p>
       <p>You can host a personal event or associate it with a Space you own. Event creation happens in the main app; the organizer workspace is where you manage events you have already created.</p>
-      <div className="section-actions"><a className="button button-primary" href={site.app + '/create'}>Create an event</a><a className="text-link" href={site.organizer + '/login'}>Sign in to manage events</a></div>
+      <div className="section-actions"><a className="button button-primary" href="/create">Create an event</a><a className="text-link" href={site.organizer + '/login'}>Sign in to manage events</a></div>
     </Section>
     <Section id="details" title="Make the event easy to understand">
       <ul><li>Give it a specific name and a useful description: audience, programme, preparation and participation requirements.</li><li>Set the start, end and event time zone. Check any field marked UTC carefully; the public page presents the schedule in the event time zone.</li><li>Choose in person, online or hybrid. In-person and hybrid gatherings need a venue; online and hybrid gatherings need a secure joining link.</li><li>Add a street address where it helps people arrive. Include accessibility, travel or arrival information in the description or FAQs.</li><li>Add a contact page, FAQs and rewards information when relevant. State eligibility and conditions clearly.</li></ul>
