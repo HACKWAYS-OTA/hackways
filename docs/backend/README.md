@@ -1,4 +1,10 @@
-# Free-event backend implementation
+# Hackways backend guide
+
+[Repository overview](../../README.md) · [API reference](../API.md) · [Architecture](../ARCHITECTURE.md) · [Database](../DATABASE.md)
+
+## Scope and readiness
+
+This guide describes source behavior in the two Go services, not a claim that the platform is deployed or production-ready. External delivery, uploads, migration/recovery readiness, and browser journeys require their own evidence. Historical local test results below are dated context, not the latest release verdict.
 
 Source brief: [user-supplied workflow](workflow.md). Repository constraints in [AGENTS.md](../../AGENTS.md) override its optional stack recommendations. This implements the free-event foundation and registration workflows inside the existing core/global Go engines. Payments are explicitly deferred by the user. No Redis, extra API service, ORM, or TypeScript backend was introduced.
 
@@ -9,7 +15,7 @@ Source brief: [user-supplied workflow](workflow.md). Repository constraints in [
 | HTTP boundary | Exact production origins, CSRF origin checks, strict typed JSON decoding, 1 MB bodies, 16 KB headers, request IDs, bounded admission/deadlines, structured errors | Load measurements, ingress configuration execution |
 | Identity | Existing password sessions; per-identifier PostgreSQL attempt limits; owned session list/revocation; 15-minute, one-use email verification | Magic-link login, OAuth, passkeys, password recovery, disabled-account and deletion policy |
 | Events | Complete validated drafts and published creation; revision-checked full updates; publish/unpublish/cancel; inactive draft soft deletion; public cancellation state | Incomplete draft editor model, scheduled publishing, recurring events, moderation pipeline |
-| Registration | Instant free account/guest registration; explicit random idempotency keys; ownership-scoped reads/listing/notes/cancellation; verified-email guest claim | Attendee account and management screens; custom forms/consent/accessibility data model |
+| Registration | Instant free account/guest registration; explicit random idempotency keys; ownership-scoped reads/listing/notes/cancellation; verified-email guest claim | Complete browser-journey verification; broader consent/accessibility data policy |
 | Approval | Account-only applications, no inventory until approval; owner decisions; expiry after the earliest of seven days, event start, or registration close | Request-edits workflow; per-event approval duration UI |
 | Waitlist | Account-only FIFO waitlist for full instant-registration events; inventory-backed offers; 5-60 minute offers, default 10; accept/leave/expiry; bounded maintenance | Frontend waitlist controls; approval-plus-waitlist composition |
 | Tickets | Real persisted tickets; Ed25519-signed payloads without PII; owner-authorized one-use check-in; audited manual lookup; cancellation revocation | Scanner UI, offline roster/sync conflict handling, separate staff/team roles |
@@ -86,7 +92,9 @@ Azure contract references: [Put Blob permissions](https://learn.microsoft.com/en
 
 ## Migration and local operation
 
-1. Apply `000002_free_event_workflows.up.sql` using the existing migration runner before deploying either engine. It extends registration enums, adds inventory/policy/revision fields, tickets, audit, idempotency, rate-limit and verification tables, and outbox lease fields. Existing confirmed registrations get real ticket rows.
+Apply the full ordered migration sequence in [deploy/migrations](../../deploy/migrations/), not just one historical migration. Inspect the target database and its migration state before any write; production rehearsal and recovery approval are separate from local setup.
+
+1. The foundational `000002_free_event_workflows.up.sql` migration must precede later workflow migrations. It extends registration enums, adds inventory/policy/revision fields, tickets, audit, idempotency, rate-limit and verification tables, and outbox lease fields. Existing confirmed registrations get real ticket rows.
 2. Case-insensitive guest collisions make the migration fail for operator reconciliation; it never deletes/merges records. The inventory CHECK is initially `NOT VALID`, so new writes are protected without silently repairing historical drift. Validate existing rows and then validate the constraint during a controlled deployment.
 3. The migration has an explicit forward-only down guard because enum values and persisted ticket/audit records must not be deleted. Rollback requires a reviewed compatible application image or forward repair; never blindly run destructive downs or force a dirty migration version. The local legacy DB was migrated with an atomic psql invocation, without rewriting migration-runner metadata. Reconcile that metadata before using golang-migrate on this local database.
 4. `DATABASE_URL` is required. Credentials and local signing material are in ignored `.env`; never copy them into source. Production secrets belong in Key Vault/injected environment. Do not use local development credentials in deployment.
@@ -94,7 +102,9 @@ Azure contract references: [Put Blob permissions](https://learn.microsoft.com/en
 6. Run `deploy/scripts/start-local-backends.ps1` to load local environment and start bounded-memory Go processes in hidden windows. It leaves occupied ports unchanged. Go listeners default to loopback outside production; production containers bind internally. Only Nginx exposes ingress. Stop old verified service processes before restarting a changed engine.
 7. Organizer-host Nginx routes include RSVP decisions; all authorization remains in Go. Proxy deployment still requires operator validation.
 
-## Scenario research and verification status
+## Historical local verification and current checks
+
+Current automated verification is defined by [CI](../../.github/workflows/ci.yml). Release-candidate CI uses isolated PostgreSQL 16 and Go race detection; inspect the exact candidate run rather than extrapolating from a historical local result. This documentation change does not rerun or certify application tests.
 
 See [failure/recovery scenarios](scenarios.md). Local verification and exact command results are recorded in [WORKLOGS](../planning/WORKLOGS.md). Local PostgreSQL is **18.6**, not the target production 16. Schema-only migration verification rolled back an isolated schema; the additive migration was then applied locally. Existing real event/registration data was retained. Both engines passed normal Go suites against isolated schemas, including the 100-request/10-place capacity case. New checks cover waitlist cancellation/acceptance/expiry, approval allocation, current-state replay, revision conflicts, event cancellation/ownership, one-use check-in, transfers and signed/tampered ticket payloads. These checks exposed and fixed PostgreSQL enum-parameter ambiguity. Race-instrumented execution is blocked by the local CGO/C-compiler setup. Production/PostgreSQL-16 rollout, external sends/uploads, browser interaction, multi-process worker stress and offline scanning remain unverified.
 
@@ -102,4 +112,4 @@ See [failure/recovery scenarios](scenarios.md). Local verification and exact com
 
 ## Owner status controls
 
-The existing core engine now supports owner-scoped guest status edits with server-provided choices, expected guest timestamps and exact idempotent retries. It preserves capacity/held-inventory locks, ticket replacement/revocation, FIFO promotion and audit. Custom optional status messages use the same PostgreSQL outbox and escaped global-worker templates. Checked-in/transferred and closed-event registrations remain protected. See API.md for targets and the request/response contract. No new service, SQL framework or migration was introduced.
+The existing core engine now supports owner-scoped guest status edits with server-provided choices, expected guest timestamps and exact idempotent retries. It preserves capacity/held-inventory locks, ticket replacement/revocation, FIFO promotion and audit. Custom optional status messages use the same PostgreSQL outbox and escaped global-worker templates. Checked-in/transferred and closed-event registrations remain protected. See [API.md](../API.md) for targets and the request/response contract. No new service, SQL framework or migration was introduced.

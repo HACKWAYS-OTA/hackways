@@ -6,6 +6,12 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+### 2026-10-21 DOCS-006 - README organization and metadata alignment
+
+- Reviewed all four first-party READMEs against the candidate tree, Makefile, package manifests, backend entry point, Dockerfile, and CI workflows. Restructured the repository entry point; corrected organization links, setup prerequisites, service descriptions, branch-enforcement wording, and CI/manual-release boundaries. Preserved the resource-budget caveat and detailed backend/UI contracts.
+- Marked historical planning and local verification as historical, included phases 9/10, and corrected shared UI image-install documentation. Updated the private repository and organization descriptions without exposing credentials or changing application code, deployment configuration, or workflows.
+- Documentation-only review: checked relative link targets against the candidate tree and reviewed changed-file scope. No application test suite, image build, release tag, merge, migration, or deployment was initiated for this documentation update.
+
 ### 2026-10-21 RELEASE-IMPORT-005 - History-preserving organization import and launch fixes
 
 - Confirmed empty private HACKWAYS-OTA/hackways, existing source refs and the three approved public URL variables. Source main advanced to f7cff5510cc8c3ab5e3471b0a319aa133565b494; integration remains 95388304079f32a3c5d205e6ac7699e7747a9e42. Prepared release/2026-10-21-launch for local changes and a PR into develop; no new work is authored directly on main. Source repository remains untouched.
