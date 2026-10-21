@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+### 2026-10-21 OPS-007 - Manual release staging; ACS prerequisite blocked
+
+- Integrated candidate `39c8b4487a557c7dfb3a1d46aaddecfa848fbbd3` through PR 1 and production promotion PR 3; main merge `d8a3e3e592ae634a9eca33214429d14563f86483` has exactly the candidate tree. Documentation PR 2 remains outside production.
+- Pulled and checked all six existing immutable CI images on the VM, with temporary registry credentials removed after use. Staged a clean complete-history checkout and root-only production environment with current DB authentication and stable ticket signing. Validated seven-service Compose, digest pins, private backend ports and memory limits. No application/image build ran on the VM.
+- Created private encrypted configuration/signing and managed DB backups, verified read-back hashes and isolated DB restore. Verified the exact initial schema, rehearsed the actual migration CLI through version 7 cleanly and checked both candidate backends in production mode against the restored copy. Earlier preserved-image DB readiness rehearsal also passed; full authenticated rollback remains unverified.
+- Blob authentication passed. ACS signed first-send status lookup timed out at the candidate's 20-second bound and returned 504 under a longer probe; an invalid-signature control returned 401 immediately. Empty-request validation returned 400 without sending email. Held the release before any production migration or container replacement; requested approval for a minimal launch fix or corrected provider configuration.
+- No production deletion, credential reset, automatic deployment, paid change or package deletion occurred. The user will perform live authenticated browser checks after successful activation. See [manual release evidence](../handover/MANUAL_RELEASE_2026-10-21.md) for exact digests, backup hashes, CI links and remaining gates. Status: **blocked, not deployed**.
+
 ### 2026-10-21 DOCS-006 - README organization and metadata alignment
 
 - Reviewed all four first-party READMEs against the candidate tree, Makefile, package manifests, backend entry point, Dockerfile, and CI workflows. Restructured the repository entry point; corrected organization links, setup prerequisites, service descriptions, branch-enforcement wording, and CI/manual-release boundaries. Preserved the resource-budget caveat and detailed backend/UI contracts.
