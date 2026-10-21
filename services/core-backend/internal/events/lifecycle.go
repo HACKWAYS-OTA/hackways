@@ -180,9 +180,6 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	valid = valid && body.EndsAt.After(body.StartsAt) && (format == db.EventFormatOnline || format == db.EventFormatInPerson || format == db.EventFormatHybrid) && (body.Capacity == nil || *body.Capacity > 0)
 	_, zoneErr := time.LoadLocation(body.Timezone)
 	valid = valid && body.Timezone != "" && zoneErr == nil && (body.Mode == "instant" || body.Mode == "approval") && body.OfferMinutes >= 5 && body.OfferMinutes <= 60
-	if format != db.EventFormatOnline {
-		valid = valid && body.Location != ""
-	}
 	if format != db.EventFormatInPerson {
 		valid = valid && validHTTPSURL(body.OnlineURL)
 	}
