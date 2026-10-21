@@ -2,6 +2,7 @@
 
 import { RadioGroup } from '@hackways/ui/radio-group';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Event, EventFormat, Space } from '@/types/api';
 import { fetchApi } from '@/lib/api';
@@ -22,6 +23,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
   spaces: Space[];
   initialSpace: string;
 }) {
+  const router = useRouter();
   const [host, setHost] = useState(organizer?.display_name || '');
   const [format, setFormat] = useState<EventFormat>('in_person');
   const [zone, setZone] = useState('');
@@ -89,10 +91,14 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
           location_name: String(form.get('location') || '').trim(),
           online_url: String(form.get('online') || '').trim(), registration_mode: approval ? 'approval' : 'instant', space_slug: spaceSlug, ...appearance,
       };
+      // A location is optional while editing, but an in-person or hybrid event
+      // cannot be published until attendees have somewhere to join. Save it as
+      // a draft instead of making a publish request that the API must reject.
+      const publishReady = format === 'online' || String(form.get('location') || '').trim().length > 0;
       const payload = JSON.stringify(fields);
       if (saved.current && saved.current.payload !== payload) throw new Error('Your event record is already saved. Open it from My events to change the details, or restore your entries here to retry the image upload.');
       if (!saved.current) {
-        const result = await fetchApi<{ data: Event }>('/events', { method: 'POST', body: JSON.stringify({ ...fields, status: file ? 'draft' : status }) });
+        const result = await fetchApi<{ data: Event }>('/events', { method: 'POST', body: JSON.stringify({ ...fields, status: file || (status === 'published' && !publishReady) ? 'draft' : status }) });
         saved.current = { event: result.data, payload };
         setSavedID(result.data.id);
       }
@@ -102,7 +108,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
         event = await uploadEventCover(file, event, coverAttempt.current, attempt => { coverAttempt.current = attempt; });
         saved.current.event = event;
       }
-      if (status === 'published' && event.status === 'draft') {
+      if (status === 'published' && publishReady && event.status === 'draft') {
         setBusy('published');
         try {
           event = (await fetchApi<{ data: Event }>(`/events/${event.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'published', revision: event.revision, acknowledge_attendees: false }) })).data;
@@ -113,6 +119,10 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
           event = latest.data;
         }
         saved.current.event = event;
+      }
+      if (event.status === 'published') {
+        router.replace(`/events/${encodeURIComponent(event.slug)}`);
+        return;
       }
       setCreated(event);
     } catch (err) {

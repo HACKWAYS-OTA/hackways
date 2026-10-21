@@ -13,6 +13,7 @@
 .desk-tabs a[aria-current] { color: var(--ink); border-color: var(--ink); }
 .desk-tabs a:hover { color: var(--ink); }
 .desk-empty { display: flex; align-items: flex-start; flex-direction: column; gap: 18px; padding-block: 64px; max-width: 560px; }
+.desk-page > .desk-empty { align-items: center; margin-inline: auto; text-align: center; }
 .desk-empty > svg { margin-bottom: 8px; color: var(--violet); }
 .desk-empty h2, .host-setup h2, .creation-result h2 { font-size: 24px; line-height: 1.35; }
 .desk-empty p, .host-setup > p, .creation-result > p { color: var(--muted); max-width: 62ch; }
