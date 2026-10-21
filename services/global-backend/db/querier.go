@@ -15,9 +15,12 @@ type Querier interface {
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
 	ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error)
 	CleanupAuthAttempts(ctx context.Context) error
+	CleanupOAuthExchangeTokens(ctx context.Context) error
 	ConsumeEmailVerification(ctx context.Context, tokenHash string) (ConsumeEmailVerificationRow, error)
+	ConsumeOAuthExchangeToken(ctx context.Context, tokenHash string) (pgtype.UUID, error)
 	CountAuthAttempt(ctx context.Context, scopeHash string) (int32, error)
 	CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) error
+	CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
@@ -28,12 +31,15 @@ type Querier interface {
 	FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchPendingOutboxRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (Events, error)
 	GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByIDAndOrganizerParams) (Events, error)
+	GetOrCreateOAuthUser(ctx context.Context, arg GetOrCreateOAuthUserParams) (GetOrCreateOAuthUserRow, error)
 	GetOrganizerByUserID(ctx context.Context, userID pgtype.UUID) (Organizers, error)
 	GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUserParams) (Rsvps, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
+	GetUserByGoogleSubject(ctx context.Context, subject string) (GetUserByGoogleSubjectRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
+	LinkUserIdentity(ctx context.Context, arg LinkUserIdentityParams) error
 	ListAccountSessions(ctx context.Context, userID pgtype.UUID) ([]ListAccountSessionsRow, error)
 	ListOwnedNotifications(ctx context.Context, arg ListOwnedNotificationsParams) ([]ListOwnedNotificationsRow, error)
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
@@ -43,6 +49,7 @@ type Querier interface {
 	MarkClaimedOutboxSent(ctx context.Context, arg MarkClaimedOutboxSentParams) (int64, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
+	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) error
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
 	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
 	RetryOwnedNotification(ctx context.Context, arg RetryOwnedNotificationParams) (pgtype.UUID, error)

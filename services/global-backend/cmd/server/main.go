@@ -130,7 +130,11 @@ func main() {
 	r.Get("/health", platform.HealthHandler(cfg.AppEnv, pool))
 
 	// 8. Mount domain handlers
-	authHandler := auth.NewHandler(pool, cfg.AppEnv == "production")
+	authHandler := auth.NewHandler(pool, cfg.AppEnv == "production", auth.GoogleOAuthConfig{
+		ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret,
+		RedirectURL: cfg.GoogleRedirectURL, ReturnOrigins: cfg.GoogleReturnOrigins,
+		SessionSecret: cfg.SessionSecret, IsProduction: cfg.AppEnv == "production",
+	})
 	storageHandler := storage.NewHandler(sasSigner, pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {

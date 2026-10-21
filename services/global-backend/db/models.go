@@ -360,6 +360,14 @@ type IdempotencyRecords struct {
 	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
 }
 
+type OauthExchangeTokens struct {
+	TokenHash string             `json:"token_hash"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Organizers struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
@@ -443,6 +451,14 @@ type Tickets struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	PublicCode  string             `json:"public_code"`
+}
+
+type UserIdentities struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Provider  string             `json:"provider"`
+	Subject   string             `json:"subject"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Users struct {

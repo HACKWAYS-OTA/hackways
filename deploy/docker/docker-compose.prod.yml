@@ -125,6 +125,10 @@ services:
       ACS_ENDPOINT: ${ACS_ENDPOINT:-}
       ACS_ACCESS_KEY: ${ACS_ACCESS_KEY:-}
       ACS_SENDER_ADDRESS: ${ACS_SENDER_ADDRESS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
+      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in}
     networks:
       - hackways-internal
     deploy:
@@ -180,6 +184,7 @@ services:
       PORT: 3001
       NODE_OPTIONS: "--max-old-space-size=190"
       NEXT_PUBLIC_API_URL: https://app.hackways.in/api/v1
+      NEXT_PUBLIC_AUTH_URL: https://auth.hackways.in
       CORE_API_URL: http://core-backend:8081/api/v1
       GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
@@ -207,6 +212,7 @@ services:
       PORT: 3002
       NODE_OPTIONS: "--max-old-space-size=180"
       NEXT_PUBLIC_API_URL: https://organizer.hackways.in/api/v1
+      NEXT_PUBLIC_AUTH_URL: https://auth.hackways.in
       CORE_API_URL: http://core-backend:8081/api/v1
       GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
