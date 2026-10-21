@@ -16,24 +16,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  image:
-    if: >-
-      github.event.label.name == 'build-global-backend' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+  select:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      actions: read
-      pull-requests: read
-      packages: write
+    timeout-minutes: 3
+    outputs:
+      publish: ${{ steps.verify.outputs.publish }}
     env:
       CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
-      DOCKER_BUILD_RECORD_UPLOAD: 'false'
-      DOCKER_BUILD_SUMMARY: 'false'
     steps:
       - name: Require current reviewed scope and successful CI for this exact SHA
+        id: verify
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -41,12 +33,16 @@ jobs:
           import json,os,urllib.request
           from pathlib import Path
           event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          print('Publication event:',event.get('action'),event.get('label',{}).get('name'))
+          if event.get('action')!='labeled' or event.get('label',{}).get('name')!='build-global-backend':
+              print('No publication requested by this label event.'); raise SystemExit(0)
           repo=os.environ['GITHUB_REPOSITORY'];sha=os.environ['CANDIDATE_SHA']
           def get(path):
               request=urllib.request.Request('https://api.github.com/repos/'+repo+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
               with urllib.request.urlopen(request,timeout=20) as response: return json.load(response)
           number=event['pull_request']['number'];pr=get('/pulls/'+str(number))
           if pr['state']!='open' or pr['draft'] or pr['head']['sha']!=sha or pr['head']['repo']['full_name']!=repo: raise SystemExit('PR changed or is not eligible')
+          if pr['base']['ref']!='main' or pr['author_association'] not in ['OWNER','MEMBER','COLLABORATOR']: raise SystemExit('PR is outside the authorized publication boundary')
           if 'build-global-backend' not in [label['name'] for label in pr['labels']]: raise SystemExit('Publication label was removed')
           paths=[]
           for page in range(1,11):
@@ -55,11 +51,26 @@ jobs:
           else: raise SystemExit('PR file scope exceeds limit')
           allowed=lambda p:p.startswith(('services/global-backend/','docs/')) or p=='.github/workflows/global-backend-candidate.yml'
           if not paths or not all(map(allowed,paths)) or not any(p.startswith('services/global-backend/') for p in paths): raise SystemExit('Only a global-backend fix with documentation and this publication workflow is permitted')
-          runs=get('/actions/workflows/ci.yml/runs?head_sha='+sha+'&event=pull_request&status=completed&per_page=100')['workflow_runs']
+          runs=get('/actions/workflows/ci.yml/runs?head_sha='+sha+'&event=pull_request&per_page=100')['workflow_runs']
           matching=[run for run in runs if run['head_sha']==sha and run['head_repository']['full_name']==repo]
-          if not matching or max(matching,key=lambda run:run['id'])['conclusion']!='success': raise SystemExit('Latest PR CI for exact head SHA must pass before publication')
+          latest=max(matching,key=lambda run:run['id']) if matching else None
+          if not latest or latest['status']!='completed' or latest['conclusion']!='success': raise SystemExit('Latest PR CI for exact head SHA must pass before publication')
           print('Exact head SHA and mandatory CI verified; only global-backend may be published.')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('publish=true\n')
           PY
+  image:
+    needs: select
+    if: needs.select.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      DOCKER_BUILD_RECORD_UPLOAD: 'false'
+      DOCKER_BUILD_SUMMARY: 'false'
+    steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.CANDIDATE_SHA }}
