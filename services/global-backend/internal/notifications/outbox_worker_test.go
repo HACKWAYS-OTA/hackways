@@ -199,3 +199,47 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 		t.Fatal("restart incorrectly created a fresh send from retry_count zero")
 	}
 }
+
+func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
+	catalog := EmailTemplateCatalog()
+	if len(catalog) != 40 {
+		t.Fatalf("expected 40 email templates, got %d", len(catalog))
+	}
+	seen := make(map[string]bool, len(catalog))
+	for _, template := range catalog {
+		if seen[template.ID] {
+			t.Fatalf("duplicate template id %q", template.ID)
+		}
+		seen[template.ID] = true
+		message, err := render(db.ClaimEmailOutboxRow{
+			TemplateType: template.ID,
+			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","action_url":"https://hackways.in/events/example"}`),
+		})
+		if err != nil {
+			t.Fatalf("template %q did not render: %v", template.ID, err)
+		}
+		if message.Subject == "" || message.BodyText == "" {
+			t.Fatalf("template %q is missing subject or text body", template.ID)
+		}
+		if strings.Contains(message.BodyHTML, "<table") || strings.Contains(message.BodyHTML, "border-radius") || strings.Contains(message.BodyHTML, "gradient") {
+			t.Fatalf("template %q uses a card-like or decorative layout", template.ID)
+		}
+		if strings.Contains(message.BodyHTML, "A & B <launch>") || strings.Contains(message.BodyHTML, "Welcome <back>") {
+			t.Fatalf("template %q did not escape HTML content", template.ID)
+		}
+		if template.TextOnly && message.BodyHTML != "" {
+			t.Fatalf("template %q should remain text-only", template.ID)
+		}
+		if !template.TextOnly && !strings.Contains(message.BodyHTML, "HACKWAYS") {
+			t.Fatalf("template %q is missing the email wordmark", template.ID)
+		}
+	}
+}
+
+func TestEmailTemplateCatalog_ReturnsCopy(t *testing.T) {
+	catalog := EmailTemplateCatalog()
+	catalog[0].Subject = "mutated"
+	if EmailTemplateCatalog()[0].Subject == "mutated" {
+		t.Fatal("template catalog exposed mutable process-wide state")
+	}
+}

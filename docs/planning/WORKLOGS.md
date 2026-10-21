@@ -670,3 +670,11 @@ All completed work is logged here with verified commands and output.
 - **Summary:** Qualified target `events` columns in the banner attachment query to prevent PostgreSQL SQLSTATE 42702 ambiguity during `/api/v1/storage/event-banner/complete`. Venue/location is now optional while creating or editing in-person and hybrid events; online and hybrid events still require a valid HTTPS joining URL.
 - **Verification:** sqlc regeneration, global/core `go test ./...`, global/core `go vet ./...`, core-web type-check and lint passed. The generated global storage query was executed in a rollback-only transaction against the production schema and returned the event row successfully.
 - **Review status:** Awaiting PR review; no production replacement performed.
+
+
+### 2026-10-21 NOTIFY-001 - Transactional email template catalog
+- **Branch:** `feature/email-template-library`
+- **Files changed:** `services/global-backend/internal/notifications/templates.go`, `outbox_worker.go`, `outbox_worker_test.go`, `docs/engineering/email-templates.md`.
+- **Summary:** Added a 40-template catalog and a shared renderer with restrained editorial HTML, plain-text variants for security/review notices, escaped dynamic values and optional action links. Existing ACS outbox identity, retry behavior and registration/event current-state checks remain unchanged. Catalog entries are opt-in and do not create new producers or data.
+- **Verification:** `go test ./internal/notifications` and `go test ./...` passed in `services/global-backend`; catalog tests cover all 40 IDs, duplicate IDs, HTML escaping, no card-like markup and text-only behavior.
+- **Review status:** Ready for PR review; no production deployment or email send performed.
