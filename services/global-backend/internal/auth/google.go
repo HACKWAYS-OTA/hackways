@@ -56,7 +56,7 @@ func (c GoogleOAuthConfig) oauthConfig() *oauth2.Config {
 type googleUserInfo struct {
 	Sub           string `json:"sub"`
 	Email         string `json:"email"`
-	VerifiedEmail bool   `json:"verified_email"`
+	VerifiedEmail bool   `json:"email_verified"`
 	Name          string `json:"name"`
 	Picture       string `json:"picture"`
 }
