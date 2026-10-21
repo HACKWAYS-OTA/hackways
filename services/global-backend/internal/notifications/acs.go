@@ -17,7 +17,8 @@ import (
 	"time"
 )
 
-// ACSEmailSender polls a stable provider operation before considering a retry.
+// ACSEmailSender submits a new operation before polling its status. Reclaimed
+// attempts poll the persisted operation before considering a repeatable retry.
 // A successful send operation is provider acceptance, not inbox delivery.
 // Indeterminate requests older than ACS's five-minute replay window fail closed.
 type ACSEmailSender struct {
@@ -90,11 +91,18 @@ func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
 		return errors.New("persisted email operation identity is required")
 	}
 	path := "/emails/operations/" + url.PathEscape(msg.OperationID) + "?api-version=2023-03-31"
-	result, status, delay, err := s.request(ctx, "GET", path, nil, msg.OperationID, msg.FirstSentAt)
-	if err != nil {
-		return err
+	var result providerResult
+	var status int
+	var delay time.Duration
+	var err error
+	if !msg.FirstAttempt {
+		result, status, delay, err = s.request(ctx, "GET", path, nil, msg.OperationID, msg.FirstSentAt)
+		if err != nil {
+			// An ambiguous lookup is never permission to send another email.
+			return err
+		}
 	}
-	if status == 404 {
+	if msg.FirstAttempt || status == 404 {
 		if time.Since(msg.FirstSentAt) > 4*time.Minute {
 			return errors.New("ACS outcome requires operator reconciliation; replay window elapsed")
 		}

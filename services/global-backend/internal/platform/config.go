@@ -12,20 +12,24 @@ import (
 
 // Config holds runtime configuration loaded from environment variables.
 type Config struct {
-	BindHost           string
-	AppEnv             string
-	Port               int
-	DatabaseURL        string
-	SessionSecret      string
-	CORSAllowedOrigins []string
-	DBMaxConns         int
-	DBMinConns         int
-	DBMaxConnLifetime  time.Duration
-	DBMaxConnIdleTime  time.Duration
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	IdleTimeout        time.Duration
-	ShutdownTimeout    time.Duration
+	BindHost            string
+	AppEnv              string
+	Port                int
+	DatabaseURL         string
+	SessionSecret       string
+	CORSAllowedOrigins  []string
+	DBMaxConns          int
+	DBMinConns          int
+	DBMaxConnLifetime   time.Duration
+	DBMaxConnIdleTime   time.Duration
+	ReadTimeout         time.Duration
+	WriteTimeout        time.Duration
+	IdleTimeout         time.Duration
+	ShutdownTimeout     time.Duration
+	GoogleClientID      string
+	GoogleClientSecret  string
+	GoogleRedirectURL   string
+	GoogleReturnOrigins []string
 }
 
 // LoadConfig populates Config from environment variables with sensible defaults.
@@ -66,6 +70,22 @@ func LoadConfig() (*Config, error) {
 	if strings.TrimSpace(os.Getenv("DATABASE_URL")) == "" {
 		return nil, fmt.Errorf("DATABASE_URL must be configured")
 	}
+	googleClientID := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	googleClientSecret := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	googleRedirectURL := strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URL"))
+	if (googleClientID != "" || googleClientSecret != "" || googleRedirectURL != "") && (googleClientID == "" || googleClientSecret == "" || googleRedirectURL == "") {
+		return nil, fmt.Errorf("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URL must be configured together")
+	}
+	googleReturnOrigins := parseOrigins(getEnv("GOOGLE_ALLOWED_RETURN_ORIGINS", strings.Join(corsOrigins, ",")))
+	for _, origin := range googleReturnOrigins {
+		parsedOrigin, originErr := url.Parse(origin)
+		if originErr != nil || parsedOrigin.Scheme == "" || parsedOrigin.Hostname() == "" || parsedOrigin.User != nil || parsedOrigin.Path != "" || parsedOrigin.RawQuery != "" || parsedOrigin.Fragment != "" {
+			return nil, fmt.Errorf("GOOGLE_ALLOWED_RETURN_ORIGINS must contain explicit origins")
+		}
+		if appEnv == "production" && parsedOrigin.Scheme != "https" {
+			return nil, fmt.Errorf("production GOOGLE_ALLOWED_RETURN_ORIGINS must use HTTPS")
+		}
+	}
 	bindHost := "127.0.0.1"
 	if appEnv == "production" {
 		bindHost = "0.0.0.0"
@@ -75,23 +95,37 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("BIND_HOST must be an IP address")
 	}
 	cfg := &Config{
-		BindHost:           bindHost,
-		AppEnv:             appEnv,
-		Port:               port,
-		DatabaseURL:        os.Getenv("DATABASE_URL"),
-		SessionSecret:      sessionSecret,
-		CORSAllowedOrigins: corsOrigins,
-		DBMaxConns:         dbMaxConns,
-		DBMinConns:         dbMinConns,
-		DBMaxConnLifetime:  15 * time.Minute,
-		DBMaxConnIdleTime:  5 * time.Minute,
-		ReadTimeout:        10 * time.Second,
-		WriteTimeout:       30 * time.Second,
-		IdleTimeout:        60 * time.Second,
-		ShutdownTimeout:    15 * time.Second,
+		BindHost:            bindHost,
+		AppEnv:              appEnv,
+		Port:                port,
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		SessionSecret:       sessionSecret,
+		CORSAllowedOrigins:  corsOrigins,
+		DBMaxConns:          dbMaxConns,
+		DBMinConns:          dbMinConns,
+		DBMaxConnLifetime:   15 * time.Minute,
+		DBMaxConnIdleTime:   5 * time.Minute,
+		ReadTimeout:         10 * time.Second,
+		WriteTimeout:        30 * time.Second,
+		IdleTimeout:         60 * time.Second,
+		ShutdownTimeout:     15 * time.Second,
+		GoogleClientID:      googleClientID,
+		GoogleClientSecret:  googleClientSecret,
+		GoogleRedirectURL:   googleRedirectURL,
+		GoogleReturnOrigins: googleReturnOrigins,
 	}
 
 	return cfg, nil
+}
+
+func parseOrigins(value string) []string {
+	var origins []string
+	for _, raw := range strings.Split(value, ",") {
+		if origin := strings.TrimSpace(raw); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
 }
 
 func getEnv(key, defaultVal string) string {

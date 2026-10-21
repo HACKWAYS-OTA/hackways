@@ -160,6 +160,9 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 				err = beginErr
 			} else {
 				msg.FirstSentAt = first.Time
+				// Persist the operation timestamp before the first POST. A reclaimed
+				// attempt must reconcile that identity, even with retry_count == 0.
+				msg.FirstAttempt = !e.FirstSentAt.Valid
 				sendCtx, cancel := context.WithTimeout(ctx, DispatchTimeout)
 				err = w.sender.Send(sendCtx, msg)
 				cancel()

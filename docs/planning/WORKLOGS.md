@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+### 2026-10-21 ACS-008 - Minimal first-send fix and isolated image publication
+
+- User explicitly authorized a global-backend-only launch fix, retry/duplicate-send regression tests and one replacement CI image for review; production changes remain excluded.
+- Forward the claimed outbox row's existing first_sent_at state after persisting the provider attempt. First sends POST directly, while all reclaimed attempts reconcile the stable operation before any repeat POST. Retained lease checks, identity/timestamp, conservative replay cutoff, error propagation and outbox retry bounds; no database/schema/API/dependency change.
+- Added controlled-transport regressions for first-send ordering, acceptance polling, GET/POST timeouts, confirmed 404 retries, expired windows and ambiguous/error responses. Extended the existing PostgreSQL suite for persisted identity across regular retry and crash recovery with retry_count zero.
+- Local targeted ACS tests and go vet passed. Local race execution is unavailable because CGO/C compiler is not configured; real PostgreSQL/race and full mandatory CI results will be recorded on the PR before image publication. No live Azure success is inferred from controlled transport tests.
+- Added an operator-label single-global-backend publication workflow with same-repo/current-head/scope/successful-CI gates, pinned Actions, existing build cache, SHA tag and one-day digest artifact. No rc tag, other image build, production action or paid setting change is included. Kept the other five approved digests and both prior/legacy global rollback identities in the replacement proposal.
+
 ### 2026-10-21 OPS-007 - Manual release staging; ACS prerequisite blocked
 
 - Integrated candidate `39c8b4487a557c7dfb3a1d46aaddecfa848fbbd3` through PR 1 and production promotion PR 3; main merge `d8a3e3e592ae634a9eca33214429d14563f86483` has exactly the candidate tree. Documentation PR 2 remains outside production.
@@ -647,3 +655,11 @@ All completed work is logged here with verified commands and output.
   - `docs/*` (ARCHITECTURE, API, DATABASE, SECURITY, DEPLOYMENT, TESTING)
 - **Summary:** Initialized isolated Git repository on `main`. Connected to official GitHub remote `https://github.com/varshith-dev/HACKWAYS-IN.git`. Established production branching strategy (`main`, `develop`, `feature/*`, `fix/*`, `release/*`, `hotfix/*`). Configured GitHub metadata, CI workflows, and complete engineering documentation.
 - **Review status:** Supervisor verified
+
+### 2026-10-21 AUTH-008 — Google OAuth bridge (PR #15)
+- **Branch:** `feature/google-oauth` (based on `main`; PR targets `develop`)
+- **Files changed:** Go global-backend OAuth handlers/config, `000008_google_oauth` migration and sqlc queries, attendee/organizer sign-in and callback pages, production Compose/env templates, Google OAuth documentation.
+- **Summary:** Added a state and PKCE protected Google authorization-code flow that links verified provider identities to existing PostgreSQL users and exchanges a short-lived one-time code for the existing host-only Hackways session cookie. Better Auth remains unconfigured.
+- **Verification:** `go test ./...` passed; `go vet ./...` passed; both frontend type-checks and lint passed; core-web and organizer-web production builds passed. Race tests were not runnable on this Windows workstation because no C compiler (`gcc`) is installed.
+- **Secrets:** Client credentials were not written to the repository, logs, or documentation. Configure them only in the protected global-backend runtime environment after migration approval.
+- **Review status:** Open for review at https://github.com/HACKWAYS-OTA/hackways/pull/15; not merged or deployed.

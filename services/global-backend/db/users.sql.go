@@ -48,6 +48,59 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const getOrCreateOAuthUser = `-- name: GetOrCreateOAuthUser :one
+WITH inserted AS (
+    INSERT INTO users (email, password_hash, display_name, avatar_url, email_verified)
+    VALUES ($1, $2, $3, $4, TRUE)
+    ON CONFLICT (lower(email)) WHERE deleted_at IS NULL DO NOTHING
+    RETURNING id, email, display_name, avatar_url, email_verified, created_at, updated_at
+)
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+FROM inserted
+UNION ALL
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+FROM users
+WHERE lower(email) = lower($1) AND deleted_at IS NULL
+LIMIT 1
+`
+
+type GetOrCreateOAuthUserParams struct {
+	Email        string      `json:"email"`
+	PasswordHash string      `json:"password_hash"`
+	DisplayName  string      `json:"display_name"`
+	AvatarUrl    pgtype.Text `json:"avatar_url"`
+}
+
+type GetOrCreateOAuthUserRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	Email         string             `json:"email"`
+	DisplayName   string             `json:"display_name"`
+	AvatarUrl     pgtype.Text        `json:"avatar_url"`
+	EmailVerified bool               `json:"email_verified"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetOrCreateOAuthUser(ctx context.Context, arg GetOrCreateOAuthUserParams) (GetOrCreateOAuthUserRow, error) {
+	row := q.db.QueryRow(ctx, getOrCreateOAuthUser,
+		arg.Email,
+		arg.PasswordHash,
+		arg.DisplayName,
+		arg.AvatarUrl,
+	)
+	var i GetOrCreateOAuthUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getOrganizerByUserID = `-- name: GetOrganizerByUserID :one
 SELECT id, user_id, display_name, slug, bio, website_url, avatar_url, verified, created_at, updated_at
 FROM organizers
@@ -105,6 +158,38 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 	return i, err
 }
 
+const getUserByGoogleSubject = `-- name: GetUserByGoogleSubject :one
+SELECT u.id, u.email, u.display_name, u.avatar_url, u.email_verified, u.created_at, u.updated_at
+FROM user_identities i
+JOIN users u ON u.id = i.user_id
+WHERE i.provider = 'google' AND i.subject = $1 AND u.deleted_at IS NULL
+`
+
+type GetUserByGoogleSubjectRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	Email         string             `json:"email"`
+	DisplayName   string             `json:"display_name"`
+	AvatarUrl     pgtype.Text        `json:"avatar_url"`
+	EmailVerified bool               `json:"email_verified"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByGoogleSubject(ctx context.Context, subject string) (GetUserByGoogleSubjectRow, error) {
+	row := q.db.QueryRow(ctx, getUserByGoogleSubject, subject)
+	var i GetUserByGoogleSubjectRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
 FROM users
@@ -134,4 +219,32 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDR
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const linkUserIdentity = `-- name: LinkUserIdentity :exec
+INSERT INTO user_identities (user_id, provider, subject)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING
+`
+
+type LinkUserIdentityParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Provider string      `json:"provider"`
+	Subject  string      `json:"subject"`
+}
+
+func (q *Queries) LinkUserIdentity(ctx context.Context, arg LinkUserIdentityParams) error {
+	_, err := q.db.Exec(ctx, linkUserIdentity, arg.UserID, arg.Provider, arg.Subject)
+	return err
+}
+
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :exec
+UPDATE users
+SET email_verified = TRUE, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markUserEmailVerified, id)
+	return err
 }
