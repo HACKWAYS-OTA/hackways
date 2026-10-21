@@ -68,7 +68,7 @@ export function EventBrowser({ initial }: { initial: InitialEvents }) {
 
   return <div className="feed-container discovery-page">
     <section className="discovery-heading" aria-labelledby="discover-heading">
-      <div><h1 id="discover-heading">Discover events</h1><p>Find an upcoming technology gathering. Search by event name or topic, then open the event for its schedule, joining details and registration options.</p></div>
+      <div><h1 id="discover-heading">Discover events</h1></div>
       <form id="event-search-form" className="discovery-search" role="search" onSubmit={(action) => { action.preventDefault(); clearTimeout(searchTimer.current); void request(query.trim()); }}>
         <Icon name="search" size={20} /><label className="visually-hidden" htmlFor="event-search">Search events by topic or keyword</label><input id="event-search" type="search" autoComplete="off" placeholder="Search events or topics" value={query} onChange={(action) => setQuery(action.target.value)} />
         {query && <button type="button" className="icon-button" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={16} /></button>}
@@ -85,6 +85,5 @@ export function EventBrowser({ initial }: { initial: InitialEvents }) {
         : <div className="catalog-list">{visible.map((event, index) => <EventCard key={event.id} event={event} prominent={index === 0 && !appliedQuery} />)}</div>}
       {!pending && !error && hasMore && <div className="load-more">{pageError && <p role="alert">{pageError}</p>}<Button variant="outline" isLoading={loadingMore} onClick={() => { void request(appliedQuery, true); }}>{loadingMore ? 'Loading events...' : pageError ? 'Try loading more again' : 'Load more events'}</Button></div>}
     </section>
-    <p className="discovery-guidance">Check the event time zone, location and participation requirements before registering. A pending application or waiting-list entry is not a confirmed place. <a href={`${site.public}/help`}>Read the registration guide</a>.</p>
   </div>;
 }
