@@ -1,5 +1,5 @@
 [Unit]
-Description=Hackways Vercel-like Auto Deployment Service
+Description=Hackways CI Deployment Webhook
 After=network.target docker.service
 Wants=docker.service
 
@@ -8,9 +8,13 @@ Type=simple
 User=azureuser
 Group=azureuser
 WorkingDirectory=/opt/hackways
+EnvironmentFile=/etc/hackways/deployer.env
 Environment=REPO_DIR=/opt/hackways
-Environment=BRANCH=develop
-Environment=PORT=9898
+Environment=BRANCH=main
+Environment=AUTO_DEPLOY_ENABLED=false
+Environment=GITHUB_REPOSITORY=HACKWAYS-OTA/hackways
+StateDirectory=hackways-deployer
+StateDirectoryMode=0700
 ExecStart=/usr/local/bin/hackways-deployer
 Restart=always
 RestartSec=5s

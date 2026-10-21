@@ -4,7 +4,7 @@
 
 export type EventFormat = "in_person" | "online" | "hybrid";
 export type EventStatus = "draft" | "published" | "unpublished" | "cancelled";
-export type RegistrationStatus = "confirmed" | "cancelled" | "waitlisted";
+export type RegistrationStatus = "confirmed" | "cancelled" | "waitlisted" | "pending_approval" | "offered" | "rejected" | "expired" | "transferred";
 
 export interface Event {
   id: string;
@@ -24,9 +24,25 @@ export interface Event {
   ends_at: string;
   timezone: string;
   capacity?: number | null;
-  registration_count: number;
+  current_rsvp_count: number;
+  held_rsvp_count?: number;
+  revision?: number;
+  registration_mode?: "instant" | "approval";
+  allow_guest?: boolean;
+  waitlist_enabled?: boolean;
+  offer_minutes?: number;
   tags: string[];
   published_at?: string | null;
+  space_id?: string | null;
+  theme?: string;
+  theme_color?: string;
+  theme_font?: 'futurist' | 'google';
+  theme_style?: 'soft' | 'crisp';
+  theme_display?: 'light' | 'dark';
+  visibility?: 'public' | 'private';
+  faq_text?: string;
+  contact_url?: string;
+  rewards?: string;
 }
 
 export interface User {
@@ -40,6 +56,7 @@ export interface User {
 
 export interface Registration {
   id: string;
+  public_code: string;
   event_id: string;
   user_id?: string | null;
   guest_name?: string | null;
@@ -47,6 +64,27 @@ export interface Registration {
   status: RegistrationStatus;
   notes?: string | null;
   registered_at: string;
+  offer_expires_at?: string | null;
+  approval_expires_at?: string | null;
+  transfer_count?: number;
+  transferred_from?: string | null;
+}
+
+export type QuestionKind = 'text' | 'textarea' | 'url' | 'number' | 'checkbox' | 'select' | 'phone';
+export interface RegistrationQuestion {
+  public_code: string; label: string; description: string; kind: QuestionKind;
+  required: boolean; options: string[];
+}
+export interface RegistrationFormConfig {
+  revision: number; name_required: boolean; questions: RegistrationQuestion[];
+}
+export interface RegistrationAnswer { code: string; text: string; checked: boolean }
+export interface RegistrationAnswerSnapshot extends RegistrationAnswer { label: string; kind: QuestionKind }
+
+export interface Space {
+  id: string; organizer_id: string; name: string; slug: string; description: string;
+  guidelines: string; website_url: string; status: 'active' | 'archived'; revision: number;
+  created_at: string; updated_at: string; owner_name?: string; member_count?: number; owned?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -69,7 +107,7 @@ export interface ApiError {
 export class HackwaysClient {
   private baseURL: string;
 
-  constructor(baseURL: string = "http://localhost:8080/api/v1") {
+  constructor(baseURL: string = "http://localhost:8081/api/v1") {
     this.baseURL = baseURL.replace(/\/$/, "");
   }
 

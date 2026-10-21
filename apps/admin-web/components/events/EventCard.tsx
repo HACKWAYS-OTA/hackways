@@ -12,11 +12,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onRegister }) => {
   const isAtCapacity =
     event.capacity !== null &&
     event.capacity !== undefined &&
-    event.registration_count >= event.capacity;
+    event.current_rsvp_count >= event.capacity;
 
   const percentageFull =
     event.capacity && event.capacity > 0
-      ? Math.min(100, Math.round((event.registration_count / event.capacity) * 100))
+      ? Math.min(100, Math.round((event.current_rsvp_count / event.capacity) * 100))
       : null;
 
   return (
@@ -49,7 +49,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onRegister }) => {
             <div className="flex justify-between text-xs text-slate-400 mb-1">
               <span>Capacity</span>
               <span>
-                {event.registration_count} / {event.capacity} ({percentageFull}%)
+                {event.current_rsvp_count} / {event.capacity} ({percentageFull}%)
               </span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">

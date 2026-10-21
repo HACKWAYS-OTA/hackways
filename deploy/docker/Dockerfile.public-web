@@ -5,23 +5,33 @@ RUN apk add --no-cache libc6-compat
 
 FROM base AS deps
 WORKDIR /app
-COPY packages/api-client ./packages/api-client
-RUN cd packages/api-client && npm install && npm run build
-
+COPY package.json package-lock.json ./
+COPY apps/admin-web/package.json ./apps/admin-web/
+COPY apps/core-web/package.json ./apps/core-web/
+COPY apps/organizer-web/package.json ./apps/organizer-web/
 COPY apps/public-web/package.json ./apps/public-web/
-COPY apps/public-web/package-lock.json* ./apps/public-web/
-WORKDIR /app/apps/public-web
-RUN npm install
+COPY packages/api-client ./packages/api-client
+COPY packages/ui ./packages/ui
+RUN npm ci
+RUN npm run build --workspace @hackways/api-client
 
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/packages/api-client ./packages/api-client
-COPY --from=deps /app/apps/public-web/node_modules ./apps/public-web/node_modules
+COPY --from=deps /app/packages/ui ./packages/ui
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
 COPY apps/public-web ./apps/public-web
 
 WORKDIR /app/apps/public-web
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_ORGANIZER_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_ORGANIZER_URL=$NEXT_PUBLIC_ORGANIZER_URL
 RUN npm run build
 
 FROM node:22-alpine AS runner
@@ -37,6 +47,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/public-web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/public-web/.next/static ./apps/public-web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/public-web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/public-web/public ./apps/public-web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/public-web/public ./public
 
 USER nextjs
 EXPOSE 3000

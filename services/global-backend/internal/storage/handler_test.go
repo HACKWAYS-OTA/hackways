@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestStorageHandler_CreateUploadIntent(t *testing.T) {
+func TestStorageHandler_UnauthenticatedUploadIntents(t *testing.T) {
 	cfg := AzureSASConfig{
 		AccountName: "hackwaystest",
 		AccountKey:  "dGVzdC1kZXZlbG9wbWVudC1rZXktZm9yLWhhY2t3YXlzLWF6dXJlLXNhcw==",
@@ -17,7 +17,7 @@ func TestStorageHandler_CreateUploadIntent(t *testing.T) {
 	signer := NewAzureBlobSASSigner(cfg)
 	handler := NewHandler(signer)
 
-	t.Run("Valid image upload intent", func(t *testing.T) {
+	t.Run("Even valid metadata requires a session", func(t *testing.T) {
 		body, _ := json.Marshal(UploadIntentRequest{
 			Filename: "banner.png",
 			MIMEType: "image/png",
@@ -31,21 +31,13 @@ func TestStorageHandler_CreateUploadIntent(t *testing.T) {
 
 		handler.Routes().ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusOK {
-			t.Fatalf("expected 200 OK, got %d: %s", rr.Code, rr.Body.String())
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 Unauthorized, got %d: %s", rr.Code, rr.Body.String())
 		}
 
-		var res UploadIntentResponse
-		if err := json.NewDecoder(rr.Body).Decode(&res); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-
-		if res.UploadURL == "" || res.BlobKey == "" {
-			t.Fatalf("expected non-empty upload_url and blob_key, got %+v", res)
-		}
 	})
 
-	t.Run("Disallowed MIME type returns 400", func(t *testing.T) {
+	t.Run("Invalid metadata does not bypass authentication", func(t *testing.T) {
 		body, _ := json.Marshal(UploadIntentRequest{
 			Filename: "malicious.exe",
 			MIMEType: "application/x-msdownload",
@@ -59,12 +51,12 @@ func TestStorageHandler_CreateUploadIntent(t *testing.T) {
 
 		handler.Routes().ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusBadRequest {
-			t.Fatalf("expected 400 Bad Request, got %d", rr.Code)
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 Unauthorized, got %d", rr.Code)
 		}
 	})
 
-	t.Run("Oversized payload returns 400", func(t *testing.T) {
+	t.Run("Oversized upload intent does not bypass authentication", func(t *testing.T) {
 		body, _ := json.Marshal(UploadIntentRequest{
 			Filename: "giant.png",
 			MIMEType: "image/png",
@@ -78,8 +70,8 @@ func TestStorageHandler_CreateUploadIntent(t *testing.T) {
 
 		handler.Routes().ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusBadRequest {
-			t.Fatalf("expected 400 Bad Request, got %d", rr.Code)
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 Unauthorized, got %d", rr.Code)
 		}
 	})
 }

@@ -1,0 +1,19 @@
+# Proposed template. Inactive here. Create these teams with eligible repository
+# Write access before installing as .github/CODEOWNERS. Last matching rule wins.
+# These are review owners, not path-level authorization boundaries.
+* @HACKWAYS-OTA/engineering-leads
+/apps/ @HACKWAYS-OTA/frontend
+/packages/ui/ @HACKWAYS-OTA/frontend
+/packages/api-client/ @HACKWAYS-OTA/frontend @HACKWAYS-OTA/backend
+/services/ @HACKWAYS-OTA/backend
+/deploy/migrations/ @HACKWAYS-OTA/backend @HACKWAYS-OTA/platform
+/deploy/docker/ @HACKWAYS-OTA/platform
+/deploy/nginx/ @HACKWAYS-OTA/platform @HACKWAYS-OTA/security
+/deploy/scripts/ @HACKWAYS-OTA/platform
+/deploy/deployer/ @HACKWAYS-OTA/platform @HACKWAYS-OTA/security
+/.github/ @HACKWAYS-OTA/platform @HACKWAYS-OTA/security
+/AGENTS.md @HACKWAYS-OTA/engineering-leads
+/docs/ @HACKWAYS-OTA/engineering-leads
+/docs/SECURITY.md @HACKWAYS-OTA/security
+/package.json @HACKWAYS-OTA/frontend @HACKWAYS-OTA/platform
+/package-lock.json @HACKWAYS-OTA/frontend @HACKWAYS-OTA/platform

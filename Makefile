@@ -28,11 +28,11 @@ dev-global:
 dev-web:
 	cd apps/core-web && npm run dev
 
-## db-up: Start local PostgreSQL and Mailpit containers in background
+## db-up: Start the local PostgreSQL container
 db-up:
 	docker compose up -d
 
-## db-down: Stop local database and mail services
+## db-down: Stop the local database service
 db-down:
 	docker compose down
 
@@ -74,8 +74,8 @@ lint:
 
 ## format: Format source code across Go and TypeScript files
 format:
-	cd services/core-backend && gofmt -w ./...
-	cd services/global-backend && gofmt -w ./...
+	cd services/core-backend && gofmt -w .
+	cd services/global-backend && gofmt -w .
 	cd apps/core-web && npm run format 2>/dev/null || true
 	cd apps/public-web && npm run format 2>/dev/null || true
 	cd apps/organizer-web && npm run format 2>/dev/null || true

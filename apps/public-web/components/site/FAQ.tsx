@@ -1,0 +1,47 @@
+import Link from 'next/link';
+import { site } from '@/lib/site';
+type Question = { question: string; answer: string; link?: { href: string; label: string } };
+import { faqTopics, type FAQTopic } from '@/lib/help-topics';
+export { faqTopics, type FAQTopic } from '@/lib/help-topics';
+const questions: Record<FAQTopic, readonly Question[]> = {
+  finding: [
+    { question: 'What can I find on Hackways?', answer: 'Published technology events, including hackathons, meetups and conferences. Search titles and descriptions, explore in-person, online and hybrid gatherings, and open an event for its full details.', link: { href: site.app + '/discover', label: 'Find an event' } },
+    { question: 'Why can I open an event link but not find it in Discover?', answer: 'A published private event is shared by link and does not appear in public discovery or public Space feeds. A link-only event is not an invitation-only access list. Registration still follows the settings chosen by the organizer.' },
+    { question: 'Which time zone is the event using?', answer: 'The event page shows the event time zone beside its schedule. Check it before making plans, especially for an online event. Adding the event to your calendar prepares a calendar file; check the imported time and return to the event page for later changes.' },
+  ],
+  joining: [
+    { question: 'Do I need an account to register?', answer: 'Some direct-registration events allow a guest RSVP with an email address and the details the organizer requires. Approval events and waiting lists require an account. The registration page explains when you need to sign in.' },
+    { question: 'When is my place confirmed?', answer: 'Read the result after submitting. Confirmed means a place was reserved. Awaiting approval means the organizer still needs to decide. Waiting list means there is no reserved place yet. Merely opening the form does not hold a place.' },
+    { question: 'What happens when an event is full?', answer: 'If the organizer enabled a waiting list, you can sign in and join it. When a place is offered, check My events and accept it before the displayed deadline. An offer can expire; a waiting-list entry is not an admission ticket. If no waiting list is offered, check with the organizer about availability.' },
+    { question: 'Why has registration not opened, or already closed?', answer: 'The organizer can set a registration window, pause registration or cancel an event. Registration also depends on the event start time and available capacity. Use the message on the event page rather than assuming the event is accepting new guests.' },
+    { question: 'What should I do if submission fails or the connection drops?', answer: 'Keep your entries and check My events, if signed in, before starting another submission. Retry the same registration when the page offers that action. If the registration questions changed, reload the current questions and review your answers. Contact support with the event link and error message if the result is unclear; never send a password or session cookie.' },
+  ],
+  changes: [
+    { question: 'Where do I find my registration and ticket?', answer: 'Sign in to the account associated with your registration and open My events. Open the registration details to see its saved status, available ticket and supported actions. A pending application or waiting-list entry does not provide a confirmed ticket.', link: { href: site.app + '/my-events', label: 'Open My events' } },
+    { question: 'Can I cancel my place or update my note?', answer: 'For an eligible registration before the event starts, open its details in My events. Use Cancel registration or Save note where offered and read the confirmation. Cancellation releases your place and cannot be undone directly; a later registration is subject to availability. Other answer changes may need the organizer.' },
+    { question: 'Can I give my place to someone else?', answer: 'Use Transfer only when it is available on your registration. Follow the recipient and confirmation steps in that flow. An eligible transfer changes the ticket entitlement, so a screenshot or a forwarded ticket is not a substitute for transferring the registration.' },
+    { question: 'I registered as a guest. How can I see it in my account?', answer: 'Use an account with the same email address, verify that email in Account, then use the guest-registration connection action. Only registrations associated with the verified address can be connected. A different email address will not give access to the guest record.' },
+    { question: 'What if the organizer changes the schedule or cancels?', answer: 'Check the latest event page and the status in My events. Organizers can notify guests of supported changes, but delivery can be delayed or unsuccessful. If an event is cancelled, existing tickets are invalid. For travel, venue or programme arrangements, contact the organizer.' },
+  ],
+  accounts: [
+    { question: 'Why am I asked to sign in again in the organizer workspace?', answer: 'The event app and organizer workspace have separate sign-in sessions on their production domains. Use the same account credentials when opening management. Signing in or out on one domain does not automatically sign you in or out everywhere.' },
+    { question: 'Where is my verification or registration email?', answer: 'Check the address you used, your spam folder and the current registration status in the app. A queued message has not necessarily been delivered. Use a resend action if one is offered and avoid repeatedly submitting a registration to trigger more email. If a problem continues, contact platform support.' },
+    { question: 'How do I secure an account or sign out other sessions?', answer: 'Open Account to see the session controls available for your account. Sign out of sessions you do not recognize or use the option to revoke your sessions. Use a unique password and never share verification codes. A self-service password-reset flow is not currently available; contact support if you cannot access your account.' },
+  ],
+  hosting: [
+    { question: 'How do I publish an event?', answer: 'Sign in to the main app, set up your host profile and choose Create event. Add the schedule, description, format and joining details. Save a draft while preparing or publish when ready. Manage existing events in the organizer workspace.', link: { href: '/organizers', label: 'Read the organizer guide' } },
+    { question: 'Can I host an online or hybrid event?', answer: 'Yes. Select online or hybrid and supply a secure joining link. In-person and hybrid events also require a venue. Include practical joining instructions and the event time zone so guests know where and when to arrive.' },
+    { question: 'How do approval and waiting lists work?', answer: 'Approval registration collects signed-in applications for your review. Direct registration can confirm available places immediately and can optionally offer a waiting list. Waiting-list offers have an acceptance deadline. Set the mode and capacity before publishing and review the saved settings.' },
+    { question: 'Can I change a guest status and send a message?', answer: 'Open the guest details and use the editable status badge when available. The allowed choices depend on that record. Choose whether to notify the guest and optionally add a message. A successful saved status and an email delivery are separate outcomes.' },
+    { question: 'What should I do when saving an edit fails?', answer: 'Read the error and keep the form open. Your recoverable entries remain available. If another version was saved elsewhere, load the latest event before trying again. A cover or theme failure can occur after event details were saved; the result explains what was confirmed.' },
+  ],
+  safety: [
+    { question: 'Who should I contact about an event?', answer: 'For the programme, venue, accessibility, admission or joining arrangements, use the contact information on the event page. For account access, platform errors, privacy concerns or misuse of Hackways, use the platform support email on Contact.', link: { href: '/contact', label: 'Contact guidance' } },
+    { question: 'What should I include when reporting a problem?', answer: 'Include the event link, a short description, approximate time and the exact error if there is one. A cropped screenshot can help. Remove passwords, verification codes, session cookies, private joining links and other guest details before sending.' },
+    { question: 'Is there a fee or payment checkout?', answer: 'The current event registration tools cover free events and do not include a paid checkout. If an organizer directs you to an external site, review its terms and verify the organizer before sharing payment information.' },
+  ],
+};
+export function FAQ({ full = false, topic }: { full?: boolean; topic?: FAQTopic }) {
+  const items = topic ? questions[topic] : full ? faqTopics.flatMap(item => questions[item.id]) : [questions.finding[0], questions.joining[0], questions.hosting[0]];
+  return <div className="faq-list">{items.map(item => <details key={item.question}><summary>{item.question}<span aria-hidden="true" /></summary><div><p>{item.answer}</p>{item.link && (item.link.href.startsWith('/') ? <Link className="text-link" href={item.link.href}>{item.link.label}</Link> : <a className="text-link" href={item.link.href}>{item.link.label}</a>)}</div></details>)}</div>;
+}

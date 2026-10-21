@@ -1,7 +1,8 @@
 package auth
 
 import (
-	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/mail"
@@ -54,6 +55,13 @@ func (h *Handler) Routes() chi.Router {
 	r.Group(func(protected chi.Router) {
 		protected.Use(RequireAuth(h.sm))
 		protected.Get("/me", h.Me)
+		protected.Get("/sessions", h.Sessions)
+		protected.Delete("/sessions", h.RevokeAllSessions)
+		protected.Delete("/sessions/{sessionID}", h.RevokeSession)
+		protected.Get("/notifications", h.Notifications)
+		protected.Post("/notifications/{notificationID}/retry", h.RetryNotification)
+		protected.Post("/email-verification/request", h.RequestEmailVerification)
+		protected.Post("/email-verification/confirm", h.ConfirmEmailVerification)
 	})
 
 	return r
@@ -77,7 +85,7 @@ type UserResponse struct {
 // Register creates a new user account and starts a session.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := platform.DecodeJSON(r, &req); err != nil {
 		platform.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Malformed JSON body", nil)
 		return
 	}
@@ -89,7 +97,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Email is required", nil)
 		return
 	}
-	if _, err := mail.ParseAddress(req.Email); err != nil {
+	if address, err := mail.ParseAddress(req.Email); err != nil || address.Address != req.Email {
 		platform.RespondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid email format", nil)
 		return
 	}
@@ -102,6 +110,13 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.allowIdentityAttempt(w, r, req.Email) {
+		return
+	}
+	if len(req.Password) > 72 || len(req.Email) > 320 || len([]rune(req.DisplayName)) > 100 {
+		platform.RespondError(w, 400, "INVALID_DETAILS", "Account fields exceed their limits", nil)
+		return
+	}
 	hash, err := HashPassword(req.Password)
 	if err != nil {
 		platform.RespondError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to secure password", nil)
@@ -159,7 +174,7 @@ type LoginRequest struct {
 // Login authenticates credentials and establishes an active session.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := platform.DecodeJSON(r, &req); err != nil {
 		platform.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Malformed JSON body", nil)
 		return
 	}
@@ -170,6 +185,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.allowIdentityAttempt(w, r, req.Email) {
+		return
+	}
+	if len(req.Password) > 72 || len(req.Email) > 320 {
+		platform.RespondError(w, 400, "INVALID_DETAILS", "Account fields exceed their limits", nil)
+		return
+	}
 	user, err := h.queries.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -220,7 +242,10 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token != "" {
-		_ = h.sm.RevokeSession(r.Context(), token)
+		if err := h.sm.RevokeSession(r.Context(), token); err != nil {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
 	}
 
 	ClearSessionCookie(w, DefaultSessionCookie)
@@ -262,7 +287,7 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 
 	if token == "" && r.Body != nil {
 		var req VerifyRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.Token != "" {
+		if err := platform.DecodeJSON(r, &req); err == nil && req.Token != "" {
 			token = req.Token
 		}
 	}
@@ -274,6 +299,10 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.sm.GetSession(r.Context(), token)
 	if err != nil {
+		if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
 		platform.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session expired or invalid", nil)
 		return
 	}
@@ -324,4 +353,21 @@ func hexByte(b byte) byte {
 		return '0' + b
 	}
 	return 'a' + (b - 10)
+}
+
+// Nginx enforces per-IP limits; this persisted per-identifier limit also bounds
+// distributed credential guessing without trusting forwarded client headers.
+func (h *Handler) allowIdentityAttempt(w http.ResponseWriter, r *http.Request, email string) bool {
+	digest := sha256.Sum256([]byte("identity:" + strings.ToLower(strings.TrimSpace(email))))
+	attempts, err := h.queries.CountAuthAttempt(r.Context(), hex.EncodeToString(digest[:]))
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return false
+	}
+	if attempts > 10 {
+		w.Header().Set("Retry-After", "60")
+		platform.RespondError(w, 429, "AUTH_RATE_LIMITED", "Too many attempts; retry in a minute", nil)
+		return false
+	}
+	return true
 }

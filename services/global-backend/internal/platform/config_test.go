@@ -6,7 +6,9 @@ import (
 )
 
 func TestLoadConfig_Defaults(t *testing.T) {
-	os.Clearenv()
+	t.Setenv("PORT", "8080")
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("DATABASE_URL", "postgres://localhost/hackways_config_only?sslmode=disable")
 
 	cfg, err := LoadConfig()
 	if err != nil {

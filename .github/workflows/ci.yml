@@ -5,42 +5,60 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: checks-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Select affected checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      skip: ${{ steps.select.outputs.skip }}
+      backends: ${{ steps.select.outputs.backends }}
+      frontends: ${{ steps.select.outputs.frontends }}
+      operations: ${{ steps.select.outputs.operations }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FULL_CHECKS: ${{ inputs.full || false }}
+        run: python3 .github/scripts/affected.py
+
   repo-hygiene:
     name: Repository Hygiene & Security Guard
+    needs: changes
+    if: needs.changes.outputs.skip != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Verify No Committed Secrets or .env Files
-        run: |
-          if [ -f .env ]; then
-            echo "ERROR: .env file was committed to repository!"
-            exit 1
-          fi
-          echo "No .env file found. Passed."
-
-      - name: Check for Leaked Private Keys
-        run: |
-          PATTERN="BEGIN [A-Z0-9 ]*PRIVATE KEY"
-          MATCHES=$(grep -rnE "$PATTERN" . --exclude-dir=".git" --exclude-dir=".github" || true)
-          if [ -n "$MATCHES" ]; then
-            echo "ERROR: Potential private key found in repository:"
-            echo "$MATCHES"
-            exit 1
-          fi
-          echo "No private keys detected. Passed."
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: python3 .github/scripts/audit-source.py
 
   backend-ci:
-    name: Go Backend CI
+    name: Go Backend CI (${{ matrix.service }})
+    needs: [changes, repo-hygiene]
+    if: needs.changes.outputs.backends != '[]' && needs.changes.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    needs: [repo-hygiene]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.backends) }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -48,150 +66,123 @@ jobs:
           POSTGRES_USER: hackways_test
           POSTGRES_PASSWORD: hackways_test_password
           POSTGRES_DB: hackways_test
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
-
+    env:
+      DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
+      CGO_ENABLED: '1'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go 1.23
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.23'
-          cache: false
-
-      - name: Apply Database Migrations
-        env:
-          DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
+      - name: Apply all migrations to isolated PostgreSQL 16
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          if [ -f "deploy/migrations/000001_initial_schema.up.sql" ]; then
-            psql "$DATABASE_URL" -f deploy/migrations/000001_initial_schema.up.sql
-          elif [ -f "services/api/migrations/000001_initial_schema.up.sql" ]; then
-            psql "$DATABASE_URL" -f services/api/migrations/000001_initial_schema.up.sql
-          fi
-
-      - name: Check Go Formatting
-        run: |
-          for SVC in core-backend global-backend api; do
-            if [ -d "services/$SVC" ] && [ -f "services/$SVC/go.mod" ]; then
-              echo "=== Checking formatting for services/$SVC ==="
-              cd "services/$SVC"
-              UNFORMATTED=$(gofmt -l .)
-              if [ -n "$UNFORMATTED" ]; then
-                echo "Unformatted Go files detected in services/$SVC:"
-                echo "$UNFORMATTED"
-                exit 1
-              fi
-              echo "services/$SVC formatting clean."
-              cd ../..
-            fi
+          for migration in deploy/migrations/*.up.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f "$migration"
           done
-
-      - name: Run Go Vet & Unit Tests with Race Detector
+      - name: Formatting, vet and full race/integration tests
+        working-directory: services/${{ matrix.service }}
         env:
-          DATABASE_URL: postgres://hackways_test:hackways_test_password@localhost:5432/hackways_test?sslmode=disable
-          CGO_ENABLED: '1'
+          SERVICE: ${{ matrix.service }}
         run: |
-          for SVC in core-backend global-backend api; do
-            if [ -d "services/$SVC" ] && [ -f "services/$SVC/go.mod" ]; then
-              echo "=== Running vet and tests for services/$SVC ==="
-              cd "services/$SVC"
-              go vet ./...
-              go test ./... -v -race -count=1
-              cd ../..
-            fi
-          done
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./... -json -race -count=1 > "$RUNNER_TEMP/$SERVICE-tests.jsonl"
+      - uses: sqlc-dev/setup-sqlc@6bd2de0e87f5adfd968b55f140ce55461f71db69 # v4
+        with:
+          sqlc-version: '1.31.1'
+      - name: Compile checked SQL contracts
+        working-directory: services/${{ matrix.service }}
+        run: sqlc compile
+      - name: Test counts
+        if: always()
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: python3 .github/scripts/test-summary.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: tests-${{ matrix.service }}
+          path: ${{ runner.temp }}/${{ matrix.service }}-tests.jsonl
+          retention-days: 1
+          if-no-files-found: ignore
 
   frontend-ci:
     name: Next.js Frontend CI
+    needs: [changes, repo-hygiene]
+    if: needs.changes.outputs.frontends != '[]' && needs.changes.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    needs: [repo-hygiene]
+    timeout-minutes: 12
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-
-      - name: Build Shared API Client
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Shared controls and API contract
         run: |
-          cd packages/api-client
-          npm install
-          npm run build
-          cd ../..
-
-      - name: Install & Lint Frontend Applications
+          npm run type-check --workspace @hackways/ui
+          npm run lint --workspace @hackways/ui
+          npm run build --workspace @hackways/api-client
+      - name: Affected application type checks and lint
+        env:
+          APPS: ${{ needs.changes.outputs.frontends }}
         run: |
-          for APP in core-web public-web organizer-web admin-web; do
-            if [ -d "apps/$APP" ] && [ -f "apps/$APP/package.json" ]; then
-              echo "=== Checking apps/$APP ==="
-              cd apps/$APP
-              npm install
-              npm run type-check
-              npm run lint
-              cd ../..
-            fi
+          mapfile -t apps < <(python3 -c 'import json,os;print("\n".join(json.loads(os.environ["APPS"])))')
+          for app in "${apps[@]}"; do
+            npm run type-check --workspace "apps/$app"
+            npm run lint --workspace "apps/$app"
           done
 
-  build-and-push-images:
-    name: Build & Push Container Image (${{ matrix.component.name }})
+  operations-ci:
+    name: Deployment tools and ordering regression tests
+    needs: [changes, repo-hygiene]
+    if: needs.changes.outputs.operations == 'true' && needs.changes.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    needs: [backend-ci, frontend-ci]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        component:
-          - name: core-backend
-            dockerfile: deploy/docker/Dockerfile.core-backend
-          - name: global-backend
-            dockerfile: deploy/docker/Dockerfile.global-backend
-          - name: public-web
-            dockerfile: deploy/docker/Dockerfile.public-web
-          - name: core-web
-            dockerfile: deploy/docker/Dockerfile.core-web
-          - name: organizer-web
-            dockerfile: deploy/docker/Dockerfile.organizer-web
-          - name: admin-web
-            dockerfile: deploy/docker/Dockerfile.admin-web
+    timeout-minutes: 8
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          go-version: '1.23'
+          cache-dependency-path: deploy/deployer/go.mod
+      - name: Validate scripts
+        run: |
+          bash -n deploy/scripts/deploy.sh deploy/scripts/backup-db.sh deploy/scripts/restore-db.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in [*Path('.github/scripts').glob('*.py'), Path('deploy/scripts/run-migrations.py')]:
+              compile(path.read_text(), str(path), 'exec')
+          PY
+      - name: Test deployment ordering with race detection
+        working-directory: deploy/deployer
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./... -v -race -count=1
 
-      - name: Compute Lowercase Repository Owner
-        id: repo-owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ matrix.component.dockerfile }}
-          push: true
-          tags: |
-            ghcr.io/${{ steps.repo-owner.outputs.owner }}/hackways-${{ matrix.component.name }}:latest
-            ghcr.io/${{ steps.repo-owner.outputs.owner }}/hackways-${{ matrix.component.name }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  result:
+    name: CI result
+    needs: [changes, repo-hygiene, backend-ci, frontend-ci, operations-ci]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          results=json.loads(os.environ['RESULTS'])
+          failed=[name for name,item in results.items() if item['result'] not in ('success','skipped')]
+          print('Check results:', {name:item['result'] for name,item in results.items()})
+          if failed: raise SystemExit('Checks failed: '+', '.join(failed))
+          PY

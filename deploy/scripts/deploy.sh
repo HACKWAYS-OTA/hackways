@@ -6,9 +6,9 @@ set -euo pipefail
 # Target: Azure VM (Standard B2als v2 - 2 vCPU, 4 GB RAM, 50 GB NVMe)
 # ==============================================================================
 
-PROJECT_DIR="/opt/hackways"
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 COMPOSE_FILE="$PROJECT_DIR/deploy/docker/docker-compose.prod.yml"
-ENV_FILE="$PROJECT_DIR/.env"
+ENV_FILE="${HACKWAYS_ENV_FILE:-$PROJECT_DIR/.env}"
 
 echo "=== 1. Validating Production Environment ==="
 if [ ! -f "$ENV_FILE" ]; then
@@ -16,48 +16,48 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Source environment
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
+: "${DEPLOY_IMAGE_TAG:?Set DEPLOY_IMAGE_TAG to the reviewed full Git commit SHA}"
+if [[ ! "$DEPLOY_IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "ERROR: DEPLOY_IMAGE_TAG must be a full lowercase Git commit SHA."
+    exit 1
+fi
+export IMAGE_TAG="$DEPLOY_IMAGE_TAG"
 
-echo "=== 2. Pulling Base Images from Registry ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull postgres nginx || true
+command -v python3 >/dev/null 2>&1 || {
+    echo "ERROR: Python 3 is required for protected migration configuration."
+    exit 1
+}
+command -v migrate >/dev/null 2>&1 || {
+    echo "ERROR: golang-migrate CLI is required on the deployment host."
+    exit 1
+}
 
-echo "=== 2b. Compiling Go Backend Engines ==="
-docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.core-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-core-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
-docker build -f "$PROJECT_DIR/deploy/docker/Dockerfile.global-backend" -t "${DOCKER_REGISTRY:-hackways}/hackways-global-backend:${IMAGE_TAG:-latest}" "$PROJECT_DIR"
+# Compose owns dotenv parsing. Never execute the environment file as shell code.
+# Validate without emitting the resolved configuration, which contains secrets.
+compose=(docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE")
+"${compose[@]}" config --quiet
 
-echo "=== 3. Ensuring PostgreSQL Database is Running ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d postgres
-echo "Waiting for PostgreSQL healthcheck..."
-sleep 2
+echo "=== 2. Pulling CI-built images for reviewed commit $IMAGE_TAG ==="
+"${compose[@]}" pull
 
-echo "=== 4. Applying Pending Database Migrations ==="
-for mig in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
-    if [ -f "$mig" ]; then
-        echo "Applying $(basename "$mig")..."
-        docker exec -i hackways-postgres psql -U "${POSTGRES_USER:-hackways_prod}" -d "${POSTGRES_DB:-hackways_prod}" < "$mig" || true
-    fi
+echo "=== 3. Applying pending database migrations ==="
+"${compose[@]}" config --format json | python3 "$PROJECT_DIR/deploy/scripts/run-migrations.py" "$PROJECT_DIR/deploy/migrations"
+
+echo "=== 4. Launching production containers and waiting for health ==="
+"${compose[@]}" up -d --wait --wait-timeout 120
+
+# Frontend services do not yet define Docker healthchecks. Probe them explicitly.
+for target in public-web:3000 core-web:3001 organizer-web:3002 admin-web:3003; do
+    service="${target%:*}"
+    port="${target##*:}"
+    "${compose[@]}" exec -T "$service" wget -q -T 10 -O /dev/null "http://127.0.0.1:$port/"
 done
 
-echo "=== 5. Launching Production Container Services ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d core-backend global-backend nginx
+echo "Reloading Nginx ingress configuration..."
+docker exec hackways-nginx nginx -t
+docker exec hackways-nginx nginx -s reload
 
-# If web app images are present, launch them
-for app in public-web core-web organizer-web admin-web; do
-    if docker image inspect "${DOCKER_REGISTRY:-hackways}/hackways-${app}:${IMAGE_TAG:-latest}" >/dev/null 2>&1; then
-        echo "Launching $app..."
-        docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d "$app"
-    fi
-done
+echo "=== 5. Live Container Health and Resource Inspection ==="
+"${compose[@]}" ps
 
-echo "=== 6. Pruning Dangling Images to Preserve NVMe Disk Cap ==="
-docker image prune -f
-
-echo "=== 7. Live Container Health and Resource Inspection ==="
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps
-docker stats --no-stream
-
-echo "=== Hackways Production Deployment Complete & Verified ==="
+echo "=== Hackways Production Deployment Complete ==="

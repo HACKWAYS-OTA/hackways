@@ -19,7 +19,10 @@
 ## Target Branch
 
 - [ ] `develop` (Standard features and non-urgent fixes)
-- [ ] `main` (Urgent hotfixes only)
+- [ ] `main` (Reviewed release promotion from develop, or a reviewed urgent hotfix)
+
+PR review is project policy. Required reviews and branch protection are not
+technically enforced for this private repository on the current GitHub Free plan.
 
 ## Verification & Testing
 
@@ -32,7 +35,7 @@ npm run lint && npm run type-check
 ```
 
 - [ ] All unit and integration tests pass with `-race` flag
-- [ ] Migrations tested forwards and backwards (if schema changed)
+- [ ] Pending migrations rehearsed on an isolated restore, with a documented data-preserving application rollback or forward repair
 - [ ] Linting and type-checking pass without warnings
 
 ## Checklist

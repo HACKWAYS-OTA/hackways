@@ -1,21 +1,34 @@
 # Hackways Production System Architecture Plan (Azure Cloud Edition)
 **Target Infrastructure:** Single Azure VM (2 vCPU, 4 GB RAM, 50 GB NVMe Storage)  
-**Managed Azure Services:** Azure Blob Storage, Azure Communication Services (ACS) Email, Azure Key Vault  
-**Document Version:** 2.0.0 (Azure Production Blueprint)  
-**Status:** Ready for Review & Implementation
+**Managed Azure Cloud Services:** Azure Database for PostgreSQL Flexible Server, Azure Blob Storage, Azure Communication Services (ACS) Email, Azure Key Vault  
+**Document Version:** 3.0.0 (Azure Managed Cloud & Single-VM High-Scalability Blueprint)  
+**Status:** Approved & Active Architecture
+
+> **Implementation status:** This is a target blueprint, not an as-built description. The mounted routes and verified gaps are listed in [ARCHITECTURE.md](ARCHITECTURE.md). ACS delivery and organizer/admin backend workflows are not implemented. The database placement here conflicts with the PostgreSQL-on-VM budget in `AGENTS.md`; this production topology is unresolved pending a team decision. Do not treat the performance projections below as measured results.
 
 ---
 
 ## 1. Executive Summary & Design Principles
 
-Hackways is an event discovery, organizer studio, and concurrency-safe RSVP platform. This blueprint defines the revised production architecture for deploying the complete Hackways stack onto a single **Azure Virtual Machine** (**2 vCPU, 4 GB RAM, 50 GB NVMe storage**), integrated with native Azure managed cloud services.
+Hackways is an event discovery, organizer studio, and concurrency-safe RSVP platform. This blueprint defines the optimized high-scalability production architecture for deploying the Hackways stack onto a single **Azure Virtual Machine** (**2 vCPU, 4 GB RAM, 50 GB NVMe storage**) tightly paired with native **Azure Managed Cloud Services** (Azure Database for PostgreSQL Flexible Server, Azure Blob Storage, and Azure Communication Services).
 
-### Core Architectural Decisions
-1. **Zero-Disk Media Architecture (Azure Blob Storage):** The local 50 GB NVMe disk is strictly reserved for the operating system, container runtimes, and PostgreSQL database files. All media uploads (event banners, organizer assets, avatars, CSV exports) bypass the local file system entirely and live in Azure Blob Storage with Cloudflare / Azure Front Door edge caching.
-2. **Managed Cloud Messaging (Azure Communication Services Email):** Rather than running resource-intensive local SMTP daemons or Redis-backed Celery queues, transactional email delivery (RSVP confirmations, magic links, ticket tokens) is offloaded to Azure Communication Services (ACS) via a transactional outbox table in PostgreSQL processed by a lightweight Go worker in `global-backend`.
-3. **Pessimistic Concurrency Guarantee:** RSVP capacity limits are strictly enforced inside PostgreSQL transactions using `SELECT ... FOR UPDATE` with `statement_timeout = '2000ms'`, preventing overbooking even during rapid ticket drops.
-4. **Defensive Memory & Disk Governance (4 GB RAM / 50 GB Disk):** Hard Docker memory caps limit active containers to **~2.49 GB**, preserving a **~1.51 GB** safety buffer for the Linux kernel and disk page cache. Strict Docker log rotation (`json-file`, max 10MB x 3 files) and automated blob backups prevent 50 GB disk exhaustion.
-5. **Decoupled 6-Service Monorepo:** 4 independent Next.js web runtimes and 2 Go backend engines run in isolated containers. Migration to Azure Database for PostgreSQL Flexible Server or Azure Container Apps in the future requires zero application rewrites.
+### Core Architectural Decisions & Scalability Levers
+1. **Managed Cloud Persistence (Azure Database for PostgreSQL Flexible Server):**
+   By offloading the database from the VM to Azure Database for PostgreSQL Flexible Server:
+   - The local VM recovers **700 MB of Docker memory quota** and eliminates database disk I/O contention on the 50 GB NVMe.
+   - Database durability is guaranteed through Azure managed automated daily backups, Point-In-Time Restore (PITR), dedicated compute/IOPS, and SSL-enforced encryption in transit (`sslmode=require`).
+2. **Zero-Disk Media Architecture (Azure Blob Storage):**
+   The local 50 GB NVMe disk is strictly reserved for OS, container runtimes, and local ephemeral swap. All media uploads (event banners, attendee avatars, CSV exports) bypass the local file system and backend RAM via direct browser-to-blob **Shared Access Signature (SAS)** tokens with a 15-minute write-only validity.
+3. **Managed Cloud Messaging (Azure Communication Services Email):**
+   Transactional emails (RSVP confirmations, magic links) are written to a PostgreSQL transactional `email_outbox` table during the RSVP transaction and dispatched asynchronously via Azure Communication Services (ACS) REST API by a lightweight Go worker in `global-backend`.
+4. **Pessimistic Concurrency Guarantee:**
+   RSVP capacity limits are strictly enforced inside PostgreSQL transactions using `SELECT ... FOR UPDATE` with `statement_timeout = '2000ms'`, preventing overbooking even during rapid ticket drops.
+5. **High Headroom Memory Governance (> 2.3 GB Free RAM):**
+   Without a local database container on the host, total container limits drop from 2.49 GB to **~1.21 GB**. Over **2.3 GB of RAM (~58% of the VM)** remains completely free for Linux VFS disk page caching, network buffers, and zero risk of OOM kills.
+6. **Zero-Build Production Deployments (Off-Node CI/CD):**
+   Frontend and backend container images are compiled strictly off-node in GitHub Actions CI (`output: 'standalone'` for Next.js, static Go binaries) and pushed to GitHub Container Registry (GHCR). The production VM only executes `docker compose pull` and rolling container reloads, eliminating CPU spikes during releases.
+7. **Nginx Ingress Microcaching:**
+   Nginx reverse proxy implements microcaching for public read routes (`/api/v1/events` for 15s) and passes immutable cache headers for Next.js static assets to Cloudflare Edge CDN, shielding the backend engines from 90%+ of read surges.
 
 ---
 
@@ -36,32 +49,29 @@ flowchart TD
 
     subgraph AzureSub ["Azure Cloud Subscription"]
         subgraph ManagedAzure ["Managed Azure Cloud Services"]
+            AzureDB[("Azure Database for PostgreSQL\nFlexible Server\n(Automated Backups, PITR, SSL)")]
             BlobStore["Azure Blob Storage\n(Container: media-uploads, backups)\nHot Tier / SAS Direct Upload"]
             ACSEmail["Azure Communication Services (ACS)\nTransactional Email Gateway\n(RSVP Confirms, Magic Links)"]
-            KeyVault["Azure Key Vault\n(Connection Strings, DB Passwords,\nSession Secrets, Signing Keys)"]
+            KeyVault["Azure Key Vault\n(Connection Strings, DB Credentials,\nSession Secrets, Signing Keys)"]
         end
 
         subgraph AzureVM ["Azure VM: Standard_B2s or Standard_D2s_v5 (2 vCPU / 4 GB RAM / 50 GB NVMe)"]
-            subgraph Ingress ["Edge Reverse Proxy"]
-                Nginx["Nginx Reverse Proxy\n(Port 80/443, SSL/TLS, Rate Limiting, Compression)\nLimit: 75 MB RAM | 0.20 vCPU"]
+            subgraph Ingress ["Edge Reverse Proxy & Microcache"]
+                Nginx["Nginx Reverse Proxy\n(Port 80/443, SSL/TLS, Rate Limiting, Microcaching)\nLimit: 80 MB RAM | 0.20 vCPU"]
             end
 
             Edge -->|Port 443 Strict SNI| Nginx
 
             subgraph WebTier ["Web Tier (Next.js Standalone Pre-Built Runtimes)"]
                 PublicWeb["1. Public Web\n(Port 3000 | hackways.in)\nMarketing, SEO, Event Catalogs\nLimit: 140 MB RAM"]
-                CoreWeb["2. Core Web\n(Port 3001 | app.hackways.in)\nDiscovery, Event Details, RSVP Portal\nLimit: 250 MB RAM"]
-                OrgWeb["3. Organizer Web\n(Port 3002 | organizer.hackways.in)\nEvent Studio, Roster, Analytics\nLimit: 230 MB RAM"]
+                CoreWeb["2. Core Web\n(Port 3001 | app.hackways.in)\nDiscovery, Event Details, RSVP Portal\nLimit: 260 MB RAM"]
+                OrgWeb["3. Organizer Web\n(Port 3002 | organizer.hackways.in)\nEvent Studio, Roster, Analytics\nLimit: 240 MB RAM"]
                 AdminWeb["4. Admin Web\n(Port 3003 | admin.hackways.in)\nSystem Audits, Moderation, Telemetry\nLimit: 170 MB RAM"]
             end
 
             subgraph APITier ["Backend Engines (Go 1.23+ / Chi Router)"]
-                CoreAPI["5. Core Backend Engine\n(Port 8081 | core-backend:8081)\nEvents, Capacity Engine, Pessimistic RSVP Lock\nLimit: 120 MB RAM | Max 28 DB Conns"]
-                GlobalAPI["6. Global API Backend\n(Port 8082 | global-backend:8082)\nAuth, Sessions, RBAC, SAS Token Signer, ACS Worker\nLimit: 110 MB RAM | Max 22 DB Conns"]
-            end
-
-            subgraph DataTier ["Persistence Tier (Internal Bridge Only)"]
-                Postgres["PostgreSQL 16 (Alpine)\n(Port 5432 - Internal Only)\nBuffer: 256MB | Work: 4MB | Max Conn: 60\nLimit: 700 MB RAM"]
+                CoreAPI["5. Core Backend Engine\n(Port 8081 | core-backend:8081)\nEvents, Capacity Engine, Pessimistic RSVP Lock\nLimit: 180 MB RAM | Pool: 32 DB Conns"]
+                GlobalAPI["6. Global API Backend\n(Port 8082 | global-backend:8082)\nAuth, Sessions, RBAC, SAS Token Signer, ACS Worker\nLimit: 140 MB RAM | Pool: 24 DB Conns"]
             end
 
             ManagedID["Azure System-Assigned\nManaged Identity"] -.->|Read Secrets| KeyVault
@@ -85,9 +95,9 @@ flowchart TD
     AdminWeb -.->|Internal Bridge| GlobalAPI
     AdminWeb -.->|Internal Bridge| CoreAPI
 
-    %% Backend to Database
-    CoreAPI -->|pgxpool (Max 28)| Postgres
-    GlobalAPI -->|pgxpool (Max 22)| Postgres
+    %% Backend to Managed Azure Database
+    CoreAPI -->|pgxpool (Max 32, SSL)| AzureDB
+    GlobalAPI -->|pgxpool (Max 24, SSL)| AzureDB
 
     %% Backend to Azure Services
     GlobalAPI -->|Generate SAS URI| BlobStore
@@ -202,24 +212,24 @@ The Go `global-backend` engine runs a background goroutine worker that processes
 
 ---
 
-## 6. VM Resource Allocation & Defensive Memory Budget
+## 6. VM Resource Allocation & Defensive Memory Budget (Managed DB Edition)
 
-Deploying the entire 6-service stack, Nginx, and PostgreSQL onto an Azure VM with **2 vCPU (2.0 quota)** and **4,096 MB RAM** requires strict boundary enforcement.
+With the database offloaded to **Azure Database for PostgreSQL Flexible Server**, the 4 GB Azure VM focuses purely on compute: the Nginx ingress proxy, 4 Next.js web applications, and the 2 Go backend engines.
 
-### Memory & CPU Budget Breakdown
+### Revised Memory & CPU Budget Breakdown
 
 | Service / Container | Resident (RSS) | Hard Memory Limit | CPU Quota (Max 2.0) | Strategy & Environment Tuning |
 | :--- | :--- | :--- | :--- | :--- |
-| **PostgreSQL 16** | 220 MB | **700 MB** | 0.60 | `shared_buffers = 256MB`, `work_mem = 4MB`, `max_connections = 60` |
-| **Core Backend (Go)** | 35 MB | **120 MB** | 0.70 | `GOMEMLIMIT=100MiB`, `GOGC=100`, zero reflection hot paths |
-| **Global Backend (Go)** | 35 MB | **110 MB** | 0.40 | `GOMEMLIMIT=90MiB`, `GOGC=100`, bounded 2-routine ACS email worker |
-| **Core Web (Next.js)** | 110 MB | **250 MB** | 0.50 | `NODE_OPTIONS="--max-old-space-size=190"`, standalone output |
-| **Organizer Web (Next.js)**| 100 MB | **230 MB** | 0.40 | `NODE_OPTIONS="--max-old-space-size=180"`, standalone output |
-| **Admin Web (Next.js)** | 80 MB | **170 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=130"`, low concurrency usage |
-| **Public Web (Next.js)** | 60 MB | **140 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=100"`, high ISR cache ratio |
-| **Nginx Reverse Proxy** | 25 MB | **75 MB** | 0.20 | Event loop worker processes: 2, worker_connections: 4096 |
-| **Linux Kernel & OS** | ~350 MB | ~500 MB | 0.20 | Systemd, SSH, journald logging daemon, Docker daemon |
-| **Ceiling Total** | **~1,215 MB** | **~2,495 MB** | **~3.50 (Burstable)**| **Safe Buffer: ~1,601 MB free for disk cache & spikes** |
+| **Azure Database for PostgreSQL** | *Off-Node* | *Managed Azure* | *Dedicated* | Azure Flexible Server, multi-AZ, automated daily PITR |
+| **Core Backend (Go)** | ~45 MB | **180 MB** | 0.80 | `GOMEMLIMIT=150MiB`, `GOGC=100`, max 32 DB conns, high concurrency |
+| **Global Backend (Go)** | ~40 MB | **140 MB** | 0.50 | `GOMEMLIMIT=120MiB`, `GOGC=100`, max 24 DB conns, 2-routine ACS email worker |
+| **Core Web (Next.js)** | ~110 MB | **260 MB** | 0.50 | `NODE_OPTIONS="--max-old-space-size=190"`, standalone output |
+| **Organizer Web (Next.js)**| ~100 MB | **240 MB** | 0.40 | `NODE_OPTIONS="--max-old-space-size=180"`, standalone output |
+| **Admin Web (Next.js)** | ~80 MB | **170 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=130"`, low concurrency usage |
+| **Public Web (Next.js)** | ~60 MB | **140 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=100"`, high ISR cache ratio |
+| **Nginx Reverse Proxy** | ~25 MB | **80 MB** | 0.20 | Event loop workers: 2, worker_connections: 4096, microcaching |
+| **Linux Kernel & OS** | ~350 MB | ~450 MB | 0.20 | Systemd, SSH, journald, Docker daemon |
+| **Ceiling Total** | **~810 MB** | **~1,660 MB** | **~3.10 (Burstable)**| **Safe Buffer: ~2,436 MB free (~59% of RAM) for disk cache & spikes** |
 
 ### Host Swap Safety Net on NVMe
 To prevent immediate kernel OOM killer actions during unexpected memory spikes:
@@ -242,17 +252,16 @@ To prevent immediate kernel OOM killer actions during unexpected memory spikes:
 
 ## 7. 50 GB NVMe Storage Budget & Log Rotation
 
-A 50 GB disk on a cloud VM fills up rapidly if container logs, PostgreSQL WAL files, and build remnants are unmonitored. 
+Offloading the database to Azure Database for PostgreSQL Flexible Server dramatically expands the NVMe safety margin on the 50 GB host disk, eliminating database table bloat, WAL write churn, and vacuum thrashing from the host.
 
 ### Storage Allocation Breakdown
 - **Linux Base OS & System Packages:** ~8.0 GB
-- **Docker Images (7 pre-built images):** ~3.5 GB (Alpine/scratch Go binaries ~25MB; Next.js standalone images ~250MB each)
-- **PostgreSQL 16 Database Data & Indexes:** ~12.0 GB (sufficient for > 500,000 events & RSVPs)
-- **PostgreSQL WAL Files (`max_wal_size = 1GB`):** ~1.5 GB
-- **Docker Container Logs (Strictly Rotated):** ~0.5 GB
+- **Docker Images (6 pre-built images):** ~2.5 GB (Alpine Go binaries ~25MB; Next.js standalone images ~200MB each)
+- **PostgreSQL Database & WAL:** **0.0 GB (Managed in Azure Cloud)**
+- **Docker Container Logs (Strictly Rotated):** ~0.2 GB
 - **System Logs & Journald (`SystemMaxUse=500M`):** ~0.5 GB
 - **Swapfile (`/swapfile`):** 3.0 GB
-- **Free Disk Headroom for Safe Operation:** **~21.0 GB (~42% Free Space)**
+- **Free Disk Headroom for Safe Operation:** **~35.8 GB (~71% Free Space)**
 
 ### Docker Daemon Log Rotation Policy
 To prevent container stdout/stderr logs from silently consuming the disk, configure `/etc/docker/daemon.json`:
@@ -265,7 +274,7 @@ To prevent container stdout/stderr logs from silently consuming the disk, config
   }
 }
 ```
-*Result:* No individual container can ever produce more than 30 MB of logs. All 7 containers combined will never exceed 210 MB of disk space.
+*Result:* No individual container can ever produce more than 30 MB of logs. All 6 containers combined will never exceed 180 MB of disk space.
 
 ---
 

@@ -17,3 +17,12 @@ RETURNING id, email, display_name, avatar_url, email_verified, created_at, updat
 SELECT id, user_id, display_name, slug, bio, website_url, avatar_url, verified, created_at, updated_at
 FROM organizers
 WHERE user_id = $1;
+
+-- name: CreateOrganizer :one
+INSERT INTO organizers (user_id, display_name, slug)
+VALUES (
+    $1,
+    $2,
+    trim(regexp_replace(lower($2), '[^a-z0-9]+', '-', 'g'), '-') || '-' || left(gen_random_uuid()::text, 8)
+)
+RETURNING id, user_id, display_name, slug, bio, website_url, avatar_url, verified, created_at, updated_at;
