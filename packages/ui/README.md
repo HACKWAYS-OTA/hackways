@@ -1,10 +1,14 @@
-# Hackways shared controls
+# Hackways shared UI controls
+
+[Repository overview](../../README.md) · [Source exports](package.json) · [Architecture](../../docs/ARCHITECTURE.md)
+
+## Package scope
 
 The four independent Next.js apps consume `@hackways/ui` from this root package. It owns the checkbox, grouped radio, select and toggle implementations, theme styles and animation defaults. Business rules and persistence remain in Go.
 
 ## Install and use
 
-Run `npm install` from the repository root for development, or `npm ci` with the committed root lockfile. npm workspaces link the shared source so edits apply to all apps without copying components. Run an app with `npm run dev --workspace @hackways/core-web` (or another app name).
+Run `npm ci` from the repository root to install the committed lockfile. Use `npm install` only when intentionally updating dependencies and reviewing the resulting lockfile. npm workspaces link the shared source so edits apply to all apps without copying components. Run an app with `npm run dev --workspace @hackways/core-web` (or another app name).
 
 Every app root already imports `@hackways/ui/styles.css`, wraps its contents in `UIProvider`, and transpiles `@hackways/ui`. Do not add per-page providers or reinstall dependencies for new forms.
 
@@ -32,7 +36,7 @@ Supply real options from the caller. Radio groups accept `layout="stack"` and op
 
 Toggle preserves Base UI's `pressed`, `defaultPressed`, `onPressedChange`, `value`, refs, native keyboard/button semantics and state-based class/style callbacks. `Toggle.Props`, `Toggle.State` and change-event types are available. It scales to 0.97 only while pressed, using a spring with stiffness 550/damping 30 (override via `transition`). Colors fade for 300ms; initial state is at rest, with no hover scale or press scale under reduced motion. Supplying `render` keeps Base UI behavior and delegates animation to that element. Use Toggle for independent pressed buttons; exclusive choices, tabs and switches retain their respective semantics. Toggle does not submit a form value.
 
-## Defaults
+## Accessibility, navigation, and visual defaults
 
 For in-page navigation, import `SectionJumpButton` or `scrollToSection` from `@hackways/ui/section-jump`. They move focus and scroll without changing the URL or browser history. Pass a `targetId`; section IDs do not require fragment links. Use clean routes for cross-page destinations. The button respects reduced motion and does not submit forms.
 
@@ -44,4 +48,14 @@ For in-page navigation, import `SectionJumpButton` or `scrollToSection` from `@h
 
 ## Verification and deployment
 
-`npm run type-check --workspace @hackways/ui` and `npm run lint --workspace @hackways/ui` check every shared export, including components not yet used by an app. `npm test --workspace @hackways/core-web` (repeat for other apps) runs existing app type and lint checks. CI installs the root lockfile and checks the shared package. Docker builds retain independent app images; their isolated installs copy this file dependency with `--install-links`, so React resolves from the app's dependency tree. Production images continue to be built in CI.
+`npm run type-check --workspace @hackways/ui` and `npm run lint --workspace @hackways/ui` check every shared export, including components not yet used by an app. `npm test --workspace @hackways/core-web` (repeat for other apps) runs existing app type and lint checks. CI installs the root lockfile and checks the shared package. The four frontend Dockerfiles install the root locked workspace with `npm ci`, build the shared API client, and package each app independently with standalone output. They do not use the older per-app `--install-links` installation flow. Production images are built only in CI, never on the Azure VM.
+
+### Check the package
+
+```bash
+npm ci
+npm run type-check --workspace @hackways/ui
+npm run lint --workspace @hackways/ui
+```
+
+Run affected app checks as well when shared behavior changes. Type and lint checks are not a substitute for keyboard, focus, reduced-motion, or browser-journey verification. This package is private and is not documented as a published npm package.
