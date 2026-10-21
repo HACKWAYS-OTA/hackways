@@ -1,86 +1,23 @@
-import React from "react";
-import { Event } from "@/types/api";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import Link from 'next/link';
+import type { Event } from '@/types/api';
+import { Icon } from '@/components/ui/Icon';
+import { eventDate, eventZone, eventPath, formatLabels, registrationState } from '@/lib/events';
+import { EventCover } from './EventCover';
 
-interface EventCardProps {
-  event: Event;
-  onRegister?: (eventId: string) => void;
-}
-
-export const EventCard: React.FC<EventCardProps> = ({ event, onRegister }) => {
-  const isAtCapacity =
-    event.capacity !== null &&
-    event.capacity !== undefined &&
-    event.registration_count >= event.capacity;
-
-  const percentageFull =
-    event.capacity && event.capacity > 0
-      ? Math.min(100, Math.round((event.registration_count / event.capacity) * 100))
-      : null;
-
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm hover:border-slate-700 transition flex flex-col justify-between">
-      <div className="p-5">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <Badge variant={event.format === "online" ? "brand" : "default"}>
-            {event.format === "in_person"
-              ? "In Person"
-              : event.format === "online"
-              ? "Online"
-              : "Hybrid"}
-          </Badge>
-          <span className="text-xs text-slate-400">
-            {new Date(event.starts_at).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-
-        <h3 className="text-lg font-semibold text-white mb-2 line-clamp-1">{event.title}</h3>
-        <p className="text-sm text-slate-400 line-clamp-2 mb-4">
-          {event.short_description || event.description}
-        </p>
-
-        {percentageFull !== null && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>Capacity</span>
-              <span>
-                {event.registration_count} / {event.capacity} ({percentageFull}%)
-              </span>
-            </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  percentageFull >= 100
-                    ? "bg-rose-500"
-                    : percentageFull >= 80
-                    ? "bg-amber-500"
-                    : "bg-indigo-500"
-                }`}
-                style={{ width: `${percentageFull}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="px-5 py-4 bg-slate-950/50 border-t border-slate-800/80 flex items-center justify-between">
-        <span className="text-xs text-slate-500 truncate max-w-[180px]">
-          {event.location_name || event.online_url || "Details on registration"}
-        </span>
-        <Button
-          size="sm"
-          variant={isAtCapacity ? "secondary" : "primary"}
-          disabled={isAtCapacity}
-          onClick={() => onRegister?.(event.id)}
-        >
-          {isAtCapacity ? "Full" : "RSVP"}
-        </Button>
-      </div>
+export interface EventCardProps { event: Event; prominent?: boolean }
+export function EventCard({ event, prominent = false }: EventCardProps) {
+  const state = registrationState(event);
+  const href = eventPath(event);
+  return <article className={`catalog-event${prominent ? ' catalog-event--prominent' : ''}`}>
+    <EventCover event={event} href={href} priority={prominent} sizes={prominent ? '(max-width: 640px) 100vw, 440px' : '(max-width: 640px) 100vw, 248px'} />
+    <div className="catalog-event-content">
+      <time className="catalog-event-date" dateTime={event.starts_at}>{eventDate(event, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}</time>
+      <p className="catalog-event-meta"><span>{formatLabels[event.format]}</span><span>{eventDate(event, { hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</span></p>
+      <h3><Link href={href} prefetch={false}>{event.title}</Link></h3>
+      {(event.location_name || event.location_address || event.format === 'online') && <p className="catalog-event-location"><Icon name={event.format === 'online' ? 'globe' : 'location'} size={16} /><span>{event.location_name || event.location_address || 'Online event'}</span></p>}
+      {(event.short_description || event.description) && <p className="catalog-event-description">{event.short_description || event.description}</p>}
+      {state.disabled && <p className="catalog-event-closed">{state.label}</p>}
     </div>
-  );
-};
+    <Link className="catalog-event-open" href={href} prefetch={false} aria-label={`View ${event.title}`}><span>View event</span><Icon name="arrow" size={19} /></Link>
+  </article>;
+}

@@ -33,7 +33,7 @@ COPY --from=builder /bin/global-backend /usr/local/bin/global-backend
 EXPOSE 8082
 
 ENV PORT=8082 \
-    ENV=production \
+    APP_ENV=production \
     GOMEMLIMIT=90MiB \
     GOGC=100
 

@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export function EventPageTabs({ slug, appearance = false }: { slug: string; appearance?: boolean }) { return <nav className="host-page-tabs" aria-label="Event page editing"><Link href={`/events/${slug}/edit`} aria-current={!appearance ? 'page' : undefined}>Details</Link><Link href={`/events/${slug}/appearance`} aria-current={appearance ? 'page' : undefined}>Cover & theme</Link></nav>; }

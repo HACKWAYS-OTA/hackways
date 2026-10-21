@@ -1,0 +1,33 @@
+.guest-status-trigger, .guest-status-label { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: fit-content; max-width: 100%; padding: 5px 10px; border: 1px solid #d9e2da; border-radius: 8px; background: #e6f2e9; color: #286348; font-size: 13px; line-height: 1.5; }
+.guest-status-trigger { min-height: 36px; }
+.guest-status-trigger:hover:not(:disabled) { background: #d3e9d9; border-color: #9fc2aa; }
+.guest-status-trigger:not(.status-confirmed), .guest-status-label:not(.status-confirmed) { background: #f1edf5; border-color: #d9cfe2; color: #65516f; }
+.guest-status-trigger:not(.status-confirmed):hover:not(:disabled) { background: #e3d8ec; }
+.guest-status-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 24px; border: 0; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px #21162e40; }
+.guest-status-dialog::backdrop { background: #21162e50; }
+.guest-status-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.guest-status-dialog h2 { font-family: "Google Sans Flex"; font-size: 20px; font-weight: 400; -webkit-text-stroke: 0; }
+.guest-status-person { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.guest-status-person > div { flex: 1; min-width: 0; }
+.guest-status-person h3 { font-family: "Google Sans Flex"; font-size: 16px; font-weight: 400; letter-spacing: 0; -webkit-text-stroke: 0; overflow-wrap: anywhere; }
+.guest-status-person p { margin-top: 2px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.guest-status-dialog fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.guest-status-field { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 13px; }
+.guest-status-field select, .guest-status-field textarea { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 14px; }
+.guest-status-field select { min-height: 46px; }
+.guest-status-field textarea { min-height: 104px; resize: vertical; }
+.guest-status-field small { font-size: 11px; line-height: 1.6; }
+.guest-status-notify { display: flex; align-items: center; gap: 9px; min-height: 48px; margin-block: 8px; color: var(--ink); font-size: 14px; }
+.guest-status-notify input { width: 18px; height: 18px; accent-color: var(--ink); }
+.guest-status-dialog form > .app-button { width: 100%; margin-top: 24px; font-family: "Google Sans Flex"; }
+.guest-status-error { margin-top: 16px; color: #943d50; font-size: 13px; line-height: 1.6; }
+.guest-status-error .quiet-link { margin-top: 8px; }
+.host-drawer-person > div { flex: 1; }
+.host-drawer-person .guest-status-trigger, .host-drawer-person .guest-status-label { margin-top: 4px; flex-shrink: 0; }
+@media (max-width: 540px) {
+  .guest-status-dialog { padding: 20px; }
+  .guest-status-field select, .guest-status-field textarea { font-size: 16px; }
+  .host-drawer-person { flex-wrap: wrap; }
+  .host-drawer-person > div { flex-basis: calc(100% - 64px); }
+  .host-drawer-person .guest-status-trigger, .host-drawer-person .guest-status-label { margin-left: 64px; margin-top: 0; }
+}

@@ -11,8 +11,121 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createEventRecord = `-- name: CreateEventRecord :one
+INSERT INTO events (
+    organizer_id, status, format, title, slug, description,
+    starts_at, ends_at, timezone, capacity, location_name, online_url,
+    published_at, registration_mode, allow_guest,space_id,theme,theme_color,theme_font,theme_style,theme_display,visibility
+)
+VALUES (
+    $1, $11::event_status, $2, $3,
+    trim(regexp_replace(lower($3), '[^a-z0-9]+', '-', 'g'), '-') || '-' || left(gen_random_uuid()::text, 8),
+    $4, $5, $6, $7, $8, $9, $10, CASE WHEN $11::event_status = 'published' THEN NOW() ELSE NULL END,
+    COALESCE(NULLIF($12::text,''),'instant'),
+    COALESCE(NULLIF($12::text,''),'instant') <> 'approval',$13::uuid,
+    COALESCE(NULLIF($14::text,''),'minimal'),COALESCE(NULLIF($15::text,''),'#ddd4e9'),
+    COALESCE(NULLIF($16::text,''),'futurist'),COALESCE(NULLIF($17::text,''),'soft'),
+    COALESCE(NULLIF($18::text,''),'light'),COALESCE(NULLIF($19::text,''),'public')
+)
+RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required
+`
+
+type CreateEventRecordParams struct {
+	OrganizerID      pgtype.UUID        `json:"organizer_id"`
+	Format           EventFormat        `json:"format"`
+	Title            string             `json:"title"`
+	Description      string             `json:"description"`
+	StartsAt         pgtype.Timestamptz `json:"starts_at"`
+	EndsAt           pgtype.Timestamptz `json:"ends_at"`
+	Timezone         string             `json:"timezone"`
+	Capacity         pgtype.Int4        `json:"capacity"`
+	LocationName     pgtype.Text        `json:"location_name"`
+	OnlineUrl        pgtype.Text        `json:"online_url"`
+	Status           EventStatus        `json:"status"`
+	RegistrationMode string             `json:"registration_mode"`
+	SpaceID          pgtype.UUID        `json:"space_id"`
+	Theme            string             `json:"theme"`
+	ThemeColor       string             `json:"theme_color"`
+	ThemeFont        string             `json:"theme_font"`
+	ThemeStyle       string             `json:"theme_style"`
+	ThemeDisplay     string             `json:"theme_display"`
+	Visibility       string             `json:"visibility"`
+}
+
+func (q *Queries) CreateEventRecord(ctx context.Context, arg CreateEventRecordParams) (Events, error) {
+	row := q.db.QueryRow(ctx, createEventRecord,
+		arg.OrganizerID,
+		arg.Format,
+		arg.Title,
+		arg.Description,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.Timezone,
+		arg.Capacity,
+		arg.LocationName,
+		arg.OnlineUrl,
+		arg.Status,
+		arg.RegistrationMode,
+		arg.SpaceID,
+		arg.Theme,
+		arg.ThemeColor,
+		arg.ThemeFont,
+		arg.ThemeStyle,
+		arg.ThemeDisplay,
+		arg.Visibility,
+	)
+	var i Events
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.CategoryID,
+		&i.Status,
+		&i.Format,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.ShortDescription,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.LocationAddress,
+		&i.OnlineUrl,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.Timezone,
+		&i.Capacity,
+		&i.CurrentRsvpCount,
+		&i.RegistrationOpensAt,
+		&i.RegistrationClosesAt,
+		&i.Tags,
+		&i.PublishedAt,
+		&i.CancelledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
+	)
+	return i, err
+}
+
 const getEventByID = `-- name: GetEventByID :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -46,12 +159,30 @@ func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (Events, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
 	)
 	return i, err
 }
 
 const getEventByIDAndOrganizer = `-- name: GetEventByIDAndOrganizer :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
 `
 
@@ -90,13 +221,349 @@ func (q *Queries) GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByID
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
 	)
 	return i, err
 }
 
+const getEventBySlugAndOrganizer = `-- name: GetEventBySlugAndOrganizer :one
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events WHERE slug=$1 AND organizer_id=$2 AND deleted_at IS NULL
+`
+
+type GetEventBySlugAndOrganizerParams struct {
+	Slug        string      `json:"slug"`
+	OrganizerID pgtype.UUID `json:"organizer_id"`
+}
+
+func (q *Queries) GetEventBySlugAndOrganizer(ctx context.Context, arg GetEventBySlugAndOrganizerParams) (Events, error) {
+	row := q.db.QueryRow(ctx, getEventBySlugAndOrganizer, arg.Slug, arg.OrganizerID)
+	var i Events
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.CategoryID,
+		&i.Status,
+		&i.Format,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.ShortDescription,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.LocationAddress,
+		&i.OnlineUrl,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.Timezone,
+		&i.Capacity,
+		&i.CurrentRsvpCount,
+		&i.RegistrationOpensAt,
+		&i.RegistrationClosesAt,
+		&i.Tags,
+		&i.PublishedAt,
+		&i.CancelledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
+	)
+	return i, err
+}
+
+const getPublishedEventByID = `-- name: GetPublishedEventByID :one
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
+WHERE id = $1 AND (status = 'published' OR (status = 'cancelled' AND published_at IS NOT NULL)) AND deleted_at IS NULL
+`
+
+func (q *Queries) GetPublishedEventByID(ctx context.Context, id pgtype.UUID) (Events, error) {
+	row := q.db.QueryRow(ctx, getPublishedEventByID, id)
+	var i Events
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.CategoryID,
+		&i.Status,
+		&i.Format,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.ShortDescription,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.LocationAddress,
+		&i.OnlineUrl,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.Timezone,
+		&i.Capacity,
+		&i.CurrentRsvpCount,
+		&i.RegistrationOpensAt,
+		&i.RegistrationClosesAt,
+		&i.Tags,
+		&i.PublishedAt,
+		&i.CancelledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
+	)
+	return i, err
+}
+
+const getPublishedEventBySlug = `-- name: GetPublishedEventBySlug :one
+SELECT e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, o.display_name AS organizer_name, o.bio AS organizer_bio,
+       o.website_url AS organizer_website, o.verified AS organizer_verified,
+       s.name AS space_name,s.slug AS space_slug
+FROM events e
+JOIN organizers o ON o.id = e.organizer_id
+LEFT JOIN spaces s ON s.id=e.space_id
+WHERE e.slug = $1 AND (e.status = 'published' OR (e.status = 'cancelled' AND e.published_at IS NOT NULL)) AND e.deleted_at IS NULL
+`
+
+type GetPublishedEventBySlugRow struct {
+	ID                       pgtype.UUID        `json:"id"`
+	OrganizerID              pgtype.UUID        `json:"organizer_id"`
+	CategoryID               pgtype.Int8        `json:"category_id"`
+	Status                   EventStatus        `json:"status"`
+	Format                   EventFormat        `json:"format"`
+	Title                    string             `json:"title"`
+	Slug                     string             `json:"slug"`
+	Description              string             `json:"description"`
+	ShortDescription         pgtype.Text        `json:"short_description"`
+	BannerUrl                pgtype.Text        `json:"banner_url"`
+	LocationName             pgtype.Text        `json:"location_name"`
+	LocationAddress          pgtype.Text        `json:"location_address"`
+	OnlineUrl                pgtype.Text        `json:"online_url"`
+	StartsAt                 pgtype.Timestamptz `json:"starts_at"`
+	EndsAt                   pgtype.Timestamptz `json:"ends_at"`
+	Timezone                 string             `json:"timezone"`
+	Capacity                 pgtype.Int4        `json:"capacity"`
+	CurrentRsvpCount         int32              `json:"current_rsvp_count"`
+	RegistrationOpensAt      pgtype.Timestamptz `json:"registration_opens_at"`
+	RegistrationClosesAt     pgtype.Timestamptz `json:"registration_closes_at"`
+	Tags                     []string           `json:"tags"`
+	PublishedAt              pgtype.Timestamptz `json:"published_at"`
+	CancelledAt              pgtype.Timestamptz `json:"cancelled_at"`
+	CreatedAt                pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt                pgtype.Timestamptz `json:"deleted_at"`
+	Revision                 int64              `json:"revision"`
+	HeldRsvpCount            int32              `json:"held_rsvp_count"`
+	RegistrationMode         string             `json:"registration_mode"`
+	AllowGuest               bool               `json:"allow_guest"`
+	WaitlistEnabled          bool               `json:"waitlist_enabled"`
+	OfferMinutes             int32              `json:"offer_minutes"`
+	SpaceID                  pgtype.UUID        `json:"space_id"`
+	Theme                    string             `json:"theme"`
+	ThemeColor               string             `json:"theme_color"`
+	ThemeFont                string             `json:"theme_font"`
+	ThemeStyle               string             `json:"theme_style"`
+	FaqText                  string             `json:"faq_text"`
+	ContactUrl               string             `json:"contact_url"`
+	Rewards                  string             `json:"rewards"`
+	ThemeDisplay             string             `json:"theme_display"`
+	Visibility               string             `json:"visibility"`
+	RegistrationFormRevision int64              `json:"registration_form_revision"`
+	RegistrationNameRequired bool               `json:"registration_name_required"`
+	OrganizerName            string             `json:"organizer_name"`
+	OrganizerBio             pgtype.Text        `json:"organizer_bio"`
+	OrganizerWebsite         pgtype.Text        `json:"organizer_website"`
+	OrganizerVerified        bool               `json:"organizer_verified"`
+	SpaceName                pgtype.Text        `json:"space_name"`
+	SpaceSlug                pgtype.Text        `json:"space_slug"`
+}
+
+func (q *Queries) GetPublishedEventBySlug(ctx context.Context, slug string) (GetPublishedEventBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getPublishedEventBySlug, slug)
+	var i GetPublishedEventBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.CategoryID,
+		&i.Status,
+		&i.Format,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.ShortDescription,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.LocationAddress,
+		&i.OnlineUrl,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.Timezone,
+		&i.Capacity,
+		&i.CurrentRsvpCount,
+		&i.RegistrationOpensAt,
+		&i.RegistrationClosesAt,
+		&i.Tags,
+		&i.PublishedAt,
+		&i.CancelledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
+		&i.OrganizerName,
+		&i.OrganizerBio,
+		&i.OrganizerWebsite,
+		&i.OrganizerVerified,
+		&i.SpaceName,
+		&i.SpaceSlug,
+	)
+	return i, err
+}
+
+const listOrganizerEvents = `-- name: ListOrganizerEvents :many
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
+WHERE organizer_id = $1 AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListOrganizerEventsParams struct {
+	OrganizerID pgtype.UUID `json:"organizer_id"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
+}
+
+func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]Events, error) {
+	rows, err := q.db.Query(ctx, listOrganizerEvents, arg.OrganizerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Events
+	for rows.Next() {
+		var i Events
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizerID,
+			&i.CategoryID,
+			&i.Status,
+			&i.Format,
+			&i.Title,
+			&i.Slug,
+			&i.Description,
+			&i.ShortDescription,
+			&i.BannerUrl,
+			&i.LocationName,
+			&i.LocationAddress,
+			&i.OnlineUrl,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.Timezone,
+			&i.Capacity,
+			&i.CurrentRsvpCount,
+			&i.RegistrationOpensAt,
+			&i.RegistrationClosesAt,
+			&i.Tags,
+			&i.PublishedAt,
+			&i.CancelledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Revision,
+			&i.HeldRsvpCount,
+			&i.RegistrationMode,
+			&i.AllowGuest,
+			&i.WaitlistEnabled,
+			&i.OfferMinutes,
+			&i.SpaceID,
+			&i.Theme,
+			&i.ThemeColor,
+			&i.ThemeFont,
+			&i.ThemeStyle,
+			&i.FaqText,
+			&i.ContactUrl,
+			&i.Rewards,
+			&i.ThemeDisplay,
+			&i.Visibility,
+			&i.RegistrationFormRevision,
+			&i.RegistrationNameRequired,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedEvents = `-- name: ListPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE status = 'published'
+  AND visibility = 'public'
   AND deleted_at IS NULL
   AND starts_at > NOW()
 ORDER BY starts_at ASC
@@ -144,6 +611,24 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Revision,
+			&i.HeldRsvpCount,
+			&i.RegistrationMode,
+			&i.AllowGuest,
+			&i.WaitlistEnabled,
+			&i.OfferMinutes,
+			&i.SpaceID,
+			&i.Theme,
+			&i.ThemeColor,
+			&i.ThemeFont,
+			&i.ThemeStyle,
+			&i.FaqText,
+			&i.ContactUrl,
+			&i.Rewards,
+			&i.ThemeDisplay,
+			&i.Visibility,
+			&i.RegistrationFormRevision,
+			&i.RegistrationNameRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -156,8 +641,9 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 }
 
 const searchPublishedEvents = `-- name: SearchPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE status = 'published'
+  AND visibility = 'public'
   AND deleted_at IS NULL
   AND to_tsvector('english', title || ' ' || description) @@ plainto_tsquery('english', $1)
 ORDER BY ts_rank(to_tsvector('english', title || ' ' || description), plainto_tsquery('english', $1)) DESC
@@ -206,6 +692,24 @@ func (q *Queries) SearchPublishedEvents(ctx context.Context, arg SearchPublished
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Revision,
+			&i.HeldRsvpCount,
+			&i.RegistrationMode,
+			&i.AllowGuest,
+			&i.WaitlistEnabled,
+			&i.OfferMinutes,
+			&i.SpaceID,
+			&i.Theme,
+			&i.ThemeColor,
+			&i.ThemeFont,
+			&i.ThemeStyle,
+			&i.FaqText,
+			&i.ContactUrl,
+			&i.Rewards,
+			&i.ThemeDisplay,
+			&i.Visibility,
+			&i.RegistrationFormRevision,
+			&i.RegistrationNameRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -219,19 +723,19 @@ func (q *Queries) SearchPublishedEvents(ctx context.Context, arg SearchPublished
 
 const updateEventStatus = `-- name: UpdateEventStatus :exec
 UPDATE events
-SET status = $2,
-    published_at = CASE WHEN $2 = 'published' THEN NOW() ELSE published_at END,
-    cancelled_at = CASE WHEN $2 = 'cancelled' THEN NOW() ELSE cancelled_at END,
+SET status = $1::event_status,
+    published_at = CASE WHEN $1::event_status = 'published' THEN NOW() ELSE published_at END,
+    cancelled_at = CASE WHEN $1::event_status = 'cancelled' THEN NOW() ELSE cancelled_at END,
     updated_at = NOW()
-WHERE id = $1 AND deleted_at IS NULL
+WHERE id = $2 AND deleted_at IS NULL
 `
 
 type UpdateEventStatusParams struct {
-	ID     pgtype.UUID `json:"id"`
 	Status EventStatus `json:"status"`
+	ID     pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error {
-	_, err := q.db.Exec(ctx, updateEventStatus, arg.ID, arg.Status)
+	_, err := q.db.Exec(ctx, updateEventStatus, arg.Status, arg.ID)
 	return err
 }

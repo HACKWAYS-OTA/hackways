@@ -1,0 +1,28 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { readEvent, readEventManagementAccess } from '@/lib/event-details';
+import { eventPath } from '@/lib/events';
+import { EventCover } from '@/components/events/EventCover';
+import { EventSidebar } from '@/components/events/EventSidebar';
+import { EventInvitation } from '@/components/events/EventInvitation';
+import { EventInformation } from '@/components/events/EventInformation';
+import { EventScrollLayout } from '@/components/events/EventScrollLayout';
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const event = await readEvent(params.slug);
+  const description = (event.short_description || event.description).slice(0, 160);
+  return { title: event.title, description, robots: event.visibility === 'private' ? { index: false, follow: false } : undefined, alternates: { canonical: eventPath(event) }, openGraph: { title: event.title, description, url: eventPath(event), type: 'website' } };
+}
+
+export default async function EventPage({ params }: { params: { slug: string } }) {
+  const [event, managementAccess] = await Promise.all([readEvent(params.slug), readEventManagementAccess(params.slug)]);
+  return <EventScrollLayout>
+      <header className="event-title-block"><div className="event-title-anchor"><h1 className={event.title.length > 85 ? 'event-title-long' : undefined}>{event.title}</h1></div>
+        {event.short_description && <p className="event-intro-copy">{event.short_description}</p>}
+        <div className="event-presented-by"><span className="event-host-initial" aria-hidden="true">{(event.space_name || event.organizer_name).slice(0, 1).toUpperCase()}</span><div><span>{event.space_slug ? 'A gathering by' : 'Hosted by'}</span>{event.space_slug ? <Link href={`/spaces/${event.space_slug}`}>{event.space_name}</Link> : <strong>{event.organizer_name}</strong>}{event.space_slug && <small>Hosted by {event.organizer_name}</small>}</div></div>
+        <EventInvitation event={event} managementAccess={managementAccess} />
+      </header>
+    <aside className="event-plan" aria-label="Event banner and visit details"><div className="event-plan-anchor"><EventCover event={event} priority className="event-hero-image" sizes="(max-width: 640px) calc(100vw - 40px), (max-width: 860px) calc(100vw - 48px), 43vw" /><EventSidebar event={event} /></div></aside>
+    <div className="event-story"><section className="event-story-section" aria-labelledby="about-heading"><h2 id="about-heading">About this event</h2><div className="event-prose">{event.description.split(/\n\s*\n/).filter(paragraph => paragraph.trim()).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div></section><EventInformation event={event} /></div>
+  </EventScrollLayout>;
+}

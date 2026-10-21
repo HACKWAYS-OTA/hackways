@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hackways/core-backend/db"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -97,7 +98,10 @@ func (sm *SessionManager) GetSession(ctx context.Context, token string) (*Sessio
 	tokenHash := HashToken(token)
 	row, err := sm.queries.GetSessionByTokenHash(ctx, tokenHash)
 	if err != nil {
-		return nil, ErrSessionNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, err
 	}
 
 	// Update last_seen asynchronously in background or inline

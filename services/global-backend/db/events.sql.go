@@ -12,7 +12,7 @@ import (
 )
 
 const getEventByID = `-- name: GetEventByID :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -46,12 +46,30 @@ func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (Events, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
 	)
 	return i, err
 }
 
 const getEventByIDAndOrganizer = `-- name: GetEventByIDAndOrganizer :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
 `
 
@@ -90,12 +108,30 @@ func (q *Queries) GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByID
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Revision,
+		&i.HeldRsvpCount,
+		&i.RegistrationMode,
+		&i.AllowGuest,
+		&i.WaitlistEnabled,
+		&i.OfferMinutes,
+		&i.SpaceID,
+		&i.Theme,
+		&i.ThemeColor,
+		&i.ThemeFont,
+		&i.ThemeStyle,
+		&i.FaqText,
+		&i.ContactUrl,
+		&i.Rewards,
+		&i.ThemeDisplay,
+		&i.Visibility,
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
 	)
 	return i, err
 }
 
 const listPublishedEvents = `-- name: ListPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE status = 'published'
   AND deleted_at IS NULL
   AND starts_at > NOW()
@@ -144,6 +180,24 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Revision,
+			&i.HeldRsvpCount,
+			&i.RegistrationMode,
+			&i.AllowGuest,
+			&i.WaitlistEnabled,
+			&i.OfferMinutes,
+			&i.SpaceID,
+			&i.Theme,
+			&i.ThemeColor,
+			&i.ThemeFont,
+			&i.ThemeStyle,
+			&i.FaqText,
+			&i.ContactUrl,
+			&i.Rewards,
+			&i.ThemeDisplay,
+			&i.Visibility,
+			&i.RegistrationFormRevision,
+			&i.RegistrationNameRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -156,7 +210,7 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 }
 
 const searchPublishedEvents = `-- name: SearchPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events
 WHERE status = 'published'
   AND deleted_at IS NULL
   AND to_tsvector('english', title || ' ' || description) @@ plainto_tsquery('english', $1)
@@ -206,6 +260,24 @@ func (q *Queries) SearchPublishedEvents(ctx context.Context, arg SearchPublished
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Revision,
+			&i.HeldRsvpCount,
+			&i.RegistrationMode,
+			&i.AllowGuest,
+			&i.WaitlistEnabled,
+			&i.OfferMinutes,
+			&i.SpaceID,
+			&i.Theme,
+			&i.ThemeColor,
+			&i.ThemeFont,
+			&i.ThemeStyle,
+			&i.FaqText,
+			&i.ContactUrl,
+			&i.Rewards,
+			&i.ThemeDisplay,
+			&i.Visibility,
+			&i.RegistrationFormRevision,
+			&i.RegistrationNameRequired,
 		); err != nil {
 			return nil, err
 		}

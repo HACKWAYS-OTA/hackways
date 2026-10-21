@@ -32,7 +32,7 @@ WHERE s.token_hash = $1
 -- name: UpdateSessionLastSeen :exec
 UPDATE sessions
 SET last_seen = NOW()
-WHERE id = $1;
+WHERE id = $1 AND last_seen < NOW() - INTERVAL '5 minutes';
 
 -- name: DeleteSessionByTokenHash :exec
 DELETE FROM sessions

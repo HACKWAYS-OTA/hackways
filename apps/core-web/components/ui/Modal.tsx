@@ -1,84 +1,21 @@
-import React, { useEffect } from "react";
-
-export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}
-
-export const Modal: React.FC<ModalProps> = ({
-  isOpen,
-  onClose,
-  title,
-  description,
-  children,
-}) => {
+"use client";
+import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { Icon } from './Icon';
+export interface ModalProps { isOpen: boolean; onClose: () => void; title: string; description?: string; children: ReactNode; dismissible?: boolean }
+export function Modal({ isOpen, onClose, title, description, children, dismissible = true }: ModalProps) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="fixed inset-0"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 z-10 overflow-hidden">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 id="modal-title" className="text-xl font-bold text-white">
-              {title}
-            </h2>
-            {description && (
-              <p className="text-sm text-slate-400 mt-0.5">{description}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Close dialog"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div>{children}</div>
-      </div>
-    </div>
-  );
-};
+    const element = dialog.current;
+    if (!isOpen || !element) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    element.showModal();
+    element.querySelector<HTMLElement>('[data-dialog-focus]')?.focus({ preventScroll: true });
+    return () => { element.close(); document.body.style.overflow = overflow; previous?.focus({ preventScroll: true }); };
+  }, [isOpen]);
+  return <dialog ref={dialog} className="event-dialog" aria-labelledby={titleId} aria-describedby={description ? `${titleId}-description` : undefined} onCancel={(event) => { event.preventDefault(); if (dismissible) onClose(); }} onClick={(event) => { if (dismissible && event.target === event.currentTarget) onClose(); }}>
+    <div className="dialog-surface"><header className="dialog-header"><div><h2 id={titleId} tabIndex={-1} data-dialog-focus>{title}</h2>{description && <p id={`${titleId}-description`}>{description}</p>}</div><button type="button" className="icon-button" aria-label="Close event details" disabled={!dismissible} onClick={onClose}><Icon name="close" /></button></header><div className="dialog-body">{children}</div></div>
+  </dialog>;
+}

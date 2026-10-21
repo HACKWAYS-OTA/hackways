@@ -1,85 +1,66 @@
-# Database Architecture & Schema — Hackways
+# Database and SQL Workflow
 
-**Engine:** PostgreSQL 16  
-**Default Schema:** `public`  
-**Migration Tool:** `golang-migrate`  
-**Query Compiler:** `sqlc` v1.27  
+## Authority
 
----
+PostgreSQL is the source of truth. The current schema is defined by sequential migrations in `deploy/migrations/`; do not create independent migration histories inside the backend services. The initial schema creates users, sessions, organizers, events, RSVPs, and the transactional email outbox.
 
-## 1. Schema Conventions
+Migration `000002_free_event_workflows` adds workflow policies/revisions, held inventory, approval/offer deadlines, transfer history, tickets, audit, request idempotency, authentication attempt limits, email verification and outbox claim tokens. Existing confirmed registrations receive ticket records. The normalized guest identity index rejects collisions instead of merging/deleting rows. Its down migration deliberately refuses destructive rollback; see [rollout and recovery notes](backend/README.md).
 
-- **Primary Keys:** UUID (`gen_random_uuid()`) for all user-facing entities.
-- **Timestamps:** UTC `TIMESTAMPTZ NOT NULL DEFAULT NOW()` for `created_at`; `TIMESTAMPTZ NOT NULL` for `updated_at`.
-- **Timezone Awareness:** All scheduled times are stored as `TIMESTAMPTZ` alongside `timezone TEXT NOT NULL` for display.
-- **Soft Deletion:** `deleted_at TIMESTAMPTZ` on core entities (`users`, `events`).
-- **Naming:** `snake_case` column and table names.
-- **Constraint Enforcement:** CHECK constraints and partial UNIQUE indexes on active rows.
+## Query workflow
 
----
+Each Go service has its own sqlc configuration and generated `db` package. Both configs compile against `../../deploy/migrations/` and the service's `db/queries/` sources. Change query SQL first, then run `sqlc generate` from each service directory whose query set changed. Commit generated code together with the query source. Runtime ORM, string-built SQL, and unparameterized queries are prohibited.
 
-## 2. Migration Sequence
+```powershell
+Push-Location services/core-backend
+sqlc generate
+Pop-Location
 
-```
-services/api/migrations/
-├── 000001_extensions.up.sql       # pgcrypto, uuid-ossp
-├── 000002_users_sessions.up.sql   # users and sessions tables
-├── 000003_organizers.up.sql       # organizers table with user 1:1 FK
-├── 000004_categories.up.sql       # event_categories + initial seeds
-├── 000005_events.up.sql           # events, event_assets, GIN search index
-├── 000006_registrations.up.sql    # registrations table with capacity constraints
-├── 000007_notifications.up.sql    # notifications queue table
-├── 000008_indexes.up.sql          # Performance & filtering indexes
-└── 000009_triggers.up.sql         # set_updated_at trigger functions
+Push-Location services/global-backend
+sqlc generate
+Pop-Location
 ```
 
----
+## RSVP integrity
 
-## 3. Core Entity Relations
+RSVP creation must execute in one PostgreSQL transaction:
 
-```
-User (1:1) ──── Session (1:N)
-  │
-  └── Organizer (1:1) ──── Event (1:N) ──── EventCategory (N:1)
-                             │
-                             ├── EventAsset (1:N)
-                             │
-                             └── Registration (1:N) ──── Notification (1:N)
-```
+1. Set `SET LOCAL statement_timeout = '2000ms'`.
+2. Lock the active event row using `SELECT ... FOR UPDATE`.
+3. Check event state and capacity while holding the lock.
+4. Insert idempotently under database uniqueness constraints.
+5. Increment the event's confirmed RSVP counter only when the insert succeeds.
+6. Insert the email outbox row in the same transaction.
+7. Commit before returning success.
 
-### Table Definitions Summary
-- `users`: id, email (unique active), password_hash, display_name, avatar_url, email_verified, timestamps, deleted_at.
-- `sessions`: id, user_id (FK), token_hash (unique), user_agent, ip_address, expires_at, last_seen.
-- `organizers`: id, user_id (FK unique), display_name, slug (unique), bio, website_url, verified.
-- `event_categories`: id (BIGSERIAL), name, slug (unique), icon.
-- `events`: id, organizer_id (FK), category_id (FK), status (draft, published, unpublished, cancelled), format, title, slug (unique), description, location, starts_at, ends_at, timezone, capacity, registration_count, tags.
-- `rsvps`: id, event_id (FK), user_id (FK nullable), guest_name, guest_email, status, notes, registered_at.
-  - Partial unique: `(event_id, user_id)`
-  - Partial unique: `(event_id, guest_email)`
-- `email_outbox`: id, rsvp_id (FK), event_id (FK), recipient_email, recipient_name, template_type, payload_json, status, retry_count, scheduled_at, sent_at.
+The current schema uses unique constraints on `(event_id, user_id)` and `(event_id, guest_email)`. PostgreSQL permits multiple NULL values under ordinary unique constraints, so authenticated idempotency is enforced for users; guest email uniqueness also applies when provided. Verify any change to identity rules against these constraints and the handler.
 
----
+The normalized index also covers `(event_id, lower(guest_email))` for non-null emails. Confirmed registrations and held offers use separate counters; their sum is protected by a CHECK constraint. Pending applications and waitlist entries consume no capacity. Capacity transitions lock the event first and commit registration, counter, ticket, audit and outbox changes together. Transfers keep total inventory constant. Idempotency keys expire after 24 hours; identity uniqueness does not expire. Offer/approval confirmation also checks its deadline in SQL.
 
-## 4. Azure Database for PostgreSQL Flexible Server Integration
+## Connection limits
 
-### 4.1 Production Hosting & High Availability
-In production, database persistence is offloaded from the single VM to **Azure Database for PostgreSQL (Flexible Server)**:
-- **Tier:** General Purpose or Burstable (e.g. `Standard_B2s` or `Standard_D2ds_v5`).
-- **Storage:** Premium SSD with auto-grow enabled.
-- **SSL / TLS Enforcement:** Strict TLS 1.2+ encryption in transit via `sslmode=require`.
-- **Automated Durability:** Automated daily system snapshots with 35-day Point-In-Time Restore (PITR) retention.
-- **Network Isolation:** Bound to Azure Virtual Network (VNet) private subnet or secured via Azure firewall rule permitting only the production VM's outbound public IP.
+The production budget is 60 total connections: core backend up to 28, global backend up to 22, with ten reserved for migrations and administration. Keep local and production environment values within those ceilings. Pool defaults in code are not proof that deployed environment overrides respect them.
 
-### 4.2 Connection Pool Allocations (`pgxpool`)
-To guarantee optimal connection management and zero pool starvation:
-- `core-backend` pool: Max 32 connections, Min 4 connections (`DB_MAX_CONNS=32`, `DB_MIN_CONNS=4`).
-- `global-backend` pool: Max 24 connections, Min 3 connections (`DB_MAX_CONNS=24`, `DB_MIN_CONNS=3`).
-- Administrative / CLI / Migrations: Reserved 10 connections.
-- Total active connections adhere to Azure Flexible Server connection allowances without requiring local PgBouncer overhead.
+## Spaces and event presentation migrations
 
-### 4.3 Lock Statement Timeout
-All capacity transactions in `core-backend` mandate:
-```sql
-SET LOCAL statement_timeout = '2000ms';
-```
-Failing fast under extreme connection pressure ensures that connection pool threads never hang indefinitely.
+- `000003_spaces`: Spaces, unique memberships, creation replay keys/hashes, revision and archive state, event association, appearance, and random unique registration/ticket codes. The `(space_id,organizer_id)` foreign key enforces owner-only event hosting under a Space. Ticket reissue rotates its public code.
+- `000004_event_information`: optional FAQ, HTTPS contact link and rewards text; empty defaults preserve existing records.
+- `000005_event_display`: persisted light/dark event display, default light.
+- `000006_event_visibility`: public/link-only visibility, default public, and a partial public-discovery index. Listing SQL excludes private events while slug reads remain available. Publication and visibility are separate.
+
+Both engines regenerate sqlc models against the full migration sequence. Down files deliberately refuse destructive rollback; preserve persisted content and visibility when reverting application code. These additive migrations were applied to the local application schema and isolated verification schemas without deleting application records. The local database has no historical migration-tool version metadata; reconcile that metadata before introducing automated migrate-up to this existing database.
+
+## Operational rules
+
+- Use backward-compatible, numbered migrations. Do not apply destructive production DDL without a reviewed transition plan.
+- Never use real production data in tests or local development.
+- Verify query plans and indexes when measured query latency identifies a problem; do not add speculative indexes.
+- Production database connection strings require TLS and secrets must be injected at runtime.
+- Media belongs in Azure Blob Storage. PostgreSQL stores metadata and references, not uploaded file bodies.
+
+## Registration form persistence (000007)
+
+Events have an independent registration_form_revision and optional registration_name_required flag. event_registration_questions stores bounded metadata, ordering, options, active state and unique Q-codes. Owner mutations and new RSVP validation serialize using the same event row lock and 2-second statement timeout. Missing questions are deactivated, never deleted by the application.
+
+registration_submissions stores append-only answer snapshots with the corresponding form revision and RSVP. It is indexed by RSVP/latest submission. Re-registration adds a new submission rather than replacing historical answers. Transfers do not copy answer snapshots. Latest answers are available only through event-owner guest detail authorization. Payloads are capped at 20 answers, 2,000 characters per answer and 20,000 combined text bytes. No binary media or local JSON persistence is introduced.
+
+Both engines regenerate sqlc against this additive migration. Its down file deliberately refuses data-destroying rollback, consistent with the existing content/visibility migrations; revert application code without deleting submissions, or prepare a separately reviewed compatible transition.

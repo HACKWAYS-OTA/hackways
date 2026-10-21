@@ -37,7 +37,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0E121E]/40 p-4 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -47,19 +47,19 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 z-10 overflow-hidden">
+      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-[#E4E7F0] bg-white p-6 shadow-2xl sm:p-7">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 id="modal-title" className="text-xl font-bold text-white">
+            <h2 id="modal-title" className="text-xl font-bold text-[#0E121E]">
               {title}
             </h2>
             {description && (
-              <p className="text-sm text-slate-400 mt-0.5">{description}</p>
+              <p className="text-sm text-[#475069] mt-0.5">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-full p-2 text-[#757F9A] transition hover:bg-[#F1F3F9] hover:text-[#0E121E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#34349C]"
             aria-label="Close dialog"
           >
             <svg

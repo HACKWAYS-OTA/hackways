@@ -1,0 +1,42 @@
+.date-time-field { position: relative; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 3px; min-width: 0; }
+.date-time-field > button { min-width: 0; min-height: 44px; padding: 9px 7px; border: 0; background: #eae3ed; color: #392b41; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.date-time-field .date-block { border-radius: 8px 0 0 8px; }
+.date-time-field .time-block { border-radius: 0 8px 8px 0; }
+.date-time-field > button:hover { background: #dfd3e6; }
+.date-time-field[data-invalid=true] > button { outline: 1px solid #9b3651; }
+.picker-validation { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
+.date-time-dialog { position: fixed; inset: 0; width: 360px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow-y: auto; border: 0; border-radius: 16px; background: #fffcff; color: #302535; box-shadow: 0 18px 64px #24182e3d; }
+.date-time-dialog::backdrop { background: #20152852; }
+.picker-body { padding: 20px; }
+.picker-body header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.picker-body h2 { font-size: 18px; line-height: 1.5; }
+.picker-body button { min-height: 40px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 13px; }
+.picker-body button:hover { background: #eee6f3; }
+.picker-body header button { padding-inline: 8px; color: #66526f; }
+.calendar-heading { display: grid; grid-template-columns: 66px 1fr 54px; align-items: center; margin-bottom: 10px; }
+.calendar-heading h3 { text-align: center; font-family: "Google Sans Flex"; font-size: 14px; -webkit-text-stroke: 0; }
+.calendar-heading button { font-size: 11px; }
+.calendar-weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.calendar-weekdays span { padding-block: 8px; text-align: center; color: #75617e; font-size: 11px; }
+.calendar-days button { font-variant-numeric: tabular-nums; }
+.calendar-days .outside-month { color: #86728e; }
+.calendar-days button[aria-current=date] { text-decoration: underline; text-underline-offset: 5px; }
+.picker-body button[aria-pressed=true] { background: #493254; color: #fff; }
+.picker-hint { margin-top: 14px; color: #73617d; font-size: 11px; line-height: 1.7; }
+.time-preview { font-size: 28px; text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 20px; }
+.time-preview span { font-size: 16px; }
+.time-picker-dialog { width: 320px; }
+.time-wheel-labels, .time-wheels { display: grid; grid-template-columns: 1fr 1fr .9fr; gap: 8px; }
+.time-wheel-labels { color: #786583; font-size: 11px; text-align: center; margin-bottom: 8px; }
+.time-wheels { margin-bottom: 22px; }
+.time-wheel { height: 218px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #cfc0d8 transparent; padding: 4px; border-radius: 10px; background: #f5f0f7; scroll-padding-block: 4px; }
+.time-wheel [role=option] { display: grid; place-items: center; height: 42px; margin-block: 1px; border-radius: 7px; color: #796585; cursor: pointer; font-size: 17px; font-variant-numeric: tabular-nums; }
+.time-wheel [role=option]:hover { background: #e9dfef; color: #392543; }
+.time-wheel [data-highlight=true] { background: #e4d7ec; color: #392543; font-weight: 600; }
+.time-wheel-period { padding-top: 68px; }
+.picker-body .picker-done { width: 100%; background: #302535; color: white; }
+.picker-body .picker-done:hover { background: #513d5c; }
+.picker-body footer { color: #92324e; font-size: 12px; }
+.picker-body footer:empty { display: none; }
+.picker-body footer button { color: #695074; margin-top: 12px; }
+@media (max-width: 380px) { .date-time-field > button { font-size: 12px; padding-inline: 4px; } .picker-body { padding: 16px; } }

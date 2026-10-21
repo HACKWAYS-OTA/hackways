@@ -2,14 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0b0f19;
-  --foreground: #f8fafc;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  min-height: 100vh;
-}
+@font-face { font-family: "FG Futurist"; src: url("/fonts/fg-futurist-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Google Sans Flex"; src: url("/fonts/google-sans-flex-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+:root { color-scheme: light; --paper: #fff; --ink: #1f1f23; --muted: #655d70; --line: #e6e0ec; --soft: #f8f5fc; --violet: #72548e; --accent: #1f1f23; --header-height: 64px; }
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(var(--header-height) + 24px); }
+body { margin: 0; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: #fff; color: var(--ink); font-family: "Google Sans Flex"; font-size: 15px; font-weight: 400; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+::selection { background: #e8dcf3; color: #30243c; }
+a { color: inherit; text-decoration: none; text-underline-offset: 4px; }
+button, input, textarea, select { font: inherit; }
+button, a, summary, select, input { -webkit-tap-highlight-color: transparent; }
+button, select, summary { cursor: pointer; }
+button { color: inherit; }
+button, a { transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease; }
+button:disabled, select:disabled { cursor: not-allowed; opacity: .5; }
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 4px; }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3, h4 { font-family: "FG Futurist"; font-weight: 400; letter-spacing: -.025em; text-wrap: balance; -webkit-text-stroke: .008em currentColor; }
+svg { flex-shrink: 0; }
+.app-container { width: min(1200px, calc(100% - 80px)); margin-inline: auto; }
+.app-main { flex: 1; min-width: 0; }
+.app-main:focus { outline: none; }
+.skip-control { position: fixed; z-index: 50; top: -100px; left: 16px; padding: 10px 18px; border: 1px solid var(--ink); border-radius: 9999px; background: #fff; font-size: 14px; }
+.skip-control:focus { top: 12px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.app-header { position: relative; z-index: 20; background: transparent; }
+.app-header-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 24px; width: calc(100% - 48px); min-height: var(--header-height); margin-inline: auto; }
+.wordmark { width: fit-content; font-family: "FG Futurist"; font-size: 21px; line-height: 1.3; letter-spacing: -.035em; -webkit-text-stroke: .3px currentColor; }
+.app-nav { display: flex; align-items: center; font-size: 14px; }
+.app-nav > a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 2px; color: var(--muted); }
+.app-nav > a[aria-current] { color: #31273a; }
+.app-nav a:hover, .app-footer a:hover { color: var(--violet); }
+.header-create { display: inline-flex; align-items: center; justify-self: end; gap: 7px; width: fit-content; min-height: 44px; color: #6e6079; font-size: 13px; white-space: nowrap; }
+.header-create:hover { color: #35253f; }
+.app-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; min-height: 44px; width: fit-content; max-width: 100%; padding: 10px 21px; border: 1px solid transparent; border-radius: 9999px; font-family: "FG Futurist"; font-size: 13px; font-weight: 400; line-height: 22px; text-align: center; -webkit-text-stroke: .006em currentColor; }
+.app-button-primary { background: var(--accent); color: #fff; }
+.app-button-primary:hover { background: #3a3540; }
+.app-button-outline { border-color: #cfc6d7; background: #fff; color: var(--ink); }
+.app-button-outline:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) { border-color: #b49bc6; background: #f0e8f6; }
+.app-button-secondary { background: #eee6f6; color: #503b64; }
+.app-button-secondary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) { background: #dfd0ec; color: #3f2b50; }
+.app-button-outline:active:not(:disabled):not([aria-disabled="true"]) { background: #e5d8ee; }
+.app-button-secondary:active:not(:disabled):not([aria-disabled="true"]) { background: #d3bfe3; }
+.app-button-ghost { color: var(--muted); background: transparent; }
+.app-button-ghost:hover { color: var(--ink); background: var(--soft); }
+.app-button-sm { min-height: 38px; padding: 7px 17px; font-size: 12px; }
+.app-button-lg { min-height: 48px; padding-inline: 26px; }
+.app-button:disabled { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .app-button { transition: none; } }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 8px; border: 0; border-radius: 9999px; background: transparent; color: var(--muted); }
+.icon-button:hover { color: var(--ink); background: var(--soft); }
+.quiet-link { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 0; border: 0; background: none; color: #654b7d; font-size: 13px; text-align: left; }
+.quiet-link:hover { text-decoration: underline; }
+.app-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-block: 24px; margin-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.app-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+@media (max-width: 640px) { .app-container { width: calc(100% - 40px); } }

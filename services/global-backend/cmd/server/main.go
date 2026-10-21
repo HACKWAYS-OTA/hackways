@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -51,11 +53,11 @@ func main() {
 	// 3. Initialize PostgreSQL Connection Pool
 	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("failed to parse database configuration", "error", err)
+		logger.Error("failed to parse database configuration; check DATABASE_URL without logging its value")
 		os.Exit(1)
 	}
 	poolConfig.MaxConns = int32(cfg.DBMaxConns)
-	poolConfig.MinConns = int32(cfg.DBMinConns)
+	poolConfig.MinConns = int32(min(cfg.DBMinConns, cfg.DBMaxConns))
 	poolConfig.MaxConnLifetime = cfg.DBMaxConnLifetime
 	poolConfig.MaxConnIdleTime = cfg.DBMaxConnIdleTime
 
@@ -64,9 +66,13 @@ func main() {
 
 	pool, err := pgxpool.NewWithConfig(initCtx, poolConfig)
 	if err != nil {
-		logger.Warn("could not establish immediate connection to database; starting in degraded mode", "error", err)
+		logger.Error("could not initialize database pool", "error", err)
+		os.Exit(1)
 	} else {
-		logger.Info("connected to PostgreSQL",
+		if pingErr := pool.Ping(initCtx); pingErr != nil {
+			logger.Warn("database is not ready; health checks will return unavailable")
+		}
+		logger.Info("initialized PostgreSQL pool",
 			"max_conns", cfg.DBMaxConns,
 			"min_conns", cfg.DBMinConns,
 		)
@@ -79,32 +85,45 @@ func main() {
 		Container:   "media-uploads",
 		CDNDomain:   os.Getenv("AZURE_CDN_DOMAIN"),
 	}
-	if sasConfig.AccountName == "" {
-		sasConfig.AccountName = "hackwaysdev"
-	}
-	if sasConfig.AccountKey == "" {
-		// Safe local development HMAC signing key
-		sasConfig.AccountKey = "dGVzdC1kZXZlbG9wbWVudC1rZXktZm9yLWhhY2t3YXlzLWF6dXJlLXNhcw=="
+	if sasConfig.AccountName == "" || sasConfig.AccountKey == "" {
+		logger.Warn("Azure Blob Storage is not configured; upload intents are unavailable")
 	}
 	sasSigner := storage.NewAzureBlobSASSigner(sasConfig)
 
 	// 5. Initialize transactional email outbox worker
-	emailSender := notifications.NewLogEmailSender(logger)
+	var emailSender notifications.EmailSender = notifications.UnavailableEmailSender{}
+	emailConfigured := false
+	acsEndpoint, acsKey, acsSender := notifications.EmailConfiguration()
+	if acsEndpoint != "" || acsKey != "" || acsSender != "" {
+		configuredSender, senderErr := notifications.NewACSEmailSender(acsEndpoint, acsKey, acsSender)
+		if senderErr != nil {
+			logger.Error("invalid ACS email configuration", "error", senderErr)
+			os.Exit(1)
+		}
+		emailSender = configuredSender
+		emailConfigured = true
+	} else {
+		logger.Warn("ACS email is not configured; notification delivery is paused without consuming retries")
+	}
 
 	var outboxWorker *notifications.OutboxWorker
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
 
-	if pool != nil {
+	if pool != nil && emailConfigured {
 		outboxWorker = notifications.NewOutboxWorker(pool, emailSender, logger, 2*time.Second)
 		outboxWorker.Start(workerCtx)
 	}
 
+	var housekeepingWG sync.WaitGroup
+	housekeepingWG.Add(1)
+	go func() { defer housekeepingWG.Done(); notifications.Housekeeping(workerCtx, pool, logger) }()
 	// 6. Initialize HTTP router and middleware
 	r := chi.NewRouter()
 	r.Use(platform.RequestID)
 	r.Use(platform.Logger(logger))
 	r.Use(platform.Recoverer(logger))
+	r.Use(platform.RequestProtection(24))
 	r.Use(platform.CORS(cfg.CORSAllowedOrigins))
 
 	// 7. Mount health check
@@ -112,29 +131,29 @@ func main() {
 
 	// 8. Mount domain handlers
 	authHandler := auth.NewHandler(pool, cfg.AppEnv == "production")
-	storageHandler := storage.NewHandler(sasSigner)
+	storageHandler := storage.NewHandler(sasSigner, pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			platform.RespondJSON(w, http.StatusOK, map[string]string{
 				"service": "Hackways Global Backend",
 				"version": "v1",
-				"port":    "8082",
-				"status":  "operational",
 			})
 		})
 		v1.Mount("/auth", authHandler.Routes())
-		v1.Mount("/storage", storageHandler.Routes())
+		v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
 	})
 
 	// 9. HTTP Server with production timeouts
-	serverAddr := fmt.Sprintf(":%d", cfg.Port)
+	serverAddr := net.JoinHostPort(cfg.BindHost, fmt.Sprint(cfg.Port))
 	srv := &http.Server{
-		Addr:         serverAddr,
-		Handler:      r,
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-		IdleTimeout:  cfg.IdleTimeout,
+		Addr:              serverAddr,
+		Handler:           r,
+		ReadTimeout:       cfg.ReadTimeout,
+		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	// 10. Graceful shutdown handler
@@ -147,6 +166,9 @@ func main() {
 		logger.Info("shutting down Global Backend gracefully...")
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 		defer cancel()
+		shutdownResult := srv.Shutdown(ctx)
+		workerCancel()
+		housekeepingWG.Wait()
 
 		if outboxWorker != nil {
 			logger.Info("stopping transactional email outbox worker...")
@@ -159,7 +181,7 @@ func main() {
 			pool.Close()
 		}
 
-		shutdownErr <- srv.Shutdown(ctx)
+		shutdownErr <- shutdownResult
 	}()
 
 	logger.Info("Global Backend listener ready", "addr", serverAddr)

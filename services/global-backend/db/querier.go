@@ -11,29 +11,48 @@ import (
 )
 
 type Querier interface {
+	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
+	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
+	ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error)
+	CleanupAuthAttempts(ctx context.Context) error
+	ConsumeEmailVerification(ctx context.Context, tokenHash string) (ConsumeEmailVerificationRow, error)
+	CountAuthAttempt(ctx context.Context, scopeHash string) (int32, error)
+	CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) error
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error
 	DeleteSessionsByUserID(ctx context.Context, userID pgtype.UUID) error
 	EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutboxParams) (EmailOutbox, error)
+	// Claim rows atomically. The scheduled_at lease expires if a worker crashes.
 	FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchPendingOutboxRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (Events, error)
 	GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByIDAndOrganizerParams) (Events, error)
 	GetOrganizerByUserID(ctx context.Context, userID pgtype.UUID) (Organizers, error)
-	GetRSVPByID(ctx context.Context, id pgtype.UUID) (Rsvps, error)
+	GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUserParams) (Rsvps, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
+	ListAccountSessions(ctx context.Context, userID pgtype.UUID) ([]ListAccountSessionsRow, error)
+	ListOwnedNotifications(ctx context.Context, arg ListOwnedNotificationsParams) ([]ListOwnedNotificationsRow, error)
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
 	ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventParams) ([]Rsvps, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
+	MarkClaimedOutboxFailed(ctx context.Context, arg MarkClaimedOutboxFailedParams) (int64, error)
+	MarkClaimedOutboxSent(ctx context.Context, arg MarkClaimedOutboxSentParams) (int64, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
+	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
+	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
+	RetryOwnedNotification(ctx context.Context, arg RetryOwnedNotificationParams) (pgtype.UUID, error)
+	RevokeOwnedSession(ctx context.Context, arg RevokeOwnedSessionParams) (int64, error)
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
+	SetStorageWriteTimeout(ctx context.Context) error
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
+	VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error)
+	VerifyAccountEmail(ctx context.Context, arg VerifyAccountEmailParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

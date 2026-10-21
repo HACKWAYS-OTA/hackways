@@ -133,7 +133,7 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 const updateSessionLastSeen = `-- name: UpdateSessionLastSeen :exec
 UPDATE sessions
 SET last_seen = NOW()
-WHERE id = $1
+WHERE id = $1 AND last_seen < NOW() - INTERVAL '5 minutes'
 `
 
 func (q *Queries) UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error {

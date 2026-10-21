@@ -47,6 +47,10 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 
 			user, err := sm.GetSession(r.Context(), token)
 			if err != nil {
+				if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
+					platform.RespondDatabaseError(w, err)
+					return
+				}
 				platform.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session expired or invalid", nil)
 				return
 			}

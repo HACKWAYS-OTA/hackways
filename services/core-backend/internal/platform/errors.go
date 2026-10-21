@@ -1,8 +1,11 @@
 package platform
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"net"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -56,9 +59,19 @@ func MapDatabaseError(err error) (int, string, string) {
 		return http.StatusOK, "", ""
 	}
 
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return http.StatusServiceUnavailable, "REQUEST_TIMEOUT", "The operation could not be confirmed; retry safely with the same idempotency key"
+	}
+	var connectionError *pgconn.ConnectError
+	var networkError *net.OpError
+	if errors.As(err, &connectionError) || errors.As(err, &networkError) {
+		return http.StatusServiceUnavailable, "DATABASE_UNAVAILABLE", "The database is temporarily unavailable"
+	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
+		case "40001", "53300", "57P01", "08006", "08003":
+			return http.StatusServiceUnavailable, "DATABASE_RETRY_REQUIRED", "The operation could not be confirmed; retry safely with the same idempotency key"
 		case "23505": // unique_violation
 			return http.StatusConflict, "CONFLICT", "Resource already exists or duplicate key violated"
 		case "23503": // foreign_key_violation
@@ -80,5 +93,9 @@ func MapDatabaseError(err error) (int, string, string) {
 // RespondDatabaseError translates a database error and emits a formatted error response.
 func RespondDatabaseError(w http.ResponseWriter, err error) {
 	status, code, msg := MapDatabaseError(err)
+	slog.Error("database operation failed", "request_id", w.Header().Get(RequestIDHeader), "error_code", code)
+	if status == http.StatusServiceUnavailable {
+		w.Header().Set("Retry-After", "1")
+	}
 	RespondError(w, status, code, msg, nil)
 }
