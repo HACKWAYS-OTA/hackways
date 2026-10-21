@@ -125,6 +125,10 @@ services:
       ACS_ENDPOINT: ${ACS_ENDPOINT:-}
       ACS_ACCESS_KEY: ${ACS_ACCESS_KEY:-}
       ACS_SENDER_ADDRESS: ${ACS_SENDER_ADDRESS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
+      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in}
     networks:
       - hackways-internal
     deploy:

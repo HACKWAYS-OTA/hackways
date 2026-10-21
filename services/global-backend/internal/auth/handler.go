@@ -24,16 +24,22 @@ type Handler struct {
 	queries      *db.Queries
 	sm           *SessionManager
 	isProduction bool
+	google       GoogleOAuthConfig
 }
 
 // NewHandler constructs an Auth Handler.
-func NewHandler(pool *pgxpool.Pool, isProduction bool) *Handler {
+func NewHandler(pool *pgxpool.Pool, isProduction bool, googleConfig ...GoogleOAuthConfig) *Handler {
 	queries := db.New(pool)
+	var google GoogleOAuthConfig
+	if len(googleConfig) > 0 {
+		google = googleConfig[0]
+	}
 	return &Handler{
 		pool:         pool,
 		queries:      queries,
 		sm:           NewSessionManager(queries),
 		isProduction: isProduction,
+		google:       google,
 	}
 }
 
@@ -50,6 +56,9 @@ func (h *Handler) Routes() chi.Router {
 	r.Post("/login", h.Login)
 	r.Post("/logout", h.Logout)
 	r.Post("/verify", h.Verify)
+	r.Get("/google/start", h.GoogleStart)
+	r.Get("/google/callback", h.GoogleCallback)
+	r.Post("/google/exchange", h.GoogleExchange)
 
 	// Protected routes
 	r.Group(func(protected chi.Router) {
