@@ -1,207 +1,175 @@
 package rsvps
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
+	"net/mail"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/core-backend/db"
 	"github.com/hackways/core-backend/internal/auth"
 	"github.com/hackways/core-backend/internal/platform"
+	"github.com/hackways/core-backend/internal/registrationforms"
+	"github.com/hackways/core-backend/internal/workflows"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Handler serves HTTP endpoints for RSVPs.
 type Handler struct {
-	pool    *pgxpool.Pool
-	queries *db.Queries
+	pool     *pgxpool.Pool
+	queries  *db.Queries
+	sessions *auth.SessionManager
+	engine   *workflows.Engine
 }
 
-// NewHandler constructs an RSVPs Handler.
 func NewHandler(pool *pgxpool.Pool) *Handler {
-	return &Handler{
-		pool:    pool,
-		queries: db.New(pool),
-	}
+	q := db.New(pool)
+	return &Handler{pool, q, auth.NewSessionManager(q), workflows.New(pool)}
 }
-
-// Routes mounts RSVP endpoints.
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", h.CreateRSVP)
-	r.Get("/{id}", h.GetRSVP)
+	r.With(auth.OptionalAuth(h.sessions)).Post("/", h.CreateRSVP)
+	r.Group(func(protected chi.Router) {
+		protected.Use(auth.RequireAuth(h.sessions))
+		protected.Get("/", h.ListMine)
+		protected.Post("/claim", h.ClaimGuest)
+		protected.Get("/{id}", h.GetRSVP)
+		protected.Get("/by-code/{code}", h.GetByPublicCode)
+		protected.Post("/{id}/cancel", h.Change)
+		protected.Post("/{id}/accept", h.Change)
+		protected.Get("/{id}/ticket", h.Ticket)
+		protected.Patch("/{id}", h.EditNotes)
+		protected.Post("/{id}/transfer", h.Transfer)
+		protected.With(auth.RequireOrganizer(h.queries)).Post("/{id}/approve", h.Change)
+		protected.With(auth.RequireOrganizer(h.queries)).Post("/{id}/reject", h.Change)
+	})
 	return r
 }
 
-// CreateRSVPRequest represents incoming reservation payload.
 type CreateRSVPRequest struct {
-	EventID    string `json:"event_id"`
-	GuestName  string `json:"guest_name"`
-	GuestEmail string `json:"guest_email"`
-	Notes      string `json:"notes"`
+	EventID      string                     `json:"event_id"`
+	GuestName    string                     `json:"guest_name"`
+	GuestEmail   string                     `json:"guest_email"`
+	Notes        string                     `json:"notes"`
+	Waitlist     bool                       `json:"waitlist"`
+	FormRevision *int64                     `json:"form_revision"`
+	Answers      []registrationforms.Answer `json:"answers"`
 }
 
-// CreateRSVP handles POST /api/v1/rsvps using the authoritative pessimistic locking capacity engine.
 func (h *Handler) CreateRSVP(w http.ResponseWriter, r *http.Request) {
-	var req CreateRSVPRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		platform.RespondError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "Invalid request JSON payload", nil)
+	var body CreateRSVPRequest
+	if err := platform.DecodeJSON(r, &body); err != nil {
+		platform.RespondError(w, 400, "INVALID_PAYLOAD", "Invalid or oversized JSON registration payload", nil)
 		return
 	}
-
-	if req.EventID == "" {
-		platform.RespondError(w, http.StatusBadRequest, "MISSING_EVENT_ID", "Event ID is required", nil)
-		return
-	}
-
-	var eventUUID pgtype.UUID
-	if err := eventUUID.Scan(req.EventID); err != nil {
-		platform.RespondError(w, http.StatusBadRequest, "INVALID_EVENT_ID", "Event ID format is invalid", nil)
-		return
-	}
-
-	var userUUID pgtype.UUID
-	userEmail := req.GuestEmail
-	userName := req.GuestName
-
-	// If authenticated session exists, link user ID directly
-	if user, ok := auth.UserFromContext(r.Context()); ok && user != nil {
-		userUUID = user.UserID
-		if userEmail == "" {
-			userEmail = user.Email
-		}
-		if userName == "" {
-			userName = user.DisplayName
-		}
-	}
-
-	if !userUUID.Valid && userEmail == "" {
-		platform.RespondError(w, http.StatusBadRequest, "IDENTITY_REQUIRED", "Either authentication or guest_email is required", nil)
-		return
-	}
-
-	ctx := r.Context()
-
-	// 1. Begin isolated transaction
-	tx, err := h.pool.Begin(ctx)
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	defer tx.Rollback(ctx)
-
-	// 2. Enforce statement_timeout = '2000ms' as per AGENTS.md Rule 2.4
-	if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '2000ms';"); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	qtx := h.queries.WithTx(tx)
-
-	// 3. Pessimistic lock row with SELECT ... FOR UPDATE
-	event, err := qtx.LockEventForRSVP(ctx, eventUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			platform.RespondError(w, http.StatusNotFound, "EVENT_NOT_FOUND", "Event not found", nil)
-			return
-		}
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	// 4. Verify event is published and open
-	if event.Status != db.EventStatusPublished {
-		platform.RespondError(w, http.StatusBadRequest, "EVENT_NOT_OPEN", "Event is not open for registration", nil)
-		return
-	}
-
-	// 5. Invariant check: capacity full
-	if event.Capacity.Valid && event.CurrentRsvpCount >= event.Capacity.Int32 {
-		platform.RespondError(w, http.StatusConflict, "CAPACITY_FULL", "Event is at full capacity", nil)
-		return
-	}
-
-	// 6. Idempotent reservation insert (Database constraint ON CONFLICT DO NOTHING)
-	params := db.CreateRSVPParams{
-		EventID:    eventUUID,
-		UserID:     userUUID,
-		GuestName:  pgtype.Text{String: userName, Valid: userName != ""},
-		GuestEmail: pgtype.Text{String: userEmail, Valid: userEmail != ""},
-		Notes:      pgtype.Text{String: req.Notes, Valid: req.Notes != ""},
-	}
-
-	rsvp, err := qtx.CreateRSVP(ctx, params)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			// ON CONFLICT DO NOTHING returned zero rows -> user is already registered!
-			platform.RespondError(w, http.StatusConflict, "ALREADY_REGISTERED", "You are already registered for this event", nil)
-			return
-		}
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	// 7. Atomic capacity counter increment
-	if err := qtx.IncrementRSVPCount(ctx, eventUUID); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	// 8. Enqueue confirmation email atomically into transactional outbox
-	payloadJSON, _ := json.Marshal(map[string]any{
-		"event_id":   req.EventID,
-		"rsvp_id":    rsvp.ID,
-		"guest_name": userName,
-	})
-
-	_, err = qtx.EnqueueEmailOutbox(ctx, db.EnqueueEmailOutboxParams{
-		RsvpID:         rsvp.ID,
-		EventID:        eventUUID,
-		RecipientEmail: userEmail,
-		RecipientName:  pgtype.Text{String: userName, Valid: userName != ""},
-		TemplateType:   "rsvp_confirmation",
-		PayloadJson:    payloadJSON,
-	})
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	// 9. Commit transaction atomically
-	if err := tx.Commit(ctx); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-
-	platform.RespondJSON(w, http.StatusCreated, map[string]any{
-		"data":    rsvp,
-		"message": "RSVP confirmed successfully",
-	})
-}
-
-// GetRSVP handles GET /api/v1/rsvps/{id}.
-func (h *Handler) GetRSVP(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
 	var id pgtype.UUID
-	if err := id.Scan(idStr); err != nil {
-		platform.RespondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid RSVP ID format", nil)
+	if err := id.Scan(body.EventID); err != nil || !id.Valid {
+		platform.RespondError(w, 400, "INVALID_EVENT_ID", "A valid event ID is required", nil)
 		return
 	}
-
-	rsvp, err := h.queries.GetRSVPByID(r.Context(), id)
+	req := workflows.Request{EventID: id, Name: strings.TrimSpace(body.GuestName), Email: strings.ToLower(strings.TrimSpace(body.GuestEmail)), Notes: strings.TrimSpace(body.Notes), Key: r.Header.Get("Idempotency-Key"), RequestID: platform.GetRequestID(r.Context()), Waitlist: body.Waitlist}
+	req.FormRevision = body.FormRevision
+	req.Answers = body.Answers
+	if user, ok := auth.UserFromContext(r.Context()); ok {
+		req.UserID = user.UserID
+		req.Name = user.DisplayName
+		req.Email = strings.ToLower(user.Email)
+	}
+	parsed, err := mail.ParseAddress(req.Email)
+	if err != nil || parsed.Address != req.Email || len(req.Email) > 320 || len(req.Name) > 200 || len(req.Notes) > 2000 {
+		platform.RespondError(w, 400, "INVALID_DETAILS", "Provide a valid email and keep name/notes within their limits", nil)
+		return
+	}
+	if !workflows.ValidateKey(req.Key) {
+		platform.RespondError(w, 400, "INVALID_IDEMPOTENCY_KEY", "Use a random key of 16 to 128 printable characters", nil)
+		return
+	}
+	result, replayed, err := h.engine.Register(r.Context(), req)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			platform.RespondError(w, http.StatusNotFound, "NOT_FOUND", "RSVP record not found", nil)
-			return
-		}
-		platform.RespondDatabaseError(w, err)
+		respondFailure(w, err)
 		return
 	}
-
-	platform.RespondJSON(w, http.StatusOK, map[string]any{
-		"data": rsvp,
-	})
+	status := 201
+	if replayed {
+		w.Header().Set("Idempotency-Replayed", "true")
+		status = 200
+	}
+	platform.RespondJSON(w, status, result)
+}
+func (h *Handler) GetRSVP(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	var id pgtype.UUID
+	if err := id.Scan(chi.URLParam(r, "id")); err != nil || !id.Valid {
+		platform.RespondError(w, 400, "INVALID_ID", "Invalid registration ID", nil)
+		return
+	}
+	row, err := h.queries.GetRSVPByIDAndUser(r.Context(), db.GetRSVPByIDAndUserParams{ID: id, UserID: user.UserID})
+	if err != nil {
+		respondFailure(w, err)
+		return
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data db.Rsvps `json:"data"`
+	}{row})
+}
+func page(r *http.Request) (int32, int32) {
+	limit, offset := int64(20), int64(0)
+	if n, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && n > 0 && n <= 100 {
+		limit = n
+	}
+	if n, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && n >= 0 {
+		offset = n
+	}
+	return int32(limit), int32(offset)
+}
+func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	limit, offset := page(r)
+	rows, err := h.queries.ListAccountRegistrations(r.Context(), db.ListAccountRegistrationsParams{UserID: user.UserID, Limit: limit, Offset: offset})
+	if err != nil {
+		respondFailure(w, err)
+		return
+	}
+	if rows == nil {
+		rows = []db.ListAccountRegistrationsRow{}
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data   []db.ListAccountRegistrationsRow `json:"data"`
+		Limit  int32                            `json:"limit"`
+		Offset int32                            `json:"offset"`
+	}{rows, limit, offset})
+}
+func (h *Handler) Change(w http.ResponseWriter, r *http.Request) {
+	user, _ := auth.UserFromContext(r.Context())
+	var id pgtype.UUID
+	if err := id.Scan(chi.URLParam(r, "id")); err != nil || !id.Valid {
+		platform.RespondError(w, 400, "INVALID_ID", "Invalid registration ID", nil)
+		return
+	}
+	action := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+	var organizerID pgtype.UUID
+	if organizer, ok := auth.OrganizerFromContext(r.Context()); ok {
+		organizerID = organizer.ID
+	}
+	row, err := h.engine.Change(r.Context(), id, user.UserID, organizerID, action, platform.GetRequestID(r.Context()))
+	if err != nil {
+		respondFailure(w, err)
+		return
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data db.Rsvps `json:"data"`
+	}{row})
+}
+func respondFailure(w http.ResponseWriter, err error) {
+	var failure *workflows.Failure
+	if errors.As(err, &failure) {
+		platform.RespondError(w, failure.Status, failure.Code, failure.Message, nil)
+	} else if errors.Is(err, pgx.ErrNoRows) {
+		platform.RespondError(w, 404, "NOT_FOUND", "Resource not found", nil)
+	} else {
+		platform.RespondDatabaseError(w, err)
+	}
 }

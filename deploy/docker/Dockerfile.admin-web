@@ -5,20 +5,22 @@ RUN apk add --no-cache libc6-compat
 
 FROM base AS deps
 WORKDIR /app
-COPY packages/api-client/package.json ./packages/api-client/
-COPY packages/api-client/tsconfig.json ./packages/api-client/
-COPY packages/api-client/src ./packages/api-client/src
-RUN cd packages/api-client && npm install && npm run build
-
+COPY package.json package-lock.json ./
 COPY apps/admin-web/package.json ./apps/admin-web/
-COPY apps/admin-web/package-lock.json* ./apps/admin-web/
-WORKDIR /app/apps/admin-web
-RUN npm install
+COPY apps/core-web/package.json ./apps/core-web/
+COPY apps/organizer-web/package.json ./apps/organizer-web/
+COPY apps/public-web/package.json ./apps/public-web/
+COPY packages/api-client ./packages/api-client
+COPY packages/ui ./packages/ui
+RUN npm ci
+RUN npm run build --workspace @hackways/api-client
 
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/packages/api-client ./packages/api-client
-COPY --from=deps /app/apps/admin-web/node_modules ./apps/admin-web/node_modules
+COPY --from=deps /app/packages/ui ./packages/ui
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
 COPY apps/admin-web ./apps/admin-web
 
 WORKDIR /app/apps/admin-web

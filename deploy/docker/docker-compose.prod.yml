@@ -4,7 +4,8 @@ version: '3.8'
 # Hackways Production Docker Compose Topology
 # Hardware Target: Azure VM (Standard_B2s / Standard_D2s_v5)
 # Specs: 2 vCPU, 4.0 GB RAM, 50 GB NVMe SSD
-# Total Container Memory Hard Cap: 2,495 MB (Safe Headroom: ~1,500 MB)
+# Container limits total 1,800 MB with the optional local PostgreSQL profile,
+# or 1,100 MB without it. These limits are configuration, not measured usage.
 # ==============================================================================
 
 networks:
@@ -64,7 +65,7 @@ services:
 
   # ----------------------------------------------------------------------------
   # 2. Core Backend Engine (Events & RSVP Capacity Engine)
-  # Memory Limit: 180 MB | CPU Quota: 0.80
+  # Memory Limit: 120 MB | CPU Quota: 0.70
   # ----------------------------------------------------------------------------
   core-backend:
     image: ${DOCKER_REGISTRY}/hackways-core-backend:${IMAGE_TAG:-latest}
@@ -73,18 +74,21 @@ services:
     environment:
       PORT: 8081
       DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}?sslmode=${DB_SSLMODE:-require}}
-      DB_MAX_CONNS: 32
+      DB_MAX_CONNS: 28
       DB_MIN_CONNS: 4
-      GOMEMLIMIT: 150MiB
+      GOMEMLIMIT: 100MiB
       GOGC: 100
-      ENV: production
+      APP_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be configured}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in,https://hackways.in}
+      TICKET_SIGNING_SEED: ${TICKET_SIGNING_SEED:-}
     networks:
       - hackways-internal
     deploy:
       resources:
         limits:
-          cpus: '0.80'
-          memory: 180M
+          cpus: '0.70'
+          memory: 120M
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
       interval: 15s
@@ -98,7 +102,7 @@ services:
 
   # ----------------------------------------------------------------------------
   # 3. Global Backend Engine (Auth, Azure SAS Signer, ACS Outbox Worker)
-  # Memory Limit: 140 MB | CPU Quota: 0.50
+  # Memory Limit: 110 MB | CPU Quota: 0.40
   # ----------------------------------------------------------------------------
   global-backend:
     image: ${DOCKER_REGISTRY}/hackways-global-backend:${IMAGE_TAG:-latest}
@@ -107,22 +111,27 @@ services:
     environment:
       PORT: 8082
       DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}?sslmode=${DB_SSLMODE:-require}}
-      DB_MAX_CONNS: 24
+      DB_MAX_CONNS: 22
       DB_MIN_CONNS: 3
-      GOMEMLIMIT: 120MiB
+      GOMEMLIMIT: 90MiB
       GOGC: 100
+      APP_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be configured}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in,https://hackways.in}
       AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT}
       AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
       AZURE_ACS_CONNECTION_STRING: ${AZURE_ACS_CONNECTION_STRING}
       AZURE_ACS_SENDER_ADDRESS: ${AZURE_ACS_SENDER_ADDRESS}
-      ENV: production
+      ACS_ENDPOINT: ${ACS_ENDPOINT:-}
+      ACS_ACCESS_KEY: ${ACS_ACCESS_KEY:-}
+      ACS_SENDER_ADDRESS: ${ACS_SENDER_ADDRESS:-}
     networks:
       - hackways-internal
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 140M
+          cpus: '0.40'
+          memory: 110M
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
       interval: 15s
@@ -171,6 +180,8 @@ services:
       PORT: 3001
       NODE_OPTIONS: "--max-old-space-size=190"
       NEXT_PUBLIC_API_URL: https://app.hackways.in/api/v1
+      CORE_API_URL: http://core-backend:8081/api/v1
+      GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
       - hackways-internal
     deploy:
@@ -196,6 +207,8 @@ services:
       PORT: 3002
       NODE_OPTIONS: "--max-old-space-size=180"
       NEXT_PUBLIC_API_URL: https://organizer.hackways.in/api/v1
+      CORE_API_URL: http://core-backend:8081/api/v1
+      GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
       - hackways-internal
     deploy:

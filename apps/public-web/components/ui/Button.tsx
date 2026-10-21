@@ -1,8 +1,8 @@
 import React from "react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost";
-  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "inverted" | "secondary" | "outline" | "ghost";
+  size?: "sm" | "md";
   isLoading?: boolean;
 }
 
@@ -16,19 +16,24 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center font-normal rounded-full font-heading transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none whitespace-nowrap";
 
   const sizeStyles = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base",
+    sm: "px-[18px] py-[8px] text-[13px] leading-[16px] min-h-[36px]",
+    md: "px-[28px] py-[14px] text-[14px] leading-[20px] min-h-[48px]",
   };
 
   const variantStyles = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500",
-    secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700 focus:ring-slate-500",
-    outline: "border border-slate-700 text-slate-200 hover:bg-slate-800 focus:ring-slate-500",
-    ghost: "text-slate-300 hover:bg-slate-800 hover:text-white focus:ring-slate-500",
+    primary:
+      "bg-[var(--accent)] text-white border border-[var(--accent)] hover:bg-[var(--accent-hover)] hover:border-[var(--accent-hover)]",
+    inverted:
+      "bg-white text-[var(--accent-text)] border border-[var(--line)] hover:bg-white hover:border-[var(--accent)]",
+    secondary:
+      "bg-white text-[var(--accent-text)] border border-[var(--line)] hover:bg-white hover:border-[var(--accent)]",
+    outline:
+      "bg-white text-[var(--accent-text)] border border-[var(--accent)] hover:bg-white hover:border-[var(--accent-text)]",
+    ghost:
+      "bg-white text-[var(--accent-text)] hover:bg-white",
   };
 
   return (

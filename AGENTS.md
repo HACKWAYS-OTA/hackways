@@ -89,7 +89,9 @@ Every agent **must read, understand, and strictly enforce** these rules before a
 - Ensure layouts work across supported mobile, tablet, and desktop viewports.
 - Avoid interface patterns that depend exclusively on hover, color, or animation.
 - Respect reduced-motion preferences and prevent avoidable content shifts.
-- Reuse the existing design system and component patterns instead of introducing unnecessary UI dependencies.
+- Do not generate hash/fragment URLs for navigation. Use clean page paths for destinations and `@hackways/ui/section-jump` for in-page focus/scroll actions without changing the URL. Section IDs remain available for accessibility; legacy fragments may be consumed and removed without creating new fragment links.
+- Reuse established component patterns instead of introducing unnecessary UI dependencies.
+- Checkbox, radio group, select and toggle controls are shared in `packages/ui` (`@hackways/ui`). Use their subpath exports in all four apps instead of adding native visible checkbox/radio/select controls, ad hoc pressed toggle buttons or per-page animation configuration. Providers and styles are already mounted in the app roots. Add future approved primitives to this shared package once; preserve accessible labels, native form contracts, reduced motion and real backend validation. See `packages/ui/README.md`.
 
 ### 1.10 Verification and Honest Reporting
 - Do not fabricate test results, build output, deployment status, database responses, or successful integrations.
@@ -109,8 +111,6 @@ Every agent **must read, understand, and strictly enforce** these rules before a
 7. Review the final diff for unrelated changes, fake functionality, exposed secrets, and architectural violations.
 8. Update documentation when contracts, architecture, schemas, configuration, or deployment behavior change.
 9. Report what changed, what was verified, and what remains unresolved.
-
-*If the request conflicts with these rules, stop before making the conflicting change. Explain the conflict and obtain explicit approval.*
 
 ---
 
@@ -164,7 +164,7 @@ The production environment runs on a single Azure VM (`Standard_B2s` or `Standar
 | **Public Web (Next.js)** | ~60 MB | **140 MB** | 0.25 | `NODE_OPTIONS="--max-old-space-size=100"`, standalone output |
 | **Nginx Ingress** | ~25 MB | **75 MB** | 0.20 | Event loop worker processes: 2, worker_connections: 4096 |
 | **Linux Host & System** | ~350 MB | ~500 MB | 0.20 | Systemd, SSH, journald, Docker daemon |
-| **Ceiling Total** | **~1,215 MB** | **~2,495 MB** | **~3.50 (Burstable)**| **Safe Headroom: ~1,601 MB for disk page cache & spikes** |
+| **Ceiling Total** | **~1,015 MB** | **~2,295 MB** | **~3.50 (Burstable)**| **Safe Headroom: ~1,801 MB for disk page cache & spikes** |
 
 #### Strict Host Rules:
 1. **Off-Node Next.js Builds:** **NEVER run `npm run build` or `next build` on the production VM.** Next.js compilation consumes up to 2.5 GB of RAM and triggers kernel OOM kills. All container images MUST be compiled in GitHub Actions CI with `output: 'standalone'` and pulled as pre-built runtimes.

@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createOrganizer = `-- name: CreateOrganizer :one
+INSERT INTO organizers (user_id, display_name, slug)
+VALUES (
+    $1,
+    $2,
+    trim(regexp_replace(lower($2), '[^a-z0-9]+', '-', 'g'), '-') || '-' || left(gen_random_uuid()::text, 8)
+)
+RETURNING id, user_id, display_name, slug, bio, website_url, avatar_url, verified, created_at, updated_at
+`
+
+type CreateOrganizerParams struct {
+	UserID      pgtype.UUID `json:"user_id"`
+	DisplayName string      `json:"display_name"`
+}
+
+func (q *Queries) CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error) {
+	row := q.db.QueryRow(ctx, createOrganizer, arg.UserID, arg.DisplayName)
+	var i Organizers
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DisplayName,
+		&i.Slug,
+		&i.Bio,
+		&i.WebsiteUrl,
+		&i.AvatarUrl,
+		&i.Verified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash, display_name)
 VALUES ($1, $2, $3)

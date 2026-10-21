@@ -35,8 +35,8 @@ INSERT INTO rsvps (
     NOW(),
     NOW()
 )
-ON CONFLICT (event_id, user_id) DO NOTHING
-RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at
+ON CONFLICT DO NOTHING
+RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
 `
 
 type CreateRSVPParams struct {
@@ -68,6 +68,11 @@ func (q *Queries) CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, 
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OfferExpiresAt,
+		&i.ApprovalExpiresAt,
+		&i.TransferCount,
+		&i.TransferredFrom,
+		&i.PublicCode,
 	)
 	return i, err
 }
@@ -96,7 +101,7 @@ INSERT INTO email_outbox (
     NOW(),
     NOW()
 )
-RETURNING id, rsvp_id, event_id, recipient_email, recipient_name, template_type, payload_json, status, retry_count, scheduled_at, sent_at, error_message, created_at, updated_at
+RETURNING id, rsvp_id, event_id, recipient_email, recipient_name, template_type, payload_json, status, retry_count, scheduled_at, sent_at, error_message, created_at, updated_at, lease_token, first_sent_at
 `
 
 type EnqueueEmailOutboxParams struct {
@@ -133,17 +138,28 @@ func (q *Queries) EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutbox
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LeaseToken,
+		&i.FirstSentAt,
 	)
 	return i, err
 }
 
 const fetchPendingOutbox = `-- name: FetchPendingOutbox :many
-SELECT id, rsvp_id, event_id, recipient_email, recipient_name, template_type, payload_json, retry_count
-FROM email_outbox
-WHERE status = 'pending' AND scheduled_at <= NOW()
-ORDER BY created_at ASC
-LIMIT $1
-FOR UPDATE SKIP LOCKED
+WITH picked AS (
+    SELECT id
+    FROM email_outbox
+    WHERE status = 'pending' AND scheduled_at <= NOW()
+    ORDER BY created_at ASC
+    LIMIT $1
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE email_outbox AS outbox
+SET scheduled_at = NOW() + INTERVAL '5 minutes',
+    updated_at = NOW()
+FROM picked
+WHERE outbox.id = picked.id
+RETURNING outbox.id, outbox.rsvp_id, outbox.event_id, outbox.recipient_email,
+          outbox.recipient_name, outbox.template_type, outbox.payload_json, outbox.retry_count
 `
 
 type FetchPendingOutboxRow struct {
@@ -157,6 +173,7 @@ type FetchPendingOutboxRow struct {
 	RetryCount     int32       `json:"retry_count"`
 }
 
+// Claim rows atomically. The scheduled_at lease expires if a worker crashes.
 func (q *Queries) FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchPendingOutboxRow, error) {
 	rows, err := q.db.Query(ctx, fetchPendingOutbox, limit)
 	if err != nil {
@@ -186,13 +203,18 @@ func (q *Queries) FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchP
 	return items, nil
 }
 
-const getRSVPByID = `-- name: GetRSVPByID :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at FROM rsvps
-WHERE id = $1
+const getRSVPByIDAndUser = `-- name: GetRSVPByIDAndUser :one
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps
+WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetRSVPByID(ctx context.Context, id pgtype.UUID) (Rsvps, error) {
-	row := q.db.QueryRow(ctx, getRSVPByID, id)
+type GetRSVPByIDAndUserParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUserParams) (Rsvps, error) {
+	row := q.db.QueryRow(ctx, getRSVPByIDAndUser, arg.ID, arg.UserID)
 	var i Rsvps
 	err := row.Scan(
 		&i.ID,
@@ -206,6 +228,11 @@ func (q *Queries) GetRSVPByID(ctx context.Context, id pgtype.UUID) (Rsvps, error
 		&i.CancelledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OfferExpiresAt,
+		&i.ApprovalExpiresAt,
+		&i.TransferCount,
+		&i.TransferredFrom,
+		&i.PublicCode,
 	)
 	return i, err
 }
@@ -223,7 +250,7 @@ func (q *Queries) IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error 
 }
 
 const listRSVPsByEvent = `-- name: ListRSVPsByEvent :many
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at FROM rsvps
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps
 WHERE event_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -256,6 +283,11 @@ func (q *Queries) ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventPara
 			&i.CancelledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OfferExpiresAt,
+			&i.ApprovalExpiresAt,
+			&i.TransferCount,
+			&i.TransferredFrom,
+			&i.PublicCode,
 		); err != nil {
 			return nil, err
 		}
@@ -268,17 +300,21 @@ func (q *Queries) ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventPara
 }
 
 const lockEventForRSVP = `-- name: LockEventForRSVP :one
-SELECT id, capacity, current_rsvp_count, status
+SELECT id, capacity, current_rsvp_count, status,
+       registration_opens_at IS NULL OR registration_opens_at <= NOW() AS registration_is_open,
+       registration_closes_at IS NULL OR registration_closes_at > NOW() AS registration_is_not_closed
 FROM events
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
 
 type LockEventForRSVPRow struct {
-	ID               pgtype.UUID `json:"id"`
-	Capacity         pgtype.Int4 `json:"capacity"`
-	CurrentRsvpCount int32       `json:"current_rsvp_count"`
-	Status           EventStatus `json:"status"`
+	ID                      pgtype.UUID `json:"id"`
+	Capacity                pgtype.Int4 `json:"capacity"`
+	CurrentRsvpCount        int32       `json:"current_rsvp_count"`
+	Status                  EventStatus `json:"status"`
+	RegistrationIsOpen      pgtype.Bool `json:"registration_is_open"`
+	RegistrationIsNotClosed pgtype.Bool `json:"registration_is_not_closed"`
 }
 
 func (q *Queries) LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error) {
@@ -289,6 +325,8 @@ func (q *Queries) LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEve
 		&i.Capacity,
 		&i.CurrentRsvpCount,
 		&i.Status,
+		&i.RegistrationIsOpen,
+		&i.RegistrationIsNotClosed,
 	)
 	return i, err
 }

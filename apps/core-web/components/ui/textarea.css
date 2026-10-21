@@ -1,0 +1,9 @@
+.text-area { display: block; width: 100%; min-width: 0; min-height: 100px; padding: 14px 16px; overflow: hidden; resize: none; appearance: none; border: 0; border-bottom: 2px solid transparent; border-radius: 10px; outline: none; background: color-mix(in srgb, var(--event-tint, #ddd4e9) 18%, white); color: var(--event-foreground, var(--ink)); font-size: 16px; line-height: 1.7; caret-color: var(--violet); }
+.text-area::placeholder { color: var(--event-copy, var(--muted)); opacity: 1; }
+.text-area:hover:not(:disabled) { border-bottom-color: color-mix(in srgb, var(--event-copy, #62576b) 45%, transparent); }
+.text-area:focus { border-bottom-color: var(--violet); background: color-mix(in srgb, var(--event-tint, #ddd4e9) 28%, white); outline: none; }
+.text-area[aria-invalid=true] { border-bottom-color: #a3354b; }
+.text-area:disabled { opacity: .6; cursor: not-allowed; }
+.event-display-dark .text-area { background: color-mix(in srgb, var(--event-tint, #ddd4e9) 7%, #211a28); }
+.event-display-dark .text-area:focus { background: color-mix(in srgb, var(--event-tint, #ddd4e9) 12%, #211a28); }
+.event-display-dark .text-area[aria-invalid=true] { border-bottom-color: #ffadbe; }

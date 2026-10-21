@@ -1,111 +1,80 @@
-# System Architecture — Hackways
+# Hackways Architecture
 
-**Version:** 1.0  
-**Status:** Approved  
-**Classification:** Modular Monolith  
+**Status:** Target architecture with implementation gaps called out below.
+**Canonical constraints:** [AGENTS.md](../AGENTS.md)
 
----
+## Service boundaries
 
-## 1. Executive Summary
+The production topology has four independently deployed Next.js applications and two Go services. PostgreSQL is the authoritative store; Nginx is the only public ingress.
 
-Hackways is an event discovery, event management, and RSVP registration platform designed for high concurrency, strict consistency, and low operational overhead. It couples a Go modular monolith (`services/api`) with a Next.js 14 App Router frontend (`apps/web`) backed by a single PostgreSQL 16 database.
+| Service | Directory | Responsibility | Current implementation status |
+|---|---|---|---|
+| Public web | `apps/public-web` | Marketing and links to product apps | Next.js app exists |
+| Main app | `apps/core-web` (3001) | Discovery, registration, My events, account and event creation | Frontend pages call the two Go services |
+| Event management | `apps/organizer-web` (3002) | Existing-event details, visibility, guest review and check-in | Management pages call owner-scoped Go APIs |
+| Admin web | `apps/admin-web` | Restricted platform administration | Next.js app exists |
+| Core backend | `services/core-backend` | Events and transactional RSVP capacity | Go service exists; current HTTP routes include event reads and RSVP create/read |
+| Global backend | `services/global-backend` | Sessions, auth and upload SAS issuance | Go service exists; current HTTP routes include auth and storage |
 
----
+**Topology decision is unresolved:** [AGENTS.md](../AGENTS.md) budgets a PostgreSQL container on the VM, while [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md) and `deploy/docker/docker-compose.prod.yml` describe Azure Database for PostgreSQL as the production database. Do not infer that both deployments are supported until the team selects one and reconciles the config and resource budgets.
 
-## 2. System Context Diagram
+`packages/api-client` and `packages/shared-types` are intended shared contracts. They do not own business logic. TypeScript applications call Go APIs; authorization, persistence, validation, and RSVP invariants remain in Go and PostgreSQL.
+
+`packages/ui` is the shared frontend control package, linked through root npm workspaces. Each independent Next.js root installs its provider/styles and transpiles the source; checkbox, radio group, select and toggle behavior is configured once. Base UI and Motion retain React 18 compatibility; this does not upgrade Next.js or introduce frontend business endpoints. See [the shared controls guide](../packages/ui/README.md).
+
+The four frontend Dockerfiles install the root locked workspace with `npm ci`, build the shared API client, and then independently compile/package their target app. CI image construction is off the production VM; registry availability and standalone runtime contents must be verified for the proposed release.
+
+## Runtime request paths
 
 ```text
-┌────────────────────────────────────────────────────────────────────────┐
-│                              Internet / CDN                            │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ HTTPS
-                        ┌───────────▼───────────┐
-                        │    Next.js Web App    │  apps/web/
-                        │   (App Router, SSR)   │  Port 3000
-                        └───────────┬───────────┘
-                                    │ REST /api/v1 (JSON)
-                        ┌───────────▼───────────┐
-                        │     Go API Server     │  services/api/
-                        │  (Chi router, slog)   │  Port 8080
-                        └─────┬───────────┬─────┘
-                              │           │
-                     pgx pool │           │ storage.Store
-                              ▼           ▼
-                      ┌──────────────┐  ┌───────────────────┐
-                      │PostgreSQL 16 │  │  Object Storage   │
-                      │(Single schema│  │ (Local FS / S3)   │
-                      └──────────────┘  └───────────────────┘
+Browser -> Nginx -> matching Next.js application
+Browser/app -> Nginx -> core-backend (events, RSVPs)
+Browser/app -> Nginx -> global-backend (auth, storage SAS)
+core-backend and global-backend -> PostgreSQL via pgxpool and sqlc queries
+global-backend outbox worker -> configured email provider
+Browser -> Azure Blob Storage using a short-lived write-only SAS
 ```
 
----
+Internal backend and database ports must not be published publicly. Admin ingress must be IP/VPN restricted at Nginx. Production credentials belong in Azure Key Vault and runtime environment, never source control.
 
-## 3. Technology Rationale
+## Data and concurrency
 
-| Concern | Selection | Rationale |
-|---|---|---|
-| **Backend Language** | Go 1.23 | Fast startup, small memory footprint, strong stdlib, native goroutines for concurrency |
-| **HTTP Routing** | Chi v5 | 100% compatible with `net/http`, minimal allocations, composable middleware |
-| **Database** | PostgreSQL 16 | ACID transactions, row-level locking (`SELECT FOR UPDATE`), GIN full-text search |
-| **Driver & Pooling** | `pgx/v5` | High performance binary protocol, connection pooling, prepared statements |
-| **Query Layer** | `sqlc` v1.27 | Compile-time SQL checking, zero runtime reflection, clean Go model generation |
-| **Migrations** | `golang-migrate` | Reversible, numbered migrations (`.up.sql` / `.down.sql`) |
-| **Frontend Framework** | Next.js 14 | React Server Components for SEO and low client bundle size |
-| **Styling** | Tailwind CSS | Utility tokens, strict consistency, purge-clean production builds |
-| **Sessions** | PostgreSQL Sessions | Revocable, stateful, opaque cookie tokens; no JWT expiration or revocation traps |
+The only checked-in migration sequence is `deploy/migrations/`. Both backend sqlc configurations must compile against that schema. Generated query code is committed with its SQL source under each service's `db/` directory.
 
----
+RSVP creation locks the event row inside a PostgreSQL transaction, sets a local 2-second statement timeout, checks publication and capacity, inserts idempotently, updates the count, writes the email outbox row, and commits. Do not move these checks to the clients or make capacity decisions from cached counts.
 
-## 4. Domain Decomposition
+RSVP detail reads must require an authenticated session and scope the query to the requesting user. Organizer roster reads must additionally check event ownership in the backend.
 
-All domain packages live in `services/api/internal/`:
+## Resource and deployment boundaries
 
-```
-services/api/internal/
-├── platform/       # Cross-cutting: config, health, middleware, error envelopes
-├── auth/           # Sessions, password hashing (bcrypt >= 12), auth middleware
-├── users/          # User accounts, profiles, display identity
-├── organizers/     # Organizer profiles, slugs, organization management
-├── events/         # Event aggregate, state machine, categorization, full-text search
-├── rsvps/          # Attendee registrations, transactional capacity checking
-├── notifications/  # Transactional notification queue and email dispatch
-└── storage/        # File upload validation (magic bytes) and storage adapters
-```
+- Four web apps and two Go services remain separate deployable units.
+- `deploy/deployer` is an auxiliary host-level systemd HTTP service outside those six application services. Treat it as an extra deployment control-plane process, not part of the six-service product topology; consolidating deployment control into the CI runner would remove this extra listener and execution path.
+- Frontend builds run in CI; production hosts only pull prebuilt standalone Next.js images.
+- Backend pgx pools remain bounded by the 28-connection core and 22-connection global allocations, with ten connections reserved for administration and migrations.
+- Upload bytes go directly from browser to Azure Blob Storage. Do not persist media on VM disk or proxy file bodies through Go.
+- Transactional email starts from an outbox row written with the RSVP. A provider failure must leave the row retryable and must never be reported as successful delivery.
 
----
+## Known implementation gaps
 
-## 5. Concurrency Guarantees (RSVP Overbooking Prevention)
+These are verified from the current source tree and must not be confused with completed architecture:
 
-The most critical reliability requirement is preventing duplicate registrations and capacity overbooking under high concurrency.
+1. ACS REST sending and operation reconciliation are implemented, but actual external delivery is unverified and local credentials are missing. Sending is paused without consuming retries when unconfigured. No mounted runtime uses logged email as delivery success.
+2. Outbox claims use atomic `UPDATE ... FOR UPDATE SKIP LOCKED`, a five-minute lease, and a lease token on outcome writes. Two entries are claimed for two sends. Stable ACS operation IDs are reconciled before resend; unknown outcomes outside the replay window require operator review. Exactly-once inbox delivery is not claimed.
+3. The free-event APIs include revision-checked editing/status changes, scoped roster/audit/check-in, registration management and custom registration questions with answer snapshots. Payments, admin moderation, scheduled publishing and offline synchronization remain. See [the implementation matrix](backend/README.md).
+4. Public guest RSVP creation remains supported, and verified-email account claiming is now implemented; direct guest RSVP retrieval is not: the detail endpoint requires an account session and only returns a row owned by that account. RSVP creation now reads registration windows under the same event-row lock and optional-authenticates attendees so account-backed RSVP identity and notification email come from the session.
+5. Upload intent verifies event ownership or binds avatars to the session user. Event banner completion verifies Azure Blob properties before an owner/revision-scoped future-event metadata attachment in global-backend. Event publication remains in core-backend. Actual Azure calls remain unverified locally because credentials are missing; no media bytes are buffered through either engine.
+6. Event creation and host profile setup live in core-web on port 3001. The organizer web on 3002 handles existing events only. Both consume the same owner-scoped Go APIs; moving a page does not move its business logic. Authenticated browser create/edit journeys still require end-to-end verification.
+7. `apps/admin-web` reads the two backend health endpoints through the restricted admin Nginx vhost. Its former event fetch targeted a backend that does not serve that route and caused successful health data to be discarded; the dashboard now reports each health endpoint independently. Admin event/moderation APIs are still absent.
+8. `services/api` and `apps/web` in older planning notes refer to the superseded monolithic layout. Current code lives in the six directories listed above; historical phase documents are archival and are not current runbooks.
+9. `deploy/scripts/backup-db.sh` and `restore-db.sh` target the optional local PostgreSQL container, not the Azure database topology described by the deployment plan. No end-to-end backup or restore path is verified for the production database.
+10. Core-web has registration/sign-in, account verification/guest claim and My events pages. Organizer-web retains sign-in for its own host-scoped management session. Production subdomains intentionally do not share `__Host-` cookies, so a host may need to sign in separately when opening management. Tokens are never forwarded in URLs or browser storage.
 
-```sql
-BEGIN;
+## Source of truth
 
--- 1. Acquire pessimistic row lock on event to serialize concurrent reservations
-SELECT id, capacity, registration_count, status
-FROM events
-WHERE id = $1 AND status = 'published' AND deleted_at IS NULL
-FOR UPDATE;
+Spaces, membership and owner-only event association now live in core-backend/PostgreSQL, with directory/profile/settings in core-web. This adds no service or framework. Event themes, light/dark mode and public/link-only visibility are persisted scalar fields. Discoverability is filtered in Go/sqlc queries, not by hiding frontend elements. Existing event management remains on port 3002; creation remains on 3001. Public browser routes use slugs and short registration references; private APIs retain UUID transport compatibility. See API.md and migrations 000003–000006.
 
--- 2. Verify registration window is open and capacity is not exceeded
--- (Application check: registration_count < capacity)
-
--- 3. Insert registration (Database UNIQUE constraints prevent duplicate registrations)
-INSERT INTO registrations (event_id, user_id, guest_email, guest_name)
-VALUES ($1, $2, $3, $4);
-
--- 4. Atomically increment registration count
-UPDATE events
-SET registration_count = registration_count + 1
-WHERE id = $1;
-
-COMMIT;
-```
-
----
-
-## 6. Security Architecture
-
-1. **Authentication:** Server-side sessions stored in PostgreSQL `sessions` table. Client receives an opaque session token stored in an `HttpOnly`, `SameSite=Lax`, `Secure` (production) cookie.
-2. **Password Security:** Hashes stored using `bcrypt` with cost factor >= 12.
-3. **Authorization:** Server-side ownership validation on every mutation. Frontend checks are cosmetic only.
-4. **Data Isolation:** Soft deletion (`deleted_at`) prevents accidental data loss; active unique indexes ignore soft-deleted records.
+- Architecture constraints and verification rules: [AGENTS.md](../AGENTS.md)
+- Database schema and migration sequence: [DATABASE.md](DATABASE.md), `deploy/migrations/`
+- Actual HTTP routes and cookie behavior: [API.md](API.md), backend router setup
+- Local and CI verification: [TESTING.md](TESTING.md)
+- Architecture roadmap: [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md), subject to reconciliation with these implementation gaps

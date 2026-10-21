@@ -11,29 +11,111 @@ import (
 )
 
 type Querier interface {
+	AdjustWorkflowInventory(ctx context.Context, arg AdjustWorkflowInventoryParams) error
+	AppendWorkflowAudit(ctx context.Context, arg AppendWorkflowAuditParams) error
+	CancelEventRegistrations(ctx context.Context, eventID pgtype.UUID) error
+	CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflowTicketParams) (Tickets, error)
+	ClaimGuestEventRegistration(ctx context.Context, arg ClaimGuestEventRegistrationParams) (Rsvps, error)
+	CleanupWorkflowKeys(ctx context.Context) error
+	CreateEventRecord(ctx context.Context, arg CreateEventRecordParams) (Events, error)
+	CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error)
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
+	CreateRegistrationQuestion(ctx context.Context, arg CreateRegistrationQuestionParams) (string, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
+	CreateSpace(ctx context.Context, arg CreateSpaceParams) (Spaces, error)
+	CreateTransferredRegistration(ctx context.Context, arg CreateTransferredRegistrationParams) (Rsvps, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	DeactivateRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) error
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error
 	DeleteSessionsByUserID(ctx context.Context, userID pgtype.UUID) error
+	EditRegistrationNotes(ctx context.Context, arg EditRegistrationNotesParams) (Rsvps, error)
 	EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutboxParams) (EmailOutbox, error)
+	EnqueueEventNotification(ctx context.Context, arg EnqueueEventNotificationParams) error
+	EnqueueRegistrationNotification(ctx context.Context, arg EnqueueRegistrationNotificationParams) (int64, error)
+	EnsureTicket(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error)
+	EventGuestSummary(ctx context.Context, eventID pgtype.UUID) (EventGuestSummaryRow, error)
+	EventRoster(ctx context.Context, arg EventRosterParams) ([]EventRosterRow, error)
+	EventRosterFiltered(ctx context.Context, arg EventRosterFilteredParams) ([]EventRosterFilteredRow, error)
+	EventWorkflowActivity(ctx context.Context, eventID pgtype.UUID) (EventWorkflowActivityRow, error)
+	ExpiredEventApplications(ctx context.Context, eventID pgtype.UUID) ([]Rsvps, error)
+	ExpiredEventOffers(ctx context.Context, eventID pgtype.UUID) ([]Rsvps, error)
+	// Claim rows atomically. The scheduled_at lease expires if a worker crashes.
 	FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchPendingOutboxRow, error)
+	FindVerifiedTransferRecipient(ctx context.Context, lower string) (FindVerifiedTransferRecipientRow, error)
+	FirstWaitlistedRSVP(ctx context.Context, eventID pgtype.UUID) (Rsvps, error)
+	GetAccountEventRSVP(ctx context.Context, arg GetAccountEventRSVPParams) (Rsvps, error)
+	GetAccountRegistrationByCode(ctx context.Context, arg GetAccountRegistrationByCodeParams) (Rsvps, error)
+	GetAccountTicket(ctx context.Context, arg GetAccountTicketParams) (GetAccountTicketRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (Events, error)
 	GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByIDAndOrganizerParams) (Events, error)
+	GetEventBySlugAndOrganizer(ctx context.Context, arg GetEventBySlugAndOrganizerParams) (Events, error)
+	GetEventTicketByCode(ctx context.Context, arg GetEventTicketByCodeParams) (pgtype.UUID, error)
+	GetGuestEventRSVP(ctx context.Context, arg GetGuestEventRSVPParams) (Rsvps, error)
+	GetIdempotentResponse(ctx context.Context, arg GetIdempotentResponseParams) (IdempotencyRecords, error)
 	GetOrganizerByUserID(ctx context.Context, userID pgtype.UUID) (Organizers, error)
-	GetRSVPByID(ctx context.Context, id pgtype.UUID) (Rsvps, error)
+	GetPublishedEventByID(ctx context.Context, id pgtype.UUID) (Events, error)
+	GetPublishedEventBySlug(ctx context.Context, slug string) (GetPublishedEventBySlugRow, error)
+	GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUserParams) (Rsvps, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
+	GetTicketByRSVP(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
+	GetWorkflowRSVP(ctx context.Context, id pgtype.UUID) (Rsvps, error)
+	GetWorkflowTicket(ctx context.Context, id pgtype.UUID) (GetWorkflowTicketRow, error)
+	GuestClaimEvents(ctx context.Context, arg GuestClaimEventsParams) ([]pgtype.UUID, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
+	InsertRegistrationSubmission(ctx context.Context, arg InsertRegistrationSubmissionParams) error
+	InsertWorkflowRSVP(ctx context.Context, arg InsertWorkflowRSVPParams) (Rsvps, error)
+	JoinSpace(ctx context.Context, arg JoinSpaceParams) error
+	LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.UUID) (LatestRegistrationAnswersRow, error)
+	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error
+	ListAccountRegistrations(ctx context.Context, arg ListAccountRegistrationsParams) ([]ListAccountRegistrationsRow, error)
+	ListManagedEvents(ctx context.Context, arg ListManagedEventsParams) ([]Events, error)
+	ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]ListMySpacesRow, error)
+	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]Events, error)
+	ListPublicSpaces(ctx context.Context, arg ListPublicSpacesParams) ([]ListPublicSpacesRow, error)
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
 	ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventParams) ([]Rsvps, error)
+	ListRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) ([]ListRegistrationQuestionsRow, error)
+	ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams) ([]Events, error)
+	ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditParams) ([]ListWorkflowAuditRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
+	LockOwnedActiveSpace(ctx context.Context, arg LockOwnedActiveSpaceParams) (Spaces, error)
+	LockOwnedActiveSpaceBySlug(ctx context.Context, arg LockOwnedActiveSpaceBySlugParams) (Spaces, error)
+	LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error)
+	LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWorkflowEventRow, error)
+	ManagedGuestDetail(ctx context.Context, arg ManagedGuestDetailParams) (ManagedGuestDetailRow, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
+	ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) (Spaces, error)
+	ReadPublicSpace(ctx context.Context, slug string) (ReadPublicSpaceRow, error)
+	ReadRegistrationForm(ctx context.Context, id pgtype.UUID) (ReadRegistrationFormRow, error)
+	ReadSpaceCreation(ctx context.Context, arg ReadSpaceCreationParams) (Spaces, error)
+	ReadSpaceID(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	ReadSpaceMembership(ctx context.Context, arg ReadSpaceMembershipParams) (ReadSpaceMembershipRow, error)
+	ReadSpaceSummaryByID(ctx context.Context, id pgtype.UUID) (ReadSpaceSummaryByIDRow, error)
+	RegistrationWaitlistPosition(ctx context.Context, id pgtype.UUID) (int64, error)
+	ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPParams) (Rsvps, error)
+	RevokeEventTickets(ctx context.Context, eventID pgtype.UUID) error
+	RevokeWorkflowTicket(ctx context.Context, rsvpID pgtype.UUID) error
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
+	SetEventAppearance(ctx context.Context, arg SetEventAppearanceParams) (Events, error)
+	SetEventContent(ctx context.Context, arg SetEventContentParams) (Events, error)
+	SetEventSpace(ctx context.Context, arg SetEventSpaceParams) (Events, error)
+	SetEventVisibility(ctx context.Context, arg SetEventVisibilityParams) (Events, error)
+	SetSpaceStatus(ctx context.Context, arg SetSpaceStatusParams) (Spaces, error)
+	SetWorkflowRSVPState(ctx context.Context, arg SetWorkflowRSVPStateParams) (Rsvps, error)
+	SetWorkflowTimeout(ctx context.Context) error
+	SoftDeleteWorkflowEvent(ctx context.Context, id pgtype.UUID) error
+	StoreIdempotentResponse(ctx context.Context, arg StoreIdempotentResponseParams) error
+	TransitionWorkflowEvent(ctx context.Context, arg TransitionWorkflowEventParams) (Events, error)
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
+	UpdateRegistrationForm(ctx context.Context, arg UpdateRegistrationFormParams) error
+	UpdateRegistrationQuestion(ctx context.Context, arg UpdateRegistrationQuestionParams) (string, error)
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
+	UpdateSpace(ctx context.Context, arg UpdateSpaceParams) (Spaces, error)
+	UpdateWorkflowEvent(ctx context.Context, arg UpdateWorkflowEventParams) (Events, error)
+	WorkflowMaintenanceEvents(ctx context.Context) ([]pgtype.UUID, error)
 }
 
 var _ Querier = (*Queries)(nil)

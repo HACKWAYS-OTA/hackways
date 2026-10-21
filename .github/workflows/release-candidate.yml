@@ -1,0 +1,95 @@
+name: Release Candidate
+
+# An explicit rc-* Git tag selects an immutable candidate for image publication.
+# No workflow in this repository deploys to Azure.
+on:
+  push:
+    tags: ['rc-*']
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: release-candidate
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: true
+
+  images:
+    name: Candidate image (${{ matrix.service }})
+    needs: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      max-parallel: 2
+      fail-fast: true
+      matrix:
+        service: [core-backend, global-backend, public-web, core-web, organizer-web, admin-web]
+    env:
+      DOCKER_BUILD_RECORD_UPLOAD: 'false'
+      DOCKER_BUILD_SUMMARY: 'false'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Candidate must descend from an integration or production branch
+        run: |
+          git merge-base --is-ancestor origin/develop HEAD || git merge-base --is-ancestor origin/main HEAD
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - name: Build and publish one SHA tag
+        id: build
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.${{ matrix.service }}
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ steps.owner.outputs.value }}/hackways-${{ matrix.service }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api/v1
+            NEXT_PUBLIC_GLOBAL_API_URL=/api/v1
+            NEXT_PUBLIC_SITE_URL=https://hackways.in
+            NEXT_PUBLIC_PUBLIC_URL=https://hackways.in
+            NEXT_PUBLIC_APP_URL=https://app.hackways.in
+            NEXT_PUBLIC_ORGANIZER_URL=https://organizer.hackways.in
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Record immutable image identity
+        env:
+          SERVICE: ${{ matrix.service }}
+          OWNER: ${{ steps.owner.outputs.value }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          digest=os.environ['DIGEST']
+          if not re.fullmatch(r'sha256:[0-9a-f]{64}',digest): raise SystemExit('Missing image digest')
+          ref=f"ghcr.io/{os.environ['OWNER']}/hackways-{os.environ['SERVICE']}"
+          record={'service':os.environ['SERVICE'],'commit':os.environ['GITHUB_SHA'],'tag':ref+':'+os.environ['GITHUB_SHA'],'digest':digest,'immutable':ref+'@'+digest}
+          Path('image-reference.json').write_text(json.dumps(record,indent=2)+'\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out: out.write(record['immutable']+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: image-${{ matrix.service }}
+          path: image-reference.json
+          retention-days: 1

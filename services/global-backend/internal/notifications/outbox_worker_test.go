@@ -3,9 +3,11 @@ package notifications
 import (
 	"context"
 	"errors"
+	"github.com/hackways/global-backend/internal/testsupport"
 	"io"
 	"log/slog"
-	"os"
+	"strings"
+
 	"testing"
 	"time"
 
@@ -28,10 +30,12 @@ func (m *mockSender) Send(ctx context.Context, msg EmailMessage) error {
 }
 
 func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://hackways_user:hackways_password@localhost:5432/hackways_dev?sslmode=disable"
+	// The existing notification suite also checks custom text is escaped for email HTML.
+	rendered, renderErr := render(db.ClaimEmailOutboxRow{TemplateType: "rsvp_confirmed", PayloadJson: []byte(`{"event_title":"CI event","custom_message":"Welcome <back>"}`)})
+	if renderErr != nil || !strings.Contains(rendered.BodyText, "Welcome <back>") || strings.Contains(rendered.BodyHTML, "Welcome <back>") || !strings.Contains(rendered.BodyHTML, "Welcome &lt;back&gt;") {
+		t.Fatal("custom organizer message rendering is unsafe or missing")
 	}
+	dbURL := testsupport.DatabaseURL(t)
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)

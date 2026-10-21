@@ -1,0 +1,36 @@
+.guest-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); }
+.guest-row { position: relative; }
+.guest-row + .guest-row { border-top: 1px solid var(--line); }
+.guest-row:hover, .guest-row:focus-within { background: var(--soft); }
+.guest-open { display: grid; grid-template-columns: minmax(0, 1fr) 180px 138px; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 16px; border: 0; background: transparent; color: var(--ink); text-align: left; }
+.guest-open:focus-visible { outline: 2px solid var(--violet); outline-offset: -3px; }
+.guest-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.guest-identity .host-guest-avatar { width: 28px; height: 28px; font-size: 12px; }
+.guest-person { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
+.guest-name { max-width: 100%; font-size: 15px; overflow-wrap: anywhere; }
+.guest-email { min-width: 0; max-width: 100%; overflow: hidden; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.guest-status { grid-column: 2; justify-self: end; max-width: 100%; padding: 4px 9px; border-radius: 999px; background: #f1edf5; color: #65516f; font-size: 12px; line-height: 1.5; }
+.guest-status.status-confirmed { background: #e6f2e9; color: #286348; }
+.guest-status.status-pending_approval, .guest-status.status-offered, .guest-status.status-waitlisted { background: #faf0df; color: #78551d; }
+.guest-status.status-rejected, .guest-status.status-cancelled { background: #f9e9ed; color: #943d50; }
+.guest-time { grid-column: 3; justify-self: end; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guest-decisions { position: absolute; inset-block: 0; right: 166px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; max-width: 180px; }
+.guest-decisions > button { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 6px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; white-space: nowrap; }
+.guest-decisions > .host-guest-approve:is(:hover, :focus-visible) { background: #dfede4; }
+.guest-decisions > .host-guest-decline:is(:hover, :focus-visible) { background: #f4dfe6; }
+@media (max-width: 1000px) {
+  .guest-person { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 700px) {
+  .guest-open { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 14px; }
+  .guest-identity { grid-column: 1 / -1; }
+  .guest-status { grid-column: 1; grid-row: 2; justify-self: start; margin-left: 40px; }
+  .guest-time { grid-column: 2; grid-row: 2; font-size: 11px; }
+  .guest-decisions { position: static; justify-content: flex-start; max-width: none; padding: 0 14px 10px 48px; }
+  .guest-name { font-size: 14px; }
+  .guest-email { font-size: 12px; }
+}
+@media (max-width: 380px) {
+  .guest-open { grid-template-columns: minmax(0, 1fr); }
+  .guest-time { grid-column: 1; grid-row: 3; justify-self: start; margin-left: 40px; }
+}

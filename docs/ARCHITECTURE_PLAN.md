@@ -4,6 +4,8 @@
 **Document Version:** 3.0.0 (Azure Managed Cloud & Single-VM High-Scalability Blueprint)  
 **Status:** Approved & Active Architecture
 
+> **Implementation status:** This is a target blueprint, not an as-built description. The mounted routes and verified gaps are listed in [ARCHITECTURE.md](ARCHITECTURE.md). ACS delivery and organizer/admin backend workflows are not implemented. The database placement here conflicts with the PostgreSQL-on-VM budget in `AGENTS.md`; this production topology is unresolved pending a team decision. Do not treat the performance projections below as measured results.
+
 ---
 
 ## 1. Executive Summary & Design Principles

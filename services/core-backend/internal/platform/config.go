@@ -2,6 +2,8 @@ package platform
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -10,16 +12,12 @@ import (
 
 // Config holds runtime configuration loaded from environment variables.
 type Config struct {
+	BindHost           string
 	AppEnv             string
 	Port               int
-	BaseURL            string
 	DatabaseURL        string
 	SessionSecret      string
-	SessionName        string
-	SessionMaxAge      time.Duration
 	CORSAllowedOrigins []string
-	StorageBackend     string
-	LocalStorageDir    string
 	DBMaxConns         int
 	DBMinConns         int
 	DBMaxConnLifetime  time.Duration
@@ -39,15 +37,20 @@ func LoadConfig() (*Config, error) {
 	}
 
 	appEnv := getEnv("APP_ENV", "development")
-	sessionSecret := getEnv("SESSION_SECRET", "dev-insecure-secret-key-32-bytes-long!")
+	sessionSecret := os.Getenv("SESSION_SECRET")
 
-	if appEnv == "production" && (sessionSecret == "" || strings.HasPrefix(sessionSecret, "dev-")) {
+	normalizedSessionSecret := strings.ToLower(strings.TrimSpace(sessionSecret))
+	if appEnv == "production" && (len(normalizedSessionSecret) < 32 || strings.HasPrefix(normalizedSessionSecret, "dev-") || strings.HasPrefix(normalizedSessionSecret, "change-me") || strings.HasPrefix(normalizedSessionSecret, "replace-me")) {
 		return nil, fmt.Errorf("SESSION_SECRET must be configured with a secure key in production")
 	}
 
 	corsOrigins := strings.Split(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"), ",")
 	for i := range corsOrigins {
 		corsOrigins[i] = strings.TrimSpace(corsOrigins[i])
+		parsedOrigin, originErr := url.Parse(corsOrigins[i])
+		if appEnv == "production" && (originErr != nil || parsedOrigin.Scheme != "https" || parsedOrigin.Hostname() == "" || parsedOrigin.User != nil || parsedOrigin.Path != "" || parsedOrigin.RawQuery != "" || parsedOrigin.Fragment != "") {
+			return nil, fmt.Errorf("production CORS origins must be explicit HTTPS origins")
+		}
 	}
 
 	dbMaxConns, _ := strconv.Atoi(getEnv("DB_MAX_CONNS", "28"))
@@ -56,21 +59,28 @@ func LoadConfig() (*Config, error) {
 	}
 
 	dbMinConns, _ := strconv.Atoi(getEnv("DB_MIN_CONNS", "4"))
-	if dbMinConns <= 0 || dbMinConns > dbMaxConns {
-		dbMinConns = 4
+	if dbMinConns < 0 || dbMinConns > dbMaxConns {
+		dbMinConns = min(4, dbMaxConns)
 	}
 
+	if strings.TrimSpace(os.Getenv("DATABASE_URL")) == "" {
+		return nil, fmt.Errorf("DATABASE_URL must be configured")
+	}
+	bindHost := "127.0.0.1"
+	if appEnv == "production" {
+		bindHost = "0.0.0.0"
+	}
+	bindHost = getEnv("BIND_HOST", bindHost)
+	if net.ParseIP(bindHost) == nil {
+		return nil, fmt.Errorf("BIND_HOST must be an IP address")
+	}
 	cfg := &Config{
+		BindHost:           bindHost,
 		AppEnv:             appEnv,
 		Port:               port,
-		BaseURL:            getEnv("BASE_URL", fmt.Sprintf("http://localhost:%d", port)),
-		DatabaseURL:        getEnv("DATABASE_URL", "postgres://hackways_user:hackways_password@localhost:5432/hackways_dev?sslmode=disable"),
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
 		SessionSecret:      sessionSecret,
-		SessionName:        getEnv("SESSION_NAME", "hackways_session"),
-		SessionMaxAge:      30 * 24 * time.Hour,
 		CORSAllowedOrigins: corsOrigins,
-		StorageBackend:     getEnv("STORAGE_BACKEND", "local"),
-		LocalStorageDir:    getEnv("LOCAL_STORAGE_DIR", "./uploads"),
 		DBMaxConns:         dbMaxConns,
 		DBMinConns:         dbMinConns,
 		DBMaxConnLifetime:  15 * time.Minute,

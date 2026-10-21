@@ -34,18 +34,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # ==========================================
-  # 2. LOCAL MAIL CAPTURE (Mailpit)
-  # ==========================================
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: hackways_mailpit_dev
-    restart: unless-stopped
-    networks:
-      - dev_net
-    ports:
-      - "8025:8025" # Web UI: http://localhost:8025
-      - "1025:1025" # SMTP Port
-    environment:
-      MP_MAX_MESSAGES: 500

@@ -7,7 +7,7 @@ export interface SkeletonProps {
 export const Skeleton: React.FC<SkeletonProps> = ({ className = "" }) => {
   return (
     <div
-      className={`animate-pulse bg-slate-800/80 rounded-lg ${className}`}
+      className={`animate-pulse bg-[#E4E7F0] rounded-lg ${className}`}
       aria-hidden="true"
     />
   );
@@ -15,7 +15,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({ className = "" }) => {
 
 export const EventCardSkeleton: React.FC = () => {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm p-5 flex flex-col justify-between h-[280px]">
+    <div className="bg-white border border-[#E4E7F0] rounded-xl overflow-hidden shadow-sm p-5 flex flex-col justify-between h-[280px]">
       <div>
         <div className="flex justify-between items-center mb-3">
           <Skeleton className="h-5 w-20 rounded-full" />
@@ -26,7 +26,7 @@ export const EventCardSkeleton: React.FC = () => {
         <Skeleton className="h-4 w-2/3 mb-4" />
         <Skeleton className="h-2 w-full rounded-full mb-4" />
       </div>
-      <div className="flex justify-between items-center pt-3 border-t border-slate-800/60">
+      <div className="flex justify-between items-center pt-3 border-t border-[#E4E7F0]">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-8 w-20 rounded-lg" />
       </div>

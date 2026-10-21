@@ -111,15 +111,15 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({
 
           <div>
             <Badge variant="success">Confirmed Ticket</Badge>
-            <p className="mt-2 text-sm text-slate-300 font-medium">
+            <p className="mt-2 text-sm text-[#475069] font-medium">
               Attendee: {confirmedRSVP.guest_name || confirmedRSVP.guest_email}
             </p>
-            <p className="text-xs text-slate-500 mt-1 font-mono">
+            <p className="text-xs text-[#757F9A] mt-1 font-mono">
               RSVP ID: {confirmedRSVP.id}
             </p>
           </div>
 
-          <div className="pt-4 border-t border-slate-800">
+          <div className="pt-4 border-t border-[#E4E7F0]">
             <Button variant="primary" size="md" className="w-full" onClick={handleClose}>
               Done
             </Button>
@@ -128,7 +128,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {error && (
-            <div className="p-3 bg-rose-950/60 border border-rose-800/80 rounded-xl text-xs text-rose-300">
+            <div className="p-3 bg-rose-950/60 border border-rose-200/80 rounded-xl text-xs text-rose-800">
               {error}
             </div>
           )}
@@ -152,11 +152,12 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({
           />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label htmlFor="rsvp-notes" className="mb-1.5 block text-sm font-semibold text-[#475069]">
               Special Notes / Dietary / Accessibility (Optional)
             </label>
             <textarea
-              className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 transition disabled:opacity-50"
+              id="rsvp-notes"
+              className="w-full rounded-xl border border-[#E4E7F0] bg-white px-4 py-3 text-sm text-[#0E121E] placeholder:text-[#757F9A] transition focus:border-[#34349C] focus:outline-none focus:ring-2 focus:ring-[#34349C] disabled:opacity-50"
               rows={2}
               placeholder="Any requirements or comments for the organizer..."
               value={notes}
@@ -165,7 +166,7 @@ export const RSVPModal: React.FC<RSVPModalProps> = ({
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+          <div className="pt-3 border-t border-[#E4E7F0] flex justify-end gap-3">
             <Button
               type="button"
               variant="outline"

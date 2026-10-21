@@ -98,7 +98,11 @@ func (s *AzureBlobSASSigner) CreateUploadIntent(req UploadIntentRequest) (*Uploa
 	start := now.Add(-5 * time.Minute) // 5m clock skew allowance
 	expiry := now.Add(SASExpiryDuration)
 
-	sasToken, err := s.generateBlobWriteSAS(blobKey, start, expiry)
+	permissions := "w"
+	if strings.HasPrefix(category, "event-banners/") {
+		permissions = "c"
+	}
+	sasToken, err := s.generateBlobSAS(blobKey, start, expiry, permissions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate SAS token: %w", err)
 	}
@@ -126,13 +130,15 @@ func (s *AzureBlobSASSigner) CreateUploadIntent(req UploadIntentRequest) (*Uploa
 
 // generateBlobWriteSAS signs a Write-Only SAS query string using Azure Storage Shared Key HMAC-SHA256.
 func (s *AzureBlobSASSigner) generateBlobWriteSAS(blobName string, start, expiry time.Time) (string, error) {
+	return s.generateBlobSAS(blobName, start, expiry, "w")
+}
+
+func (s *AzureBlobSASSigner) generateBlobSAS(blobName string, start, expiry time.Time, permissions string) (string, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(s.cfg.AccountKey)
 	if err != nil {
-		// If key is not base64 (e.g. dev placeholder), use raw bytes
-		keyBytes = []byte(s.cfg.AccountKey)
+		return "", fmt.Errorf("invalid storage signing key encoding")
 	}
 
-	permissions := "w"    // Write-only (Rule 2.3)
 	signedResource := "b" // blob
 	startTimeStr := start.Format("2006-01-02T15:04:05Z")
 	expiryTimeStr := expiry.Format("2006-01-02T15:04:05Z")

@@ -1,0 +1,4 @@
+#main-content .auth-page h1 { font-size: 30px; line-height: 1.3; font-weight: 400; -webkit-text-stroke: 0; }
+.auth-page :is(p, .field > label, .app-input, .app-button, .quiet-link, .auth-switch) { font-size: 16px; line-height: 1.75; font-weight: 400; -webkit-text-stroke: 0; }
+.auth-page > p { margin-top: 14px; }
+.auth-page .auth-switch { gap: 6px 10px; }

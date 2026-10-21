@@ -1,0 +1,7 @@
+#main-content .discovery-page :is(h1, h2, h3) { font-weight: 400; -webkit-text-stroke: 0; }
+.discovery-page .discovery-heading p { max-width: 62ch; font-size: 17px; line-height: 1.75; color: #5f5369; }
+.discovery-page :is(.feed-results-heading > span, .search-caption, .catalog-event-date, .catalog-event-meta, .catalog-event-location, .catalog-event-description, .catalog-event-closed, .catalog-event-open, .quiet-link, .app-button) { font-size: 16px; line-height: 1.7; }
+.discovery-page :is(.catalog-event-meta, .catalog-event-date, .catalog-event-location, .catalog-event-description) { color: #5d535f; }
+.discovery-page .catalog-event h3 { font-size: 22px; line-height: 1.45; }
+.discovery-page .discovery-guidance { margin-top: 32px; max-width: 70ch; color: #5f5369; font-size: 16px; line-height: 1.75; }
+.discovery-page .discovery-guidance a { text-decoration: underline; text-underline-offset: 4px; }

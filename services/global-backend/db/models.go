@@ -189,9 +189,14 @@ func (ns NullNotificationType) Value() (driver.Value, error) {
 type RegistrationStatus string
 
 const (
-	RegistrationStatusConfirmed  RegistrationStatus = "confirmed"
-	RegistrationStatusCancelled  RegistrationStatus = "cancelled"
-	RegistrationStatusWaitlisted RegistrationStatus = "waitlisted"
+	RegistrationStatusConfirmed       RegistrationStatus = "confirmed"
+	RegistrationStatusCancelled       RegistrationStatus = "cancelled"
+	RegistrationStatusWaitlisted      RegistrationStatus = "waitlisted"
+	RegistrationStatusPendingApproval RegistrationStatus = "pending_approval"
+	RegistrationStatusOffered         RegistrationStatus = "offered"
+	RegistrationStatusRejected        RegistrationStatus = "rejected"
+	RegistrationStatusExpired         RegistrationStatus = "expired"
+	RegistrationStatusTransferred     RegistrationStatus = "transferred"
 )
 
 func (e *RegistrationStatus) Scan(src interface{}) error {
@@ -229,6 +234,24 @@ func (ns NullRegistrationStatus) Value() (driver.Value, error) {
 	return string(ns.RegistrationStatus), nil
 }
 
+// Append-only through application queries; no secrets or form answers in metadata.
+type AuditLog struct {
+	ID          int64              `json:"id"`
+	ActorUserID pgtype.UUID        `json:"actor_user_id"`
+	EventID     pgtype.UUID        `json:"event_id"`
+	EntityID    pgtype.UUID        `json:"entity_id"`
+	Action      string             `json:"action"`
+	RequestID   string             `json:"request_id"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type AuthRateLimits struct {
+	ScopeHash   string             `json:"scope_hash"`
+	WindowStart pgtype.Timestamptz `json:"window_start"`
+	Attempts    int32              `json:"attempts"`
+}
+
 type EmailOutbox struct {
 	ID             pgtype.UUID        `json:"id"`
 	RsvpID         pgtype.UUID        `json:"rsvp_id"`
@@ -244,6 +267,17 @@ type EmailOutbox struct {
 	ErrorMessage   pgtype.Text        `json:"error_message"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	LeaseToken     pgtype.UUID        `json:"lease_token"`
+	FirstSentAt    pgtype.Timestamptz `json:"first_sent_at"`
+}
+
+type EmailVerifications struct {
+	UserID     pgtype.UUID        `json:"user_id"`
+	Email      string             `json:"email"`
+	TokenHash  string             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type EventCategories struct {
@@ -255,33 +289,75 @@ type EventCategories struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type EventRegistrationQuestions struct {
+	ID          pgtype.UUID        `json:"id"`
+	PublicCode  string             `json:"public_code"`
+	EventID     pgtype.UUID        `json:"event_id"`
+	Label       string             `json:"label"`
+	Description string             `json:"description"`
+	Kind        string             `json:"kind"`
+	Required    bool               `json:"required"`
+	Position    int32              `json:"position"`
+	Options     []string           `json:"options"`
+	Active      bool               `json:"active"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Events struct {
-	ID                   pgtype.UUID        `json:"id"`
-	OrganizerID          pgtype.UUID        `json:"organizer_id"`
-	CategoryID           pgtype.Int8        `json:"category_id"`
-	Status               EventStatus        `json:"status"`
-	Format               EventFormat        `json:"format"`
-	Title                string             `json:"title"`
-	Slug                 string             `json:"slug"`
-	Description          string             `json:"description"`
-	ShortDescription     pgtype.Text        `json:"short_description"`
-	BannerUrl            pgtype.Text        `json:"banner_url"`
-	LocationName         pgtype.Text        `json:"location_name"`
-	LocationAddress      pgtype.Text        `json:"location_address"`
-	OnlineUrl            pgtype.Text        `json:"online_url"`
-	StartsAt             pgtype.Timestamptz `json:"starts_at"`
-	EndsAt               pgtype.Timestamptz `json:"ends_at"`
-	Timezone             string             `json:"timezone"`
-	Capacity             pgtype.Int4        `json:"capacity"`
-	CurrentRsvpCount     int32              `json:"current_rsvp_count"`
-	RegistrationOpensAt  pgtype.Timestamptz `json:"registration_opens_at"`
-	RegistrationClosesAt pgtype.Timestamptz `json:"registration_closes_at"`
-	Tags                 []string           `json:"tags"`
-	PublishedAt          pgtype.Timestamptz `json:"published_at"`
-	CancelledAt          pgtype.Timestamptz `json:"cancelled_at"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
+	ID                       pgtype.UUID        `json:"id"`
+	OrganizerID              pgtype.UUID        `json:"organizer_id"`
+	CategoryID               pgtype.Int8        `json:"category_id"`
+	Status                   EventStatus        `json:"status"`
+	Format                   EventFormat        `json:"format"`
+	Title                    string             `json:"title"`
+	Slug                     string             `json:"slug"`
+	Description              string             `json:"description"`
+	ShortDescription         pgtype.Text        `json:"short_description"`
+	BannerUrl                pgtype.Text        `json:"banner_url"`
+	LocationName             pgtype.Text        `json:"location_name"`
+	LocationAddress          pgtype.Text        `json:"location_address"`
+	OnlineUrl                pgtype.Text        `json:"online_url"`
+	StartsAt                 pgtype.Timestamptz `json:"starts_at"`
+	EndsAt                   pgtype.Timestamptz `json:"ends_at"`
+	Timezone                 string             `json:"timezone"`
+	Capacity                 pgtype.Int4        `json:"capacity"`
+	CurrentRsvpCount         int32              `json:"current_rsvp_count"`
+	RegistrationOpensAt      pgtype.Timestamptz `json:"registration_opens_at"`
+	RegistrationClosesAt     pgtype.Timestamptz `json:"registration_closes_at"`
+	Tags                     []string           `json:"tags"`
+	PublishedAt              pgtype.Timestamptz `json:"published_at"`
+	CancelledAt              pgtype.Timestamptz `json:"cancelled_at"`
+	CreatedAt                pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt                pgtype.Timestamptz `json:"deleted_at"`
+	Revision                 int64              `json:"revision"`
+	HeldRsvpCount            int32              `json:"held_rsvp_count"`
+	RegistrationMode         string             `json:"registration_mode"`
+	AllowGuest               bool               `json:"allow_guest"`
+	WaitlistEnabled          bool               `json:"waitlist_enabled"`
+	OfferMinutes             int32              `json:"offer_minutes"`
+	SpaceID                  pgtype.UUID        `json:"space_id"`
+	Theme                    string             `json:"theme"`
+	ThemeColor               string             `json:"theme_color"`
+	ThemeFont                string             `json:"theme_font"`
+	ThemeStyle               string             `json:"theme_style"`
+	FaqText                  string             `json:"faq_text"`
+	ContactUrl               string             `json:"contact_url"`
+	Rewards                  string             `json:"rewards"`
+	ThemeDisplay             string             `json:"theme_display"`
+	Visibility               string             `json:"visibility"`
+	RegistrationFormRevision int64              `json:"registration_form_revision"`
+	RegistrationNameRequired bool               `json:"registration_name_required"`
+}
+
+type IdempotencyRecords struct {
+	ScopeHash    string             `json:"scope_hash"`
+	KeyHash      string             `json:"key_hash"`
+	RequestHash  string             `json:"request_hash"`
+	ResponseJson []byte             `json:"response_json"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
 }
 
 type Organizers struct {
@@ -297,18 +373,31 @@ type Organizers struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
-type Rsvps struct {
-	ID           pgtype.UUID        `json:"id"`
-	EventID      pgtype.UUID        `json:"event_id"`
-	UserID       pgtype.UUID        `json:"user_id"`
-	GuestName    pgtype.Text        `json:"guest_name"`
-	GuestEmail   pgtype.Text        `json:"guest_email"`
-	Status       RegistrationStatus `json:"status"`
-	Notes        pgtype.Text        `json:"notes"`
-	RegisteredAt pgtype.Timestamptz `json:"registered_at"`
-	CancelledAt  pgtype.Timestamptz `json:"cancelled_at"`
+type RegistrationSubmissions struct {
+	ID           int64              `json:"id"`
+	RsvpID       pgtype.UUID        `json:"rsvp_id"`
+	FormRevision int64              `json:"form_revision"`
+	Answers      []byte             `json:"answers"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Rsvps struct {
+	ID                pgtype.UUID        `json:"id"`
+	EventID           pgtype.UUID        `json:"event_id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	GuestName         pgtype.Text        `json:"guest_name"`
+	GuestEmail        pgtype.Text        `json:"guest_email"`
+	Status            RegistrationStatus `json:"status"`
+	Notes             pgtype.Text        `json:"notes"`
+	RegisteredAt      pgtype.Timestamptz `json:"registered_at"`
+	CancelledAt       pgtype.Timestamptz `json:"cancelled_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	OfferExpiresAt    pgtype.Timestamptz `json:"offer_expires_at"`
+	ApprovalExpiresAt pgtype.Timestamptz `json:"approval_expires_at"`
+	TransferCount     int32              `json:"transfer_count"`
+	TransferredFrom   pgtype.UUID        `json:"transferred_from"`
+	PublicCode        string             `json:"public_code"`
 }
 
 type Sessions struct {
@@ -320,6 +409,40 @@ type Sessions struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	LastSeen  pgtype.Timestamptz `json:"last_seen"`
+}
+
+type SpaceMemberships struct {
+	SpaceID  pgtype.UUID        `json:"space_id"`
+	UserID   pgtype.UUID        `json:"user_id"`
+	JoinedAt pgtype.Timestamptz `json:"joined_at"`
+}
+
+// Owner-led communities. Membership does not grant event authoring or management rights.
+type Spaces struct {
+	ID           pgtype.UUID        `json:"id"`
+	OrganizerID  pgtype.UUID        `json:"organizer_id"`
+	Name         string             `json:"name"`
+	Slug         string             `json:"slug"`
+	Description  string             `json:"description"`
+	Guidelines   string             `json:"guidelines"`
+	WebsiteUrl   string             `json:"website_url"`
+	Status       string             `json:"status"`
+	Revision     int64              `json:"revision"`
+	CreationKey  string             `json:"creation_key"`
+	CreationHash string             `json:"creation_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Tickets struct {
+	ID          pgtype.UUID        `json:"id"`
+	RsvpID      pgtype.UUID        `json:"rsvp_id"`
+	Status      string             `json:"status"`
+	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
+	CheckedInBy pgtype.UUID        `json:"checked_in_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	PublicCode  string             `json:"public_code"`
 }
 
 type Users struct {

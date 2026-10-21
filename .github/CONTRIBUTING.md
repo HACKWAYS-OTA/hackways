@@ -33,7 +33,10 @@ Hackways is organized as a decoupled monorepo supporting 6 core production servi
 
 ## 3. Git Branching Strategy
 
-We enforce a strict Git Flow branching model:
+The project follows this branch and PR policy. Required reviews and branch
+protection are not technically enforced on the current private GitHub Free plan.
+Contributors must use PRs; do not push new work directly to `main` or enable
+automatic merging/deployment as a substitute for operator approval.
 
 | Branch | Purpose | Base Branch | Merges Into |
 |---|---|---|---|

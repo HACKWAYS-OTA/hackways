@@ -35,10 +35,6 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := GetSessionToken(r, DefaultSessionCookie)
-			if token == "" {
-				// Also check fallback or admin cookie
-				token = GetSessionToken(r, AdminSessionCookie)
-			}
 
 			if token == "" {
 				platform.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
@@ -47,10 +43,39 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 
 			user, err := sm.GetSession(r.Context(), token)
 			if err != nil {
+				if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
+					platform.RespondDatabaseError(w, err)
+					return
+				}
 				platform.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session expired or invalid", nil)
 				return
 			}
 
+			ctx := context.WithValue(r.Context(), userContextKey, user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// OptionalAuth attaches the account identity when a valid attendee session is
+// present and preserves guest access when no session cookie is supplied.
+func OptionalAuth(sm *SessionManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token := GetSessionToken(r, DefaultSessionCookie)
+			if token == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			user, err := sm.GetSession(r.Context(), token)
+			if err != nil {
+				if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
+					platform.RespondDatabaseError(w, err)
+					return
+				}
+				platform.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Session expired or invalid", nil)
+				return
+			}
 			ctx := context.WithValue(r.Context(), userContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

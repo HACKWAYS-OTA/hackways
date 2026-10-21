@@ -33,7 +33,7 @@ COPY --from=builder /bin/core-backend /usr/local/bin/core-backend
 EXPOSE 8081
 
 ENV PORT=8081 \
-    ENV=production \
+    APP_ENV=production \
     GOMEMLIMIT=100MiB \
     GOGC=100
 

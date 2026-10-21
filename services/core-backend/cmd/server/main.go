@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,10 @@ import (
 	"github.com/hackways/core-backend/internal/events"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/hackways/core-backend/internal/rsvps"
+	"github.com/hackways/core-backend/internal/spaces"
+	"github.com/hackways/core-backend/internal/workflows"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"sync"
 )
 
 func main() {
@@ -50,11 +54,11 @@ func main() {
 	// 3. Initialize PostgreSQL Connection Pool
 	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("failed to parse database configuration", "error", err)
+		logger.Error("failed to parse database configuration; check DATABASE_URL without logging its value")
 		os.Exit(1)
 	}
 	poolConfig.MaxConns = int32(cfg.DBMaxConns)
-	poolConfig.MinConns = int32(cfg.DBMinConns)
+	poolConfig.MinConns = int32(min(cfg.DBMinConns, cfg.DBMaxConns))
 	poolConfig.MaxConnLifetime = cfg.DBMaxConnLifetime
 	poolConfig.MaxConnIdleTime = cfg.DBMaxConnIdleTime
 
@@ -63,9 +67,13 @@ func main() {
 
 	pool, err := pgxpool.NewWithConfig(initCtx, poolConfig)
 	if err != nil {
-		logger.Warn("could not establish immediate connection to database; starting in degraded mode", "error", err)
+		logger.Error("could not initialize database pool", "error", err)
+		os.Exit(1)
 	} else {
-		logger.Info("connected to PostgreSQL",
+		if pingErr := pool.Ping(initCtx); pingErr != nil {
+			logger.Warn("database is not ready; health checks will return unavailable")
+		}
+		logger.Info("initialized PostgreSQL pool",
 			"max_conns", cfg.DBMaxConns,
 			"min_conns", cfg.DBMinConns,
 		)
@@ -76,6 +84,7 @@ func main() {
 	r.Use(platform.RequestID)
 	r.Use(platform.Logger(logger))
 	r.Use(platform.Recoverer(logger))
+	r.Use(platform.RequestProtection(32))
 	r.Use(platform.CORS(cfg.CORSAllowedOrigins))
 
 	// 5. Mount health check
@@ -90,22 +99,28 @@ func main() {
 			platform.RespondJSON(w, http.StatusOK, map[string]string{
 				"service": "Hackways Core Backend",
 				"version": "v1",
-				"port":    "8081",
-				"status":  "operational",
 			})
 		})
 		v1.Mount("/events", eventsHandler.Routes())
 		v1.Mount("/rsvps", rsvpsHandler.Routes())
+		v1.Mount("/spaces", spaces.NewHandler(pool).Routes())
 	})
 
+	maintenanceCtx, stopMaintenance := context.WithCancel(context.Background())
+	var maintenanceWG sync.WaitGroup
+	maintenanceWG.Add(1)
+	go func() { defer maintenanceWG.Done(); workflows.New(pool).RunMaintenance(maintenanceCtx, logger) }()
+	defer stopMaintenance()
 	// 7. HTTP Server with production timeouts
-	serverAddr := fmt.Sprintf(":%d", cfg.Port)
+	serverAddr := net.JoinHostPort(cfg.BindHost, fmt.Sprint(cfg.Port))
 	srv := &http.Server{
-		Addr:         serverAddr,
-		Handler:      r,
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
-		IdleTimeout:  cfg.IdleTimeout,
+		Addr:              serverAddr,
+		Handler:           r,
+		ReadTimeout:       cfg.ReadTimeout,
+		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	// 8. Graceful shutdown handler
@@ -118,13 +133,16 @@ func main() {
 		logger.Info("shutting down Core Backend gracefully...")
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 		defer cancel()
+		shutdownResult := srv.Shutdown(ctx)
+		stopMaintenance()
+		maintenanceWG.Wait()
 
 		if pool != nil {
 			logger.Info("closing PostgreSQL connection pool...")
 			pool.Close()
 		}
 
-		shutdownErr <- srv.Shutdown(ctx)
+		shutdownErr <- shutdownResult
 	}()
 
 	logger.Info("Core Backend listener ready", "addr", serverAddr)

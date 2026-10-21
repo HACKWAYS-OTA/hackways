@@ -3,9 +3,10 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"github.com/hackways/global-backend/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
-	"os"
+
 	"testing"
 	"time"
 
@@ -15,10 +16,7 @@ import (
 )
 
 func TestRequireAuth_NegativeTests(t *testing.T) {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://hackways_user:hackways_password@localhost:5432/hackways_dev?sslmode=disable"
-	}
+	dbURL := testsupport.DatabaseURL(t)
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -100,10 +98,7 @@ func TestRequireAuth_NegativeTests(t *testing.T) {
 }
 
 func TestRequireOrganizer_NegativeTests(t *testing.T) {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://hackways_user:hackways_password@localhost:5432/hackways_dev?sslmode=disable"
-	}
+	dbURL := testsupport.DatabaseURL(t)
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)

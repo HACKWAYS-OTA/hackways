@@ -12,11 +12,14 @@ WORKDIR /app
 COPY packages/api-client ./packages/api-client
 RUN cd packages/api-client && npm install && npm run build
 
+# Shared controls are compiled by each independent Next.js app
+COPY packages/ui ./packages/ui
+
 # Setup application package
 COPY apps/${APP_NAME}/package.json ./apps/${APP_NAME}/
 COPY apps/${APP_NAME}/package-lock.json* ./apps/${APP_NAME}/
 WORKDIR /app/apps/${APP_NAME}
-RUN npm install
+RUN npm install --install-links
 
 # 2. Build the application
 FROM base AS builder
@@ -24,6 +27,7 @@ ARG APP_NAME
 WORKDIR /app
 
 COPY --from=deps /app/packages/api-client ./packages/api-client
+COPY --from=deps /app/packages/ui ./packages/ui
 COPY --from=deps /app/apps/${APP_NAME}/node_modules ./apps/${APP_NAME}/node_modules
 COPY apps/${APP_NAME} ./apps/${APP_NAME}
 
