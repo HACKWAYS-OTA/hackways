@@ -1,11 +1,22 @@
 package auth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestGoogleUserInfoUsesCurrentVerifiedEmailField(t *testing.T) {
+	var info googleUserInfo
+	if err := json.Unmarshal([]byte(`{"sub":"google-sub","email":"user@example.com","email_verified":true}`), &info); err != nil {
+		t.Fatalf("decode Google user info: %v", err)
+	}
+	if !info.VerifiedEmail {
+		t.Fatal("expected Google email_verified=true to be accepted")
+	}
+}
 
 func testGoogleHandler() *Handler {
 	return NewHandler(nil, false, GoogleOAuthConfig{
