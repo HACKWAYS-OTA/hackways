@@ -30,7 +30,7 @@ export default function HomePage() {
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10h11m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </span>
               </a>
-              <Link className="button button-outline hero-secondary" href="/organizers">Host an event</Link>
+              <a className="button button-outline hero-secondary" href="/create">Host an event</a>
             </div>
           </div>
           <div className="hero-details">
@@ -158,7 +158,7 @@ export default function HomePage() {
               <div><dt>The place</dt><dd>Add a venue, an online link, or both for a hybrid event.</dd></div>
               <div><dt>The capacity</dt><dd>Set an attendee limit if your event needs one.</dd></div>
             </dl>
-            <div className="section-actions"><a className="button button-primary" href={`${site.app}/create`}>Host an event</a><a className="button button-outline" href={`${site.organizer}/login`}>Organizer sign in</a></div>
+            <div className="section-actions"><a className="button button-primary" href="/create">Host an event</a><a className="button button-outline" href={`${site.organizer}/login`}>Organizer sign in</a></div>
           </div>
         </div>
       </section>
@@ -175,7 +175,7 @@ export default function HomePage() {
             { title: "What should they prepare?", body: "Mention anything attendees need to bring, install, or read. Clear preparation instructions help people arrive ready to take part." },
             { title: "How will they join?", body: "Make the format, schedule, location, and participation instructions easy to find. Include a way to ask about details that need a personal answer." },
           ]} />
-          <div className="section-actions"><a className="button button-primary" href={`${site.app}/create`}>Create your event</a><Link className="text-link" href="/organizers">Hosting guide</Link></div>
+          <div className="section-actions"><a className="button button-primary" href="/create">Create your event</a><Link className="text-link" href="/organizers">Hosting guide</Link></div>
         </div>
       </section>
 
@@ -209,7 +209,7 @@ export default function HomePage() {
           </div>
           <div className="start-options">
             <div><h3>Find your next event.</h3><p>Browse hackathons, conferences, and meetups, then read the details and RSVP.</p><a className="button button-primary" href={site.app}>Explore events</a></div>
-            <div><h3>Host your own event.</h3><p>Create an organizer profile, add the details, and publish your next gathering.</p><a className="button button-primary" href={`${site.app}/create`}>Create an event</a></div>
+            <div><h3>Host your own event.</h3><p>Create an organizer profile, add the details, and publish your next gathering.</p><a className="button button-primary" href="/create">Create an event</a></div>
           </div>
         </div>
       </section>
