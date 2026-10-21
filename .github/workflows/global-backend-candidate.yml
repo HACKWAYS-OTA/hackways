@@ -1,0 +1,108 @@
+name: Global Backend Candidate
+
+# Explicit operator label only. This workflow never deploys or builds other apps.
+on:
+  pull_request:
+    types: [labeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: global-backend-candidate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    if: >-
+      github.event.label.name == 'build-global-backend' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      packages: write
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      DOCKER_BUILD_RECORD_UPLOAD: 'false'
+      DOCKER_BUILD_SUMMARY: 'false'
+    steps:
+      - name: Require current reviewed scope and successful CI for this exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          from pathlib import Path
+          event=json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          repo=os.environ['GITHUB_REPOSITORY'];sha=os.environ['CANDIDATE_SHA']
+          def get(path):
+              request=urllib.request.Request('https://api.github.com/repos/'+repo+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(request,timeout=20) as response: return json.load(response)
+          number=event['pull_request']['number'];pr=get('/pulls/'+str(number))
+          if pr['state']!='open' or pr['draft'] or pr['head']['sha']!=sha or pr['head']['repo']['full_name']!=repo: raise SystemExit('PR changed or is not eligible')
+          if 'build-global-backend' not in [label['name'] for label in pr['labels']]: raise SystemExit('Publication label was removed')
+          paths=[]
+          for page in range(1,11):
+              files=get(f'/pulls/{number}/files?per_page=100&page={page}');paths.extend(item['filename'] for item in files)
+              if len(files)<100: break
+          else: raise SystemExit('PR file scope exceeds limit')
+          allowed=lambda p:p.startswith(('services/global-backend/','docs/')) or p=='.github/workflows/global-backend-candidate.yml'
+          if not paths or not all(map(allowed,paths)) or not any(p.startswith('services/global-backend/') for p in paths): raise SystemExit('Only a global-backend fix with documentation and this publication workflow is permitted')
+          runs=get('/actions/workflows/ci.yml/runs?head_sha='+sha+'&event=pull_request&status=completed&per_page=100')['workflow_runs']
+          matching=[run for run in runs if run['head_sha']==sha and run['head_repository']['full_name']==repo]
+          if not matching or max(matching,key=lambda run:run['id'])['conclusion']!='success': raise SystemExit('Latest PR CI for exact head SHA must pass before publication')
+          print('Exact head SHA and mandatory CI verified; only global-backend may be published.')
+          PY
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - name: Build and publish global-backend only
+        id: build
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.global-backend
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ steps.owner.outputs.value }}/hackways-global-backend:${{ env.CANDIDATE_SHA }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.CANDIDATE_SHA }}
+          cache-from: type=gha,scope=global-backend
+          cache-to: type=gha,mode=max,scope=global-backend
+      - name: Record immutable replacement identity
+        env:
+          OWNER: ${{ steps.owner.outputs.value }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          digest=os.environ['DIGEST']
+          if not re.fullmatch(r'sha256:[0-9a-f]{64}',digest): raise SystemExit('Missing immutable digest')
+          ref=f"ghcr.io/{os.environ['OWNER']}/hackways-global-backend"
+          record={'service':'global-backend','commit':os.environ['CANDIDATE_SHA'],'digest':digest,'immutable':ref+'@'+digest,'retained_previous_candidate':ref+'@sha256:c8a6bbe794077e3b651a07e86ce7d2795d526f522ca44795c8b5ea455d56282a','other_five_images':'unchanged','deployment_performed':False}
+          Path('global-backend-image-reference.json').write_text(json.dumps(record,indent=2)+'\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as output: output.write(record['immutable']+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: global-backend-replacement
+          path: global-backend-image-reference.json
+          retention-days: 1
