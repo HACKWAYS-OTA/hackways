@@ -118,6 +118,8 @@ svg { flex-shrink: 0; }
 .feed-state > p { max-width: 49ch; color: #75637e; font-size: 14px; line-height: 24px; }
 .feed-state > .app-button { margin-top: 8px; }
 .feed-state > a:not(.app-button) { display: inline-flex; align-items: center; gap: 5px; color: #745785; font-size: 12px; }
+.discovery-page .feed-state { align-items: center; text-align: center; }
+.discovery-page .feed-state > p { max-width: 54ch; }
 .inline-notice { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; padding: 16px 18px; margin-block: 22px; border-radius: 12px; background: #f4edf9; color: #665071; font-size: 13px; line-height: 22px; }
 .load-more { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 32px; }
 .load-more > p { color: #913d50; font-size: 13px; }
