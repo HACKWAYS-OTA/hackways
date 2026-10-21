@@ -641,3 +641,11 @@ All completed work is logged here with verified commands and output.
   - `docs/*` (ARCHITECTURE, API, DATABASE, SECURITY, DEPLOYMENT, TESTING)
 - **Summary:** Initialized isolated Git repository on `main`. Connected to official GitHub remote `https://github.com/varshith-dev/HACKWAYS-IN.git`. Established production branching strategy (`main`, `develop`, `feature/*`, `fix/*`, `release/*`, `hotfix/*`). Configured GitHub metadata, CI workflows, and complete engineering documentation.
 - **Review status:** Supervisor verified
+
+### 2026-10-21 AUTH-008 — Google OAuth bridge (PR #15)
+- **Branch:** `feature/google-oauth` (based on `main`; PR targets `develop`)
+- **Files changed:** Go global-backend OAuth handlers/config, `000008_google_oauth` migration and sqlc queries, attendee/organizer sign-in and callback pages, production Compose/env templates, Google OAuth documentation.
+- **Summary:** Added a state and PKCE protected Google authorization-code flow that links verified provider identities to existing PostgreSQL users and exchanges a short-lived one-time code for the existing host-only Hackways session cookie. Better Auth remains unconfigured.
+- **Verification:** `go test ./...` passed; `go vet ./...` passed; both frontend type-checks and lint passed; core-web and organizer-web production builds passed. Race tests were not runnable on this Windows workstation because no C compiler (`gcc`) is installed.
+- **Secrets:** Client credentials were not written to the repository, logs, or documentation. Configure them only in the protected global-backend runtime environment after migration approval.
+- **Review status:** Open for review at https://github.com/HACKWAYS-OTA/hackways/pull/15; not merged or deployed.
