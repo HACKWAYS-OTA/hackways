@@ -15,11 +15,11 @@ The client secret must never be committed or printed. If the three Google variab
 
 ## Flow
 
-1. A sign-in screen sends the browser to `auth.hackways.in/api/v1/auth/google/start` with a return path on the initiating app.
-2. The Go backend stores a signed, short-lived state/PKCE cookie and redirects to Google.
+1. A sign-in screen sends the browser to its own app host's `/api/v1/auth/google/start` endpoint with a return path on that app. Nginx forwards it to the Go backend and the browser receives a host-only nonce cookie.
+2. The Go backend stores the state and PKCE verifier in PostgreSQL and redirects to Google.
 3. The callback validates state, exchanges the code, and reads Google’s verified user profile.
 4. The provider subject is linked to the existing `users` row in `user_identities` inside PostgreSQL. Existing password accounts are linked only after Google reports a verified email.
-5. The callback creates a two-minute, one-time exchange code. The initiating app consumes it and receives the normal host-only `__Host-hackways_session` cookie.
+5. The callback creates a two-minute, one-time exchange code bound to the initiating browser's nonce. The initiating app consumes it and receives the normal host-only `__Host-hackways_session` cookie.
 
 The one-time handoff is required because a host-only cookie set on `auth.hackways.in` cannot be shared with the app or organizer subdomains.
 

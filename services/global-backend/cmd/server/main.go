@@ -133,7 +133,7 @@ func main() {
 	authHandler := auth.NewHandler(pool, cfg.AppEnv == "production", auth.GoogleOAuthConfig{
 		ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret,
 		RedirectURL: cfg.GoogleRedirectURL, ReturnOrigins: cfg.GoogleReturnOrigins,
-		SessionSecret: cfg.SessionSecret, IsProduction: cfg.AppEnv == "production",
+		IsProduction: cfg.AppEnv == "production",
 	})
 	storageHandler := storage.NewHandler(sasSigner, pool)
 

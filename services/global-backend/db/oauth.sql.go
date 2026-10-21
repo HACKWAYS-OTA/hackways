@@ -21,32 +21,97 @@ func (q *Queries) CleanupOAuthExchangeTokens(ctx context.Context) error {
 	return err
 }
 
+const cleanupOAuthStates = `-- name: CleanupOAuthStates :exec
+DELETE FROM oauth_states
+WHERE expires_at <= NOW() OR consumed_at < NOW() - INTERVAL '1 hour'
+`
+
+func (q *Queries) CleanupOAuthStates(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, cleanupOAuthStates)
+	return err
+}
+
 const consumeOAuthExchangeToken = `-- name: ConsumeOAuthExchangeToken :one
 UPDATE oauth_exchange_tokens
 SET used_at = NOW()
-WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+WHERE token_hash = $1 AND nonce_hash = $2 AND used_at IS NULL AND expires_at > NOW()
 RETURNING user_id
 `
 
-func (q *Queries) ConsumeOAuthExchangeToken(ctx context.Context, tokenHash string) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, consumeOAuthExchangeToken, tokenHash)
+type ConsumeOAuthExchangeTokenParams struct {
+	TokenHash string `json:"token_hash"`
+	NonceHash string `json:"nonce_hash"`
+}
+
+func (q *Queries) ConsumeOAuthExchangeToken(ctx context.Context, arg ConsumeOAuthExchangeTokenParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, consumeOAuthExchangeToken, arg.TokenHash, arg.NonceHash)
 	var user_id pgtype.UUID
 	err := row.Scan(&user_id)
 	return user_id, err
 }
 
+const consumeOAuthState = `-- name: ConsumeOAuthState :one
+UPDATE oauth_states
+SET consumed_at = NOW()
+WHERE state_hash = $1 AND consumed_at IS NULL AND expires_at > NOW()
+RETURNING verifier, return_to, nonce_hash
+`
+
+type ConsumeOAuthStateRow struct {
+	Verifier  string `json:"verifier"`
+	ReturnTo  string `json:"return_to"`
+	NonceHash string `json:"nonce_hash"`
+}
+
+func (q *Queries) ConsumeOAuthState(ctx context.Context, stateHash string) (ConsumeOAuthStateRow, error) {
+	row := q.db.QueryRow(ctx, consumeOAuthState, stateHash)
+	var i ConsumeOAuthStateRow
+	err := row.Scan(&i.Verifier, &i.ReturnTo, &i.NonceHash)
+	return i, err
+}
+
 const createOAuthExchangeToken = `-- name: CreateOAuthExchangeToken :exec
-INSERT INTO oauth_exchange_tokens (token_hash, user_id, expires_at)
-VALUES ($1, $2, $3)
+INSERT INTO oauth_exchange_tokens (token_hash, user_id, nonce_hash, expires_at)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateOAuthExchangeTokenParams struct {
 	TokenHash string             `json:"token_hash"`
 	UserID    pgtype.UUID        `json:"user_id"`
+	NonceHash string             `json:"nonce_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
 func (q *Queries) CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error {
-	_, err := q.db.Exec(ctx, createOAuthExchangeToken, arg.TokenHash, arg.UserID, arg.ExpiresAt)
+	_, err := q.db.Exec(ctx, createOAuthExchangeToken,
+		arg.TokenHash,
+		arg.UserID,
+		arg.NonceHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const createOAuthState = `-- name: CreateOAuthState :exec
+INSERT INTO oauth_states (state_hash, verifier, return_to, nonce_hash, expires_at)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type CreateOAuthStateParams struct {
+	StateHash string             `json:"state_hash"`
+	Verifier  string             `json:"verifier"`
+	ReturnTo  string             `json:"return_to"`
+	NonceHash string             `json:"nonce_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreateOAuthState(ctx context.Context, arg CreateOAuthStateParams) error {
+	_, err := q.db.Exec(ctx, createOAuthState,
+		arg.StateHash,
+		arg.Verifier,
+		arg.ReturnTo,
+		arg.NonceHash,
+		arg.ExpiresAt,
+	)
 	return err
 }

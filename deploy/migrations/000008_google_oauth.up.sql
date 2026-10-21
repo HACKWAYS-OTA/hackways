@@ -13,9 +13,24 @@ CREATE TABLE IF NOT EXISTS user_identities (
 
 CREATE INDEX IF NOT EXISTS user_identities_user_id_idx ON user_identities (user_id);
 
+CREATE TABLE IF NOT EXISTS oauth_states (
+    state_hash  TEXT PRIMARY KEY,
+    verifier    TEXT NOT NULL,
+    return_to   TEXT NOT NULL,
+    nonce_hash  TEXT NOT NULL,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS oauth_states_expiry_idx
+    ON oauth_states (expires_at)
+    WHERE consumed_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS oauth_exchange_tokens (
     token_hash TEXT PRIMARY KEY,
     user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    nonce_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     used_at   TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

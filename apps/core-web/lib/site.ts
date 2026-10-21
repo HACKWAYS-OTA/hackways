@@ -9,5 +9,4 @@ export const site = {
   app: origin(process.env.NEXT_PUBLIC_APP_URL, 'http://localhost:3001'),
   public: origin(process.env.NEXT_PUBLIC_PUBLIC_URL, 'http://localhost:3000'),
   organizer: origin(process.env.NEXT_PUBLIC_ORGANIZER_URL, 'http://localhost:3002'),
-  auth: origin(process.env.NEXT_PUBLIC_AUTH_URL, 'http://localhost:8082'),
 };

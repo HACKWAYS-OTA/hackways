@@ -363,9 +363,20 @@ type IdempotencyRecords struct {
 type OauthExchangeTokens struct {
 	TokenHash string             `json:"token_hash"`
 	UserID    pgtype.UUID        `json:"user_id"`
+	NonceHash string             `json:"nonce_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type OauthStates struct {
+	StateHash  string             `json:"state_hash"`
+	Verifier   string             `json:"verifier"`
+	ReturnTo   string             `json:"return_to"`
+	NonceHash  string             `json:"nonce_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type Organizers struct {

@@ -2,10 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,8 +23,8 @@ import (
 
 const (
 	googleProvider         = "google"
-	googleStateCookie      = "__Host-hackways_google_oauth"
-	googleStateCookieDev   = "hackways_google_oauth"
+	googleNonceCookie      = "__Host-hackways_google_nonce"
+	googleNonceCookieDev   = "hackways_google_nonce"
 	googleStateLifetime    = 10 * time.Minute
 	googleExchangeLifetime = 2 * time.Minute
 )
@@ -38,7 +36,6 @@ type GoogleOAuthConfig struct {
 	ClientSecret  string
 	RedirectURL   string
 	ReturnOrigins []string
-	SessionSecret string
 	IsProduction  bool
 }
 
@@ -54,13 +51,6 @@ func (c GoogleOAuthConfig) oauthConfig() *oauth2.Config {
 		RedirectURL:  c.RedirectURL,
 		Scopes:       []string{"openid", "email", "profile"},
 	}
-}
-
-type googleState struct {
-	State     string `json:"state"`
-	Verifier  string `json:"verifier"`
-	ReturnTo  string `json:"return_to"`
-	ExpiresAt int64  `json:"expires_at"`
 }
 
 type googleUserInfo struct {
@@ -101,11 +91,19 @@ func (h *Handler) GoogleStart(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, http.StatusInternalServerError, "OAUTH_STATE_ERROR", "Unable to start Google sign-in", nil)
 		return
 	}
-	payload := googleState{State: state, Verifier: verifier, ReturnTo: returnTo, ExpiresAt: time.Now().Add(googleStateLifetime).Unix()}
-	if err := h.setGoogleStateCookie(w, payload); err != nil {
+	nonce, err := GenerateToken()
+	if err != nil {
 		platform.RespondError(w, http.StatusInternalServerError, "OAUTH_STATE_ERROR", "Unable to start Google sign-in", nil)
 		return
 	}
+	if err := h.queries.CreateOAuthState(r.Context(), db.CreateOAuthStateParams{
+		StateHash: HashToken(state), Verifier: verifier, ReturnTo: returnTo,
+		NonceHash: HashToken(nonce), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(googleStateLifetime), Valid: true},
+	}); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	h.setGoogleNonceCookie(w, nonce)
 
 	challengeBytes := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(challengeBytes[:])
@@ -125,12 +123,22 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, http.StatusServiceUnavailable, "GOOGLE_AUTH_UNAVAILABLE", "Google sign-in is not configured", nil)
 		return
 	}
-	payload, err := h.readGoogleStateCookie(r)
-	if err != nil || payload.ExpiresAt < time.Now().Unix() || r.URL.Query().Get("state") != payload.State {
+	state := strings.TrimSpace(r.URL.Query().Get("state"))
+	if state == "" {
 		platform.RespondError(w, http.StatusBadRequest, "INVALID_OAUTH_STATE", "The Google sign-in session expired or is invalid", nil)
 		return
 	}
-	h.clearGoogleStateCookie(w)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	payload, err := h.queries.ConsumeOAuthState(ctx, HashToken(state))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			platform.RespondError(w, http.StatusBadRequest, "INVALID_OAUTH_STATE", "The Google sign-in session expired or is invalid", nil)
+			return
+		}
+		platform.RespondDatabaseError(w, err)
+		return
+	}
 	if providerErr := r.URL.Query().Get("error"); providerErr != "" {
 		h.redirectGoogleError(w, r, payload.ReturnTo, "Google sign-in was cancelled")
 		return
@@ -141,8 +149,6 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
 	token, err := h.google.oauthConfig().Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", payload.Verifier))
 	if err != nil {
 		platform.RespondError(w, http.StatusBadRequest, "OAUTH_EXCHANGE_FAILED", "Google sign-in could not be completed", nil)
@@ -171,6 +177,7 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	if err := h.queries.CreateOAuthExchangeToken(ctx, db.CreateOAuthExchangeTokenParams{
 		TokenHash: HashToken(exchange),
 		UserID:    userID,
+		NonceHash: payload.NonceHash,
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(googleExchangeLifetime), Valid: true},
 	}); err != nil {
 		platform.RespondDatabaseError(w, err)
@@ -195,7 +202,12 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, http.StatusBadRequest, "INVALID_EXCHANGE", "Invalid Google sign-in exchange", nil)
 		return
 	}
-	userID, err := h.queries.ConsumeOAuthExchangeToken(r.Context(), HashToken(strings.TrimSpace(req.Code)))
+	nonceCookie, err := r.Cookie(h.googleNonceCookieName())
+	if err != nil || nonceCookie.Value == "" {
+		platform.RespondError(w, http.StatusUnauthorized, "INVALID_EXCHANGE", "The Google sign-in exchange is not bound to this browser", nil)
+		return
+	}
+	userID, err := h.queries.ConsumeOAuthExchangeToken(r.Context(), db.ConsumeOAuthExchangeTokenParams{TokenHash: HashToken(strings.TrimSpace(req.Code)), NonceHash: HashToken(nonceCookie.Value)})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			platform.RespondError(w, http.StatusUnauthorized, "INVALID_EXCHANGE", "The Google sign-in exchange expired or was already used", nil)
@@ -204,6 +216,7 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
+	h.clearGoogleNonceCookie(w)
 	token, _, err := h.sm.CreateSession(r.Context(), userID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
 	if err != nil {
 		platform.RespondError(w, http.StatusInternalServerError, "SESSION_ERROR", "Failed to establish session", nil)
@@ -307,54 +320,19 @@ func validEmail(value string) bool {
 	return strings.Contains(value, "@") && len(value) <= 320 && !strings.ContainsAny(value, "\r\n")
 }
 
-func (h *Handler) googleCookieName() string {
+func (h *Handler) googleNonceCookieName() string {
 	if h.isProduction {
-		return googleStateCookie
+		return googleNonceCookie
 	}
-	return googleStateCookieDev
+	return googleNonceCookieDev
 }
 
-func (h *Handler) setGoogleStateCookie(w http.ResponseWriter, payload googleState) error {
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	encoded := base64.RawURLEncoding.EncodeToString(raw)
-	mac := hmac.New(sha256.New, []byte(h.google.SessionSecret))
-	_, _ = mac.Write([]byte(encoded))
-	value := encoded + "." + hex.EncodeToString(mac.Sum(nil))
-	http.SetCookie(w, &http.Cookie{Name: h.googleCookieName(), Value: value, Path: "/", HttpOnly: true, Secure: h.isProduction, SameSite: http.SameSiteLaxMode, MaxAge: int(googleStateLifetime.Seconds()), Expires: time.Now().Add(googleStateLifetime)})
-	return nil
+func (h *Handler) setGoogleNonceCookie(w http.ResponseWriter, nonce string) {
+	http.SetCookie(w, &http.Cookie{Name: h.googleNonceCookieName(), Value: nonce, Path: "/", HttpOnly: true, Secure: h.isProduction, SameSite: http.SameSiteLaxMode, MaxAge: int(googleStateLifetime.Seconds()), Expires: time.Now().Add(googleStateLifetime)})
 }
 
-func (h *Handler) readGoogleStateCookie(r *http.Request) (googleState, error) {
-	cookie, err := r.Cookie(h.googleCookieName())
-	if err != nil {
-		return googleState{}, err
-	}
-	parts := strings.Split(cookie.Value, ".")
-	if len(parts) != 2 {
-		return googleState{}, errors.New("invalid state cookie")
-	}
-	mac := hmac.New(sha256.New, []byte(h.google.SessionSecret))
-	_, _ = mac.Write([]byte(parts[0]))
-	want, err := hex.DecodeString(parts[1])
-	if err != nil || !hmac.Equal(want, mac.Sum(nil)) {
-		return googleState{}, errors.New("invalid state cookie")
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return googleState{}, err
-	}
-	var payload googleState
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return googleState{}, err
-	}
-	return payload, nil
-}
-
-func (h *Handler) clearGoogleStateCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: h.googleCookieName(), Value: "", Path: "/", HttpOnly: true, Secure: h.isProduction, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(0, 0)})
+func (h *Handler) clearGoogleNonceCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{Name: h.googleNonceCookieName(), Value: "", Path: "/", HttpOnly: true, Secure: h.isProduction, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(0, 0)})
 }
 
 func (c GoogleOAuthConfig) validReturnTo(value string) bool {

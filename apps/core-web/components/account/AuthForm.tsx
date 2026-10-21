@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchApi } from '@/lib/api';
 import { Input } from '@/components/ui/Input';
-import { site } from '@/lib/site';
 
 export function AuthForm({ next, management = false }: { next: string; management?: boolean }) {
   const router = useRouter();
@@ -23,7 +22,7 @@ export function AuthForm({ next, management = false }: { next: string; managemen
   function continueWithGoogle() {
     const callback = new URL('/auth/google/callback', window.location.origin);
     callback.searchParams.set('next', next);
-    const start = new URL('/api/v1/auth/google/start', site.auth);
+    const start = new URL('/api/v1/auth/google/start', window.location.origin);
     start.searchParams.set('return_to', callback.toString());
     window.location.assign(start.toString());
   }

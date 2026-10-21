@@ -16,11 +16,14 @@ type Querier interface {
 	ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error)
 	CleanupAuthAttempts(ctx context.Context) error
 	CleanupOAuthExchangeTokens(ctx context.Context) error
+	CleanupOAuthStates(ctx context.Context) error
 	ConsumeEmailVerification(ctx context.Context, tokenHash string) (ConsumeEmailVerificationRow, error)
-	ConsumeOAuthExchangeToken(ctx context.Context, tokenHash string) (pgtype.UUID, error)
+	ConsumeOAuthExchangeToken(ctx context.Context, arg ConsumeOAuthExchangeTokenParams) (pgtype.UUID, error)
+	ConsumeOAuthState(ctx context.Context, stateHash string) (ConsumeOAuthStateRow, error)
 	CountAuthAttempt(ctx context.Context, scopeHash string) (int32, error)
 	CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) error
 	CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error
+	CreateOAuthState(ctx context.Context, arg CreateOAuthStateParams) error
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
