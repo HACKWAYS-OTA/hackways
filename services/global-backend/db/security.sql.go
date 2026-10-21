@@ -13,8 +13,8 @@ import (
 
 const attachOwnedEventBanner = `-- name: AttachOwnedEventBanner :one
 UPDATE events e SET banner_url=$3,
-revision=CASE WHEN banner_url=$3 THEN revision ELSE revision+1 END,
-updated_at=CASE WHEN banner_url=$3 THEN updated_at ELSE clock_timestamp() END
+revision=CASE WHEN e.banner_url=$3 THEN e.revision ELSE e.revision+1 END,
+updated_at=CASE WHEN e.banner_url=$3 THEN e.updated_at ELSE clock_timestamp() END
 FROM organizers o WHERE e.organizer_id=o.id AND e.id=$1 AND o.user_id=$2
 AND e.deleted_at IS NULL AND e.status IN ('draft','unpublished','published') AND e.starts_at>clock_timestamp()
 AND (e.revision=$4 OR (e.banner_url=$3 AND e.revision=$4+1))
