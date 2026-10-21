@@ -663,3 +663,10 @@ All completed work is logged here with verified commands and output.
 - **Verification:** `go test ./...` passed; `go vet ./...` passed; both frontend type-checks and lint passed; core-web and organizer-web production builds passed. Race tests were not runnable on this Windows workstation because no C compiler (`gcc`) is installed.
 - **Secrets:** Client credentials were not written to the repository, logs, or documentation. Configure them only in the protected global-backend runtime environment after migration approval.
 - **Review status:** Open for review at https://github.com/HACKWAYS-OTA/hackways/pull/15; not merged or deployed.
+
+### 2026-10-21 FIX-009 — Event banner completion and optional venue
+- **Branch:** `fix/event-banner-and-location`
+- **Files changed:** `services/global-backend/db/queries/security.sql`, generated `services/global-backend/db/security.sql.go`, `services/core-backend/internal/events/handler.go`, `services/core-backend/internal/events/lifecycle.go`, `apps/core-web/components/hosting/CreateEventForm.tsx`.
+- **Summary:** Qualified target `events` columns in the banner attachment query to prevent PostgreSQL SQLSTATE 42702 ambiguity during `/api/v1/storage/event-banner/complete`. Venue/location is now optional while creating or editing in-person and hybrid events; online and hybrid events still require a valid HTTPS joining URL.
+- **Verification:** sqlc regeneration, global/core `go test ./...`, global/core `go vet ./...`, core-web type-check and lint passed. The generated global storage query was executed in a rollback-only transaction against the production schema and returned the event row successfully.
+- **Review status:** Awaiting PR review; no production replacement performed.
