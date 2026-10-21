@@ -30,10 +30,10 @@ export function Header() {
         }}>
           <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Discover</Link>
           <a href={site.app}>Explore</a>
-          <a href={`${site.app}/create`}>Create</a>
-          <a className="button button-primary mobile-host-action" href={`${site.app}/create`}>Host an event</a>
+          <a href="/create">Create</a>
+          <a className="button button-primary mobile-host-action" href="/create">Host an event</a>
         </nav>
-        <a className="button button-primary header-action" href={`${site.app}/create`}>Host an event</a>
+        <a className="button button-primary header-action" href="/create">Host an event</a>
       </div>
     </header>
   );

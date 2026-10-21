@@ -33,7 +33,7 @@ export default function AboutPage() {
     </Section>
     <Section id="next-step" title="Choose where to begin">
       <p>Discover a gathering, start planning your own, or get an answer before you take the next step.</p>
-      <div className="section-actions"><a className="button button-primary" href={site.app + '/discover'}>Find an event</a><a className="button button-outline" href={site.app + '/create'}>Create an event</a><Link className="text-link" href="/help">Get help</Link></div>
+      <div className="section-actions"><a className="button button-primary" href={site.app + '/discover'}>Find an event</a><a className="button button-outline" href="/create">Create an event</a><Link className="text-link" href="/help">Get help</Link></div>
     </Section>
   </Article>;
 }
