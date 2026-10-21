@@ -30,6 +30,20 @@ The deployment checkout must be clean of tracked changes before the deployer res
 
 ## Configuration hazards to resolve before production
 
+### ACS first-send replacement review
+
+The approved replacement distinguishes a new persisted outbox attempt from a
+reclaimed attempt using `first_sent_at`, not `retry_count`. New operations POST
+before polling; retries reconcile the original operation and never resend after
+an ambiguous lookup. Existing repeatability identities and the conservative
+replay cutoff remain intact. No database migration is required for this fix.
+
+For this isolated fix, the explicitly applied `build-global-backend` PR label
+selects the single-image `Global Backend Candidate` workflow after exact-head
+mandatory CI passes. It publishes only global-backend and never deploys. Do not
+trigger the six-image `rc-*` workflow. Keep the other five approved digests and
+rollback images. See the [replacement proposal](handover/ACS_GLOBAL_BACKEND_REPLACEMENT.md).
+
 ### Free-event workflow rollout
 
 Apply migration `000002_free_event_workflows` before deploying the updated engines. It preserves existing registrations and derives ticket rows for confirmed registrations; normalized guest-email collisions cause a rollback for operator reconciliation. Its down script intentionally refuses destructive enum/data removal. Review forward repair or a compatible application rollback. The local legacy database was migrated atomically with psql and has no migration-runner version table; reconcile its known schema version before using golang-migrate there. Do not force a dirty production migration.

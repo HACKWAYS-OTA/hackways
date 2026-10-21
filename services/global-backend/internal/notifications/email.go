@@ -12,10 +12,13 @@ var ErrEmailProviderUnavailable = errors.New("transactional email provider is un
 type EmailMessage struct {
 	OperationID string
 	FirstSentAt time.Time
-	Recipient   string
-	Subject     string
-	BodyText    string
-	BodyHTML    string
+	// FirstAttempt comes from the claimed row's persisted first_sent_at state,
+	// never from retry_count (a process can crash before recording a failure).
+	FirstAttempt bool
+	Recipient    string
+	Subject      string
+	BodyText     string
+	BodyHTML     string
 }
 type EmailSender interface {
 	Send(context.Context, EmailMessage) error

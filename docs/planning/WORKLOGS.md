@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+### 2026-10-21 ACS-008 - Minimal first-send fix and isolated image publication
+
+- User explicitly authorized a global-backend-only launch fix, retry/duplicate-send regression tests and one replacement CI image for review; production changes remain excluded.
+- Forward the claimed outbox row's existing first_sent_at state after persisting the provider attempt. First sends POST directly, while all reclaimed attempts reconcile the stable operation before any repeat POST. Retained lease checks, identity/timestamp, conservative replay cutoff, error propagation and outbox retry bounds; no database/schema/API/dependency change.
+- Added controlled-transport regressions for first-send ordering, acceptance polling, GET/POST timeouts, confirmed 404 retries, expired windows and ambiguous/error responses. Extended the existing PostgreSQL suite for persisted identity across regular retry and crash recovery with retry_count zero.
+- Local targeted ACS tests and go vet passed. Local race execution is unavailable because CGO/C compiler is not configured; real PostgreSQL/race and full mandatory CI results will be recorded on the PR before image publication. No live Azure success is inferred from controlled transport tests.
+- Added an operator-label single-global-backend publication workflow with same-repo/current-head/scope/successful-CI gates, pinned Actions, existing build cache, SHA tag and one-day digest artifact. No rc tag, other image build, production action or paid setting change is included. Kept the other five approved digests and both prior/legacy global rollback identities in the replacement proposal.
+
 ### 2026-10-21 RELEASE-IMPORT-005 - History-preserving organization import and launch fixes
 
 - Confirmed empty private HACKWAYS-OTA/hackways, existing source refs and the three approved public URL variables. Source main advanced to f7cff5510cc8c3ab5e3471b0a319aa133565b494; integration remains 95388304079f32a3c5d205e6ac7699e7747a9e42. Prepared release/2026-10-21-launch for local changes and a PR into develop; no new work is authored directly on main. Source repository remains untouched.
