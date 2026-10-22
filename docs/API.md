@@ -62,7 +62,7 @@ Event creation accepts `space_slug`, `visibility: public|private`, `theme`, `the
 
 ## Session cookies
 
-The attendee cookie is `__Host-hackways_session` with `Secure`, `HttpOnly`, `Path=/`, and `SameSite=Lax`. The admin cookie name is reserved in code as `__Host-hackways_admin_session` and uses `SameSite=Strict`. The `__Host-` prefix requires HTTPS in browsers. Production cookie behavior must be checked through the HTTPS ingress, not assumed from unit-level construction.
+The attendee cookie is `__Host-hackways_session` with `Secure`, `HttpOnly`, `Path=/`, and `SameSite=Lax`. Dedicated admin sign-in uses `__Host-hackways_admin_session` with `SameSite=Strict`. The `__Host-` prefix requires HTTPS in browsers. Production cookie behavior must be checked through the HTTPS ingress, not assumed from unit-level construction.
 
 ## Response and errors
 
@@ -70,7 +70,7 @@ Successful handlers return JSON. Errors use the backend's standard envelope with
 
 ## Not implemented in the mounted route set
 
-The free-event lifecycle, organizer roster/audit/check-in, registration cancellation/notes/approval/waitlist/transfer/claim/tickets, session management, email verification and notification status/retry routes are mounted. See [the detailed API contract and implementation boundaries](backend/README.md). Payments are deferred by the user. Admin moderation, account recovery/deletion, custom forms and offline scanner workflows remain unimplemented; do not infer them from the product brief.
+The free-event lifecycle, organizer roster/audit/check-in, registration cancellation/notes/approval/waitlist/transfer/claim/tickets, session management, email verification and notification status/retry routes are mounted. See [the detailed API contract and implementation boundaries](backend/README.md). Payments are deferred by the user. Independent moderation reports/appeals, account recovery/deletion, custom forms and offline scanner workflows remain unimplemented; do not infer them from the product brief. The admin publication/actions extension is described below.
 
 ## Registration forms and private guest review
 
@@ -93,3 +93,54 @@ Submitted responses are append-only snapshots, stored transactionally with regis
 - Allowed targets are `confirmed` (Going), `cancelled` (Not going), and `rejected` (Declined), constrained by current state. Pending applications can be confirmed or declined; active registrations can be cancelled; cancelled/expired/rejected registrations can be restored while registration is open. Active reserved offers can be confirmed. Waitlisted guests cannot skip the offer queue. Checked-in, transferred, started and non-published-event registrations cannot be changed through this editor. Options may be empty.
 - Status writes acquire the existing event row lock and local 2-second statement timeout, compare the current guest timestamp, check actual capacity including held offers, maintain inventory/tickets, audit the actor, optionally enqueue the existing status-email template with custom text, and store the idempotent result in one transaction. Cancellation promotes the FIFO waitlist through the existing engine. Conflict codes include `REGISTRATION_CHANGED`, `REGISTRATION_EXPIRED`, `CAPACITY_FULL`, `STATUS_CHANGE_UNAVAILABLE` and `IDEMPOTENCY_CONFLICT`.
 - The optional message is persisted in the transactional outbox and HTML-escaped by global-backend. Notification queued means persisted for the existing ACS worker, never proof of delivery. Disabling notifications suppresses this guest's status email; normal notifications to other guests offered a freed place retain their existing behavior. No schema migration is required.
+
+
+## Admin extension (release preparation; not deployed)
+
+The user has approved deploying the accumulated shared sign-in, admin record/actions and email-renderer work. The revised release candidate, image publication, production migrations and activation remain pending; this section describes the current contract, not a completed deployment.
+
+The two existing Go engines mount protected administration collections. Core serves `GET /api/v1/admin/core/events`, `/spaces`, `/registrations`, `/tickets`, `/moderation` and `/audit`; Global serves `GET /api/v1/admin/global/people`, `/messaging` and `/storage`. Each accepts `q` (maximum 200 characters), `status`, `limit` (1-100, default 20), and `offset` (nonnegative int32), returning `{data:[...]}`. An invalid search/page returns 400; missing/expired admin authentication returns 401 and a missing/revoked grant returns 403. Private rows are never returned through ordinary attendee sessions. `moderation` lists only drafts/unpublished events, and storage returns attached media metadata with URL queries/fragments removed.
+
+Global adds `POST /api/v1/auth/admin/login` with `{email,password}`, `POST /api/v1/auth/admin/logout` and guarded `GET /api/v1/auth/admin/me`. Login requires a verified account and explicit database grant; it creates a separate, marker-backed 30-minute Strict/Secure/HttpOnly host-only admin session. Response identity contains display name, never cookie/token values. Migration 000009 supplies the grant/session-marker tables and provisions no users or privileges. Production migration, grants and Nginx routing were not changed. See [the admin pages, scope and verification limits](planning/ADMIN_DASHBOARD.md).
+
+The admin identity endpoint returns 401 for missing/invalid dedicated authentication and 403 for authenticated accounts without an admin grant or dedicated session marker. If only an ordinary cookie is present, Go may check that account's grant to distinguish denial from the need for dedicated admin sign-in; this never grants admin access or returns identity success. Backend/database failures remain failures, not sign-out or success. Admin web gates documents using these responses before rendering and keeps all admin APIs independently guarded.
+
+### Record details
+
+`GET /api/v1/admin/{engine}/{resource}/{id}` supports all nine collection resources on their existing engine. The admin UI uses positive numeric references for record routes; audit keeps its existing positive integer reference. Storage requires `kind=event_banner|avatar` and the reference of its attached event/user. Both Go engines resolve numeric references to internal UUIDs through sqlc before the existing authoritative reads/workflows; UUID API inputs remain compatible. Invalid references, sections or asset kinds return 400; missing records return 404.
+
+The response is `{data:{id,reference,...},related:{tabs:[{key,label}],section,rows:[{id,reference,label,detail,resource,status,occurred_at}],offset,has_next}}`. Record `reference` is numeric; related `reference` is a positive decimal string. Internal UUID IDs remain in DTOs for compatibility, but the admin UI renders numeric references and creates numeric record/related links, not UUID fields or detail-page URLs. Detail DTOs select permitted fields through sqlc and exclude passwords, credential/session tokens, email bodies and provider errors. Asset URLs strip query strings/fragments. Audit detail includes recorded metadata and has no write endpoint.
+
+Related sections use nonnegative `offset`, fetch 21 rows and return at most 20 with `has_next`; the detail page size is fixed independently of collection `limit`. Events/moderation offer `registrations`, `tickets`, `activity`; spaces offer `events`, `members`, `activity`; people offer `events`, `registrations`, `sessions`, `messages`, `activity`. Other non-audit details offer `activity`; audit returns empty related arrays. Omitted `section` selects the first tab. Active person sessions expose record IDs and bounded user-agent text, never session credentials.
+
+Admin web renders `/{resource}/details/{reference}` from a server fetch with a six-second timeout, no cached data and safe DTO validation. Existing UUID detail-page links redirect to the corresponding numeric route. `section`, `offset` and storage `kind` remain in clean query paths; related tabs/pagination retain scroll-disabled links. Signed-out and forbidden requests leave the console; missing records render 404 and fetch failures provide a retry path. Details provide a Back button; filters apply immediately through query links without Apply/dropdown controls, action choices use the shared RadioGroup, and no Refresh button is presented. Catalogue loading shows the animated Hackways wordmark/line with a static reduced-motion fallback.
+
+### Reviewed record actions
+
+All paths below are prefixed by `/api/v1/admin/`. The UI supplies numeric record/session references in the `{id}`/`{sessionID}` positions; existing UUID API callers remain compatible. Each write requires the dedicated admin session/current grant, JSON, an allowed admin `Origin`, `X-Admin-Reason` containing a percent-encoded 3-1000 character reason, and a random printable `Idempotency-Key` of 16-128 non-whitespace ASCII characters. Production origin is `https://admin.hackways.in`; development additionally permits localhost/127.0.0.1 on port 3003. The console currently limits its reason field to 500 characters.
+
+| Method and suffix | JSON fields | Persisted action and constraints |
+| --- | --- | --- |
+| `PUT core/events/{id}` | `title,description,capacity,visibility,revision` | Edit future, non-cancelled event; nullable capacity means unlimited, otherwise at least confirmed plus held places; visibility is `public` or `private` |
+| `POST core/events/{id}/status` | `status,revision,acknowledge_attendees` | Existing publish/unpublish/cancel lifecycle; targets `published`, `unpublished`, `cancelled`; backend transition/acknowledgement rules still apply |
+| `PUT core/spaces/{id}` | `name,description,guidelines,website_url,revision` | Existing validated space edit |
+| `POST core/spaces/{id}/status` | `status,revision` | Archive/restore with `archived` or `active` |
+| `POST core/registrations/{id}/status` | `status,updated_at,notify_guest,message` | Existing guest status workflow: `confirmed`, `rejected` or `cancelled`; explicit notification boolean and optional message up to 2000 characters; current state, queue, capacity and check-in constraints remain authoritative |
+| `POST core/tickets/{id}/check-in` | `{}` | Existing manual check-in for the route's ticket; Go validates event/registration/ticket state and check-in window under lock |
+| `POST global/people/{id}/edit` | `display_name,updated_at` | Trimmed display name of 1-100 characters |
+| `POST global/people/{id}/access` | `access,updated_at` | `admin` or `member`; verified target required to grant, no self access changes or removal of the last active admin; removal revokes dedicated admin sessions |
+| `POST global/people/{id}/sessions/{sessionID}/revoke` | `updated_at` | Revoke only a session belonging to that person; current acting session must use sign-out |
+| `POST global/messaging/{id}/retry` | `updated_at` | Requeue only a failed message with `first_sent_at` still null; resets retry scheduling, never directly sends mail |
+| `POST global/storage/{id}/detach` | `kind,updated_at` | Detach `event_banner` or `avatar` metadata only; retain the blob; banner detachment also increments the event revision |
+
+Use the exact current `revision` or timestamp `updated_at` from detail reads. A stale record/version returns a conflict rather than overwriting newer changes. Core mutations reuse event/space locks and existing lifecycle/inventory rules; event inventory transactions retain `statement_timeout='2000ms'`. Go preserves the administrator as audit actor while scoping delegated management to the resource owner. Mutation, audit and replay receipt commit together. Global actions serialize role changes and action receipts, then recheck the live dedicated session/grant inside the transaction.
+
+Successful global actions return `{data:{id,action}}`; core actions return their workflow data. Exact successful retries return the stored result with `Idempotency-Replayed: true`; changed requests under the same scoped key return 409 `IDEMPOTENCY_CONFLICT`. Reuse the same key, body and reason after an uncertain response. Audit rows remain read-only through these APIs. Queued notifications/retries are not evidence of provider acceptance or inbox delivery.
+
+Migration `000010_admin_detail_indexes` adds reversible entity/actor audit and recipient-message timeline indexes; it adds no privileges or seeded data. It has been applied only to isolated local test databases and the restored local preview, not production.
+
+Migration `000011_admin_record_references` adds `admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE` to users, events, spaces, RSVPs, tickets, email outbox and sessions. Each table owns its sequence; resource/kind disambiguates references. UUID keys, foreign keys, ownership and state rules remain unchanged. Its down migration deliberately refuses column removal to preserve saved numeric links: roll back application images while retaining the additive schema. Migrations 000009, 000010 and 000011 have not been applied to production at this documentation handoff.
+
+### Isolated real-data preview runtime
+
+With `ADMIN_PREVIEW_ONLY=true`, configuration rejects production mode, non-loopback listeners/database hosts, and any database name other than `hackways_admin_preview`. Core exposes its admin collection/detail/action routes and health/service metadata; Global exposes its admin routes, `/auth/admin/{login,logout,me}` and health/service metadata. Approved admin actions persist only in this restored local copy. Ordinary application mutation routes are absent and all background maintenance/email workers remain disabled, so an outbox retry queues without sending. Production backends remain unchanged; the dedicated local admin cookie and explicit local grant are still required.

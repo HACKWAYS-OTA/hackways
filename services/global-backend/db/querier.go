@@ -11,6 +11,34 @@ import (
 )
 
 type Querier interface {
+	AdminActionRemember(ctx context.Context, arg AdminActionRememberParams) error
+	AdminActionReplay(ctx context.Context, arg AdminActionReplayParams) (AdminActionReplayRow, error)
+	AdminActiveCount(ctx context.Context) (int64, error)
+	AdminAssetDetail(ctx context.Context, arg AdminAssetDetailParams) (AdminAssetDetailRow, error)
+	AdminDetachAvatar(ctx context.Context, arg AdminDetachAvatarParams) (pgtype.UUID, error)
+	AdminDetachEventBanner(ctx context.Context, arg AdminDetachEventBannerParams) (pgtype.UUID, error)
+	AdminGlobalEntityHistory(ctx context.Context, arg AdminGlobalEntityHistoryParams) ([]AdminGlobalEntityHistoryRow, error)
+	AdminGrantAccess(ctx context.Context, arg AdminGrantAccessParams) error
+	AdminListAssets(ctx context.Context, arg AdminListAssetsParams) ([]AdminListAssetsRow, error)
+	AdminListMessages(ctx context.Context, arg AdminListMessagesParams) ([]AdminListMessagesRow, error)
+	AdminListPeople(ctx context.Context, arg AdminListPeopleParams) ([]AdminListPeopleRow, error)
+	AdminLockRoleChanges(ctx context.Context) error
+	AdminMessageDetail(ctx context.Context, id pgtype.UUID) (AdminMessageDetailRow, error)
+	AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminPersonDetailRow, error)
+	AdminPersonEvents(ctx context.Context, arg AdminPersonEventsParams) ([]AdminPersonEventsRow, error)
+	AdminPersonMessages(ctx context.Context, arg AdminPersonMessagesParams) ([]AdminPersonMessagesRow, error)
+	AdminPersonRegistrations(ctx context.Context, arg AdminPersonRegistrationsParams) ([]AdminPersonRegistrationsRow, error)
+	AdminPersonSessions(ctx context.Context, arg AdminPersonSessionsParams) ([]AdminPersonSessionsRow, error)
+	AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error)
+	AdminRetryMessage(ctx context.Context, arg AdminRetryMessageParams) (pgtype.UUID, error)
+	AdminRevokeAccess(ctx context.Context, userID pgtype.UUID) (int64, error)
+	AdminRevokeAdminSessions(ctx context.Context, userID pgtype.UUID) error
+	AdminRevokePersonSession(ctx context.Context, arg AdminRevokePersonSessionParams) (int64, error)
+	AdminSerializeAction(ctx context.Context, scope string) error
+	AdminTouchPerson(ctx context.Context, id pgtype.UUID) error
+	AdminUpdatePersonName(ctx context.Context, arg AdminUpdatePersonNameParams) error
+	AdminUserLock(ctx context.Context, id pgtype.UUID) (AdminUserLockRow, error)
+	AppendAdminAudit(ctx context.Context, arg AppendAdminAuditParams) error
 	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
 	ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error)
@@ -41,7 +69,10 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByGoogleSubject(ctx context.Context, subject string) (GetUserByGoogleSubjectRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
+	GrantLocalPreviewAdmin(ctx context.Context, email string) (pgtype.UUID, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
+	IsPlatformAdminSession(ctx context.Context, arg IsPlatformAdminSessionParams) (bool, error)
+	IsPlatformAdministrator(ctx context.Context, userID pgtype.UUID) (bool, error)
 	LinkUserIdentity(ctx context.Context, arg LinkUserIdentityParams) error
 	ListAccountSessions(ctx context.Context, userID pgtype.UUID) ([]ListAccountSessionsRow, error)
 	ListOwnedNotifications(ctx context.Context, arg ListOwnedNotificationsParams) ([]ListOwnedNotificationsRow, error)
@@ -55,6 +86,7 @@ type Querier interface {
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) error
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
 	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
+	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	RetryOwnedNotification(ctx context.Context, arg RetryOwnedNotificationParams) (pgtype.UUID, error)
 	RevokeOwnedSession(ctx context.Context, arg RevokeOwnedSessionParams) (int64, error)
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)

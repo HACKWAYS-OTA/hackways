@@ -4,6 +4,14 @@ SET LOCAL statement_timeout = '2000ms';
 -- name: LockWorkflowEvent :one
 SELECT *, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;
 
+-- name: ReadEventNotificationContext :one
+SELECT e.slug, e.banner_url, e.location_name, e.online_url,
+       o.display_name AS organizer_name, s.name AS space_name
+FROM events e
+JOIN organizers o ON o.id=e.organizer_id
+LEFT JOIN spaces s ON s.id=e.space_id
+WHERE e.id=$1 AND e.deleted_at IS NULL;
+
 -- name: GetWorkflowRSVP :one
 SELECT * FROM rsvps WHERE id = $1;
 

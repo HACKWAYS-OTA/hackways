@@ -18,7 +18,7 @@ export function EventDetailFields({ event, format, onFormatChange, disabled }: {
   const [description, setDescription] = useState(event.description);
   const [location, setLocation] = useState(event.location_name || ''), [address, setAddress] = useState(event.location_address || '');
   const [online, setOnline] = useState(event.online_url || ''), [visibility, setVisibility] = useState(event.visibility || 'public');
-  const [zone, setZone] = useState(event.timezone), [venueInvalid, setVenueInvalid] = useState(false);
+  const [zone, setZone] = useState(event.timezone);
   const [faq, setFaq] = useState(event.faq_text || ''), [rewards, setRewards] = useState(event.rewards || '');
   const session = useEventEditSession();
   return <>
@@ -42,12 +42,12 @@ export function EventDetailFields({ event, format, onFormatChange, disabled }: {
       <summary><Icon name="location" size={19} /><span>Event location<small>{format === 'online' ? online || 'Online event' : location || 'Add a venue or joining link'}</small></span><Icon name="down" size={16} /></summary>
       <div className="event-edit-disclosure-body">
         <fieldset className="hw-choice-field"><legend>How will people join?</legend><RadioGroup label="How will people join?" name="event-format" options={[{ value: 'in_person', label: 'In person' }, { value: 'online', label: 'Online' }, { value: 'hybrid', label: 'Hybrid' }] as const} value={format} onValueChange={onFormatChange} disabled={disabled} /></fieldset>
-        {format !== 'online' && <div className="event-venue-editor" data-invalid={venueInvalid || undefined}>
-          <div className="event-venue-line"><label htmlFor="edit-event-venue">Venue</label><input id="edit-event-venue" name="location" value={location} onChange={e => { setLocation(e.target.value); setVenueInvalid(false); }} placeholder="Add a venue or meeting place" required maxLength={1000} autoComplete="off" aria-invalid={venueInvalid || undefined} aria-describedby={venueInvalid ? 'event-venue-error' : undefined} onInvalid={e => { e.preventDefault(); setVenueInvalid(true); e.currentTarget.focus(); }} /></div>
+        {format !== 'online' && <div className="event-venue-editor">
+          <div className="event-venue-line"><label htmlFor="edit-event-venue">Venue</label><input id="edit-event-venue" name="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Add a venue or meeting place" maxLength={1000} autoComplete="off" /></div>
           <div className="event-venue-line"><label htmlFor="edit-event-address">Address (optional)</label><input id="edit-event-address" name="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Building, street and city" maxLength={2000} autoComplete="off" /></div>
-          {venueInvalid && <p id="event-venue-error" className="event-control-error" role="alert">Add a venue for your in-person event.</p>}
+
         </div>}
-        {format !== 'in_person' && <Input label="Online joining link" name="online" type="url" pattern="https://.*" value={online} onChange={e => setOnline(e.target.value)} maxLength={2048} required />}
+        {format !== 'in_person' && <Input label="Online joining link" name="online" type="url" pattern="https://.*" value={online} onChange={e => setOnline(e.target.value)} maxLength={2048} />}
       </div>
     </details>
     <details className="event-edit-disclosure">

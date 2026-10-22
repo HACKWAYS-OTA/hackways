@@ -295,6 +295,17 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request, statusOnly bool)
 		failure(w, e)
 		return
 	}
+	if replayed, replayErr := workflows.ReplayAdminMutation(w, r, q); replayErr != nil {
+		var f *workflows.Failure
+		if errors.As(replayErr, &f) {
+			platform.RespondError(w, f.Status, f.Code, f.Message, nil)
+		} else {
+			failure(w, replayErr)
+		}
+		return
+	} else if replayed {
+		return
+	}
 	if s.OrganizerID != owner.ID {
 		failure(w, pgx.ErrNoRows)
 		return
@@ -313,6 +324,21 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request, statusOnly bool)
 	if e != nil {
 		failure(w, e)
 		return
+	}
+	if _, admin := auth.AdminMutationFromContext(r.Context()); admin {
+		actor, _ := auth.UserFromContext(r.Context())
+		action := "space.updated"
+		if statusOnly {
+			action = "space." + body.Status
+		}
+		if e = workflows.Audit(r.Context(), q, actor.UserID, pgtype.UUID{}, id, action, platform.GetRequestID(r.Context())); e != nil {
+			failure(w, e)
+			return
+		}
+		if e = workflows.RememberAdminMutation(r.Context(), q, view(s)); e != nil {
+			failure(w, e)
+			return
+		}
 	}
 	if e = tx.Commit(r.Context()); e != nil {
 		failure(w, e)

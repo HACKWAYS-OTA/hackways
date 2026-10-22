@@ -1,0 +1,24 @@
+{
+  "action": "set_cache_settings",
+  "description": "Cache public media without storing failed reads",
+  "enabled": true,
+  "expression": "(http.host eq \"cdn.hackways.in\" and starts_with(http.request.uri.path, \"/media-uploads/\") and http.request.method in {\"GET\" \"HEAD\"} and http.request.uri.query eq \"\")",
+  "action_parameters": {
+    "cache": true,
+    "edge_ttl": {
+      "mode": "respect_origin",
+      "status_code_ttl": [
+        {
+          "status_code_range": {
+            "from": 400,
+            "to": 599
+          },
+          "value": -1
+        }
+      ]
+    },
+    "browser_ttl": {
+      "mode": "respect_origin"
+    }
+  }
+}

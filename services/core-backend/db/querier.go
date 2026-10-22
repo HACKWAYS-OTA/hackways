@@ -12,6 +12,26 @@ import (
 
 type Querier interface {
 	AdjustWorkflowInventory(ctx context.Context, arg AdjustWorkflowInventoryParams) error
+	AdminAuditDetail(ctx context.Context, id int64) (AdminAuditDetailRow, error)
+	AdminEditEvent(ctx context.Context, arg AdminEditEventParams) (pgtype.UUID, error)
+	AdminEntityHistory(ctx context.Context, arg AdminEntityHistoryParams) ([]AdminEntityHistoryRow, error)
+	AdminEventDetail(ctx context.Context, id pgtype.UUID) (AdminEventDetailRow, error)
+	AdminEventHistory(ctx context.Context, arg AdminEventHistoryParams) ([]AdminEventHistoryRow, error)
+	AdminEventRegistrations(ctx context.Context, arg AdminEventRegistrationsParams) ([]AdminEventRegistrationsRow, error)
+	AdminEventTickets(ctx context.Context, arg AdminEventTicketsParams) ([]AdminEventTicketsRow, error)
+	AdminListAudit(ctx context.Context, arg AdminListAuditParams) ([]AdminListAuditRow, error)
+	AdminListEvents(ctx context.Context, arg AdminListEventsParams) ([]AdminListEventsRow, error)
+	AdminListModeration(ctx context.Context, arg AdminListModerationParams) ([]AdminListModerationRow, error)
+	AdminListRegistrations(ctx context.Context, arg AdminListRegistrationsParams) ([]AdminListRegistrationsRow, error)
+	AdminListSpaces(ctx context.Context, arg AdminListSpacesParams) ([]AdminListSpacesRow, error)
+	AdminListTickets(ctx context.Context, arg AdminListTicketsParams) ([]AdminListTicketsRow, error)
+	AdminOrganizerByID(ctx context.Context, id pgtype.UUID) (Organizers, error)
+	AdminRegistrationDetail(ctx context.Context, id pgtype.UUID) (AdminRegistrationDetailRow, error)
+	AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error)
+	AdminSpaceDetail(ctx context.Context, id pgtype.UUID) (AdminSpaceDetailRow, error)
+	AdminSpaceEvents(ctx context.Context, arg AdminSpaceEventsParams) ([]AdminSpaceEventsRow, error)
+	AdminSpaceMembers(ctx context.Context, arg AdminSpaceMembersParams) ([]AdminSpaceMembersRow, error)
+	AdminTicketDetail(ctx context.Context, id pgtype.UUID) (AdminTicketDetailRow, error)
 	AppendWorkflowAudit(ctx context.Context, arg AppendWorkflowAuditParams) error
 	CancelEventRegistrations(ctx context.Context, eventID pgtype.UUID) error
 	CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflowTicketParams) (Tickets, error)
@@ -66,6 +86,8 @@ type Querier interface {
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
 	InsertRegistrationSubmission(ctx context.Context, arg InsertRegistrationSubmissionParams) error
 	InsertWorkflowRSVP(ctx context.Context, arg InsertWorkflowRSVPParams) (Rsvps, error)
+	IsPlatformAdminSession(ctx context.Context, arg IsPlatformAdminSessionParams) (bool, error)
+	IsPlatformAdministrator(ctx context.Context, userID pgtype.UUID) (bool, error)
 	JoinSpace(ctx context.Context, arg JoinSpaceParams) error
 	LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.UUID) (LatestRegistrationAnswersRow, error)
 	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error
@@ -87,6 +109,7 @@ type Querier interface {
 	ManagedGuestDetail(ctx context.Context, arg ManagedGuestDetailParams) (ManagedGuestDetailRow, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
+	ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error)
 	ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) (Spaces, error)
 	ReadPublicSpace(ctx context.Context, slug string) (ReadPublicSpaceRow, error)
 	ReadRegistrationForm(ctx context.Context, id pgtype.UUID) (ReadRegistrationFormRow, error)
@@ -94,6 +117,7 @@ type Querier interface {
 	ReadSpaceID(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	ReadSpaceMembership(ctx context.Context, arg ReadSpaceMembershipParams) (ReadSpaceMembershipRow, error)
 	ReadSpaceSummaryByID(ctx context.Context, id pgtype.UUID) (ReadSpaceSummaryByIDRow, error)
+	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	RegistrationWaitlistPosition(ctx context.Context, id pgtype.UUID) (int64, error)
 	ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPParams) (Rsvps, error)
 	RevokeEventTickets(ctx context.Context, eventID pgtype.UUID) error

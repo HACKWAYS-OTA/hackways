@@ -8,6 +8,9 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@hackways/ui"],
   poweredByHeader: false,
+  async rewrites() {
+    return [{ source: "/manage", destination: "/" }, { source: "/manage/", destination: "/" }];
+  },
 };
 
 module.exports = nextConfig;

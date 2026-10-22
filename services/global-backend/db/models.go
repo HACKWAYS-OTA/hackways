@@ -269,6 +269,7 @@ type EmailOutbox struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	LeaseToken     pgtype.UUID        `json:"lease_token"`
 	FirstSentAt    pgtype.Timestamptz `json:"first_sent_at"`
+	AdminReference int64              `json:"admin_reference"`
 }
 
 type EmailVerifications struct {
@@ -349,6 +350,7 @@ type Events struct {
 	Visibility               string             `json:"visibility"`
 	RegistrationFormRevision int64              `json:"registration_form_revision"`
 	RegistrationNameRequired bool               `json:"registration_name_required"`
+	AdminReference           int64              `json:"admin_reference"`
 }
 
 type IdempotencyRecords struct {
@@ -392,6 +394,19 @@ type Organizers struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PlatformAdminSessions struct {
+	SessionID pgtype.UUID        `json:"session_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Explicit platform access; verified email and a live admin session are also required.
+type PlatformAdministrators struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	GrantedBy pgtype.UUID        `json:"granted_by"`
+	GrantedAt pgtype.Timestamptz `json:"granted_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type RegistrationSubmissions struct {
 	ID           int64              `json:"id"`
 	RsvpID       pgtype.UUID        `json:"rsvp_id"`
@@ -417,17 +432,19 @@ type Rsvps struct {
 	TransferCount     int32              `json:"transfer_count"`
 	TransferredFrom   pgtype.UUID        `json:"transferred_from"`
 	PublicCode        string             `json:"public_code"`
+	AdminReference    int64              `json:"admin_reference"`
 }
 
 type Sessions struct {
-	ID        pgtype.UUID        `json:"id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	TokenHash string             `json:"token_hash"`
-	UserAgent pgtype.Text        `json:"user_agent"`
-	IpAddress *netip.Addr        `json:"ip_address"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	LastSeen  pgtype.Timestamptz `json:"last_seen"`
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	TokenHash      string             `json:"token_hash"`
+	UserAgent      pgtype.Text        `json:"user_agent"`
+	IpAddress      *netip.Addr        `json:"ip_address"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	LastSeen       pgtype.Timestamptz `json:"last_seen"`
+	AdminReference int64              `json:"admin_reference"`
 }
 
 type SpaceMemberships struct {
@@ -438,30 +455,32 @@ type SpaceMemberships struct {
 
 // Owner-led communities. Membership does not grant event authoring or management rights.
 type Spaces struct {
-	ID           pgtype.UUID        `json:"id"`
-	OrganizerID  pgtype.UUID        `json:"organizer_id"`
-	Name         string             `json:"name"`
-	Slug         string             `json:"slug"`
-	Description  string             `json:"description"`
-	Guidelines   string             `json:"guidelines"`
-	WebsiteUrl   string             `json:"website_url"`
-	Status       string             `json:"status"`
-	Revision     int64              `json:"revision"`
-	CreationKey  string             `json:"creation_key"`
-	CreationHash string             `json:"creation_hash"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID             pgtype.UUID        `json:"id"`
+	OrganizerID    pgtype.UUID        `json:"organizer_id"`
+	Name           string             `json:"name"`
+	Slug           string             `json:"slug"`
+	Description    string             `json:"description"`
+	Guidelines     string             `json:"guidelines"`
+	WebsiteUrl     string             `json:"website_url"`
+	Status         string             `json:"status"`
+	Revision       int64              `json:"revision"`
+	CreationKey    string             `json:"creation_key"`
+	CreationHash   string             `json:"creation_hash"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	AdminReference int64              `json:"admin_reference"`
 }
 
 type Tickets struct {
-	ID          pgtype.UUID        `json:"id"`
-	RsvpID      pgtype.UUID        `json:"rsvp_id"`
-	Status      string             `json:"status"`
-	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
-	CheckedInBy pgtype.UUID        `json:"checked_in_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	PublicCode  string             `json:"public_code"`
+	ID             pgtype.UUID        `json:"id"`
+	RsvpID         pgtype.UUID        `json:"rsvp_id"`
+	Status         string             `json:"status"`
+	CheckedInAt    pgtype.Timestamptz `json:"checked_in_at"`
+	CheckedInBy    pgtype.UUID        `json:"checked_in_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PublicCode     string             `json:"public_code"`
+	AdminReference int64              `json:"admin_reference"`
 }
 
 type UserIdentities struct {
@@ -473,13 +492,14 @@ type UserIdentities struct {
 }
 
 type Users struct {
-	ID            pgtype.UUID        `json:"id"`
-	Email         string             `json:"email"`
-	PasswordHash  string             `json:"password_hash"`
-	DisplayName   string             `json:"display_name"`
-	AvatarUrl     pgtype.Text        `json:"avatar_url"`
-	EmailVerified bool               `json:"email_verified"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	ID             pgtype.UUID        `json:"id"`
+	Email          string             `json:"email"`
+	PasswordHash   string             `json:"password_hash"`
+	DisplayName    string             `json:"display_name"`
+	AvatarUrl      pgtype.Text        `json:"avatar_url"`
+	EmailVerified  bool               `json:"email_verified"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	AdminReference int64              `json:"admin_reference"`
 }

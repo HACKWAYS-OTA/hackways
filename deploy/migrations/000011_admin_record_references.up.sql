@@ -1,0 +1,11 @@
+-- Stable human-readable admin references; existing UUID keys and foreign keys
+-- remain authoritative and unchanged. Each table has its own positive sequence.
+SET lock_timeout = '5s';
+ALTER TABLE users ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE events ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE spaces ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE rsvps ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE tickets ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE email_outbox ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+ALTER TABLE sessions ADD COLUMN admin_reference BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE;
+RESET lock_timeout;

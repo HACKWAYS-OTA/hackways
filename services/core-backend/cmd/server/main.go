@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hackways/core-backend/internal/admin"
 	"github.com/hackways/core-backend/internal/events"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/hackways/core-backend/internal/rsvps"
@@ -95,21 +96,27 @@ func main() {
 	rsvpsHandler := rsvps.NewHandler(pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
+		v1.Mount("/admin/core", admin.NewHandler(pool).Routes())
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			platform.RespondJSON(w, http.StatusOK, map[string]string{
 				"service": "Hackways Core Backend",
 				"version": "v1",
 			})
 		})
-		v1.Mount("/events", eventsHandler.Routes())
-		v1.Mount("/rsvps", rsvpsHandler.Routes())
-		v1.Mount("/spaces", spaces.NewHandler(pool).Routes())
+		if !cfg.AdminPreviewOnly {
+			v1.Mount("/events", eventsHandler.Routes())
+
+			v1.Mount("/rsvps", rsvpsHandler.Routes())
+			v1.Mount("/spaces", spaces.NewHandler(pool).Routes())
+		}
 	})
 
 	maintenanceCtx, stopMaintenance := context.WithCancel(context.Background())
 	var maintenanceWG sync.WaitGroup
-	maintenanceWG.Add(1)
-	go func() { defer maintenanceWG.Done(); workflows.New(pool).RunMaintenance(maintenanceCtx, logger) }()
+	if !cfg.AdminPreviewOnly {
+		maintenanceWG.Add(1)
+		go func() { defer maintenanceWG.Done(); workflows.New(pool).RunMaintenance(maintenanceCtx, logger) }()
+	}
 	defer stopMaintenance()
 	// 7. HTTP Server with production timeouts
 	serverAddr := net.JoinHostPort(cfg.BindHost, fmt.Sprint(cfg.Port))

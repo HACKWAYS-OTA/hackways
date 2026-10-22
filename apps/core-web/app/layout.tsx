@@ -6,6 +6,7 @@ import { AppChrome } from '@/components/ui/AppChrome';
 import { site } from '@/lib/site';
 import './globals.css';
 import './dashboard.css';
+import '@hackways/ui/auth.css';
 
 export const metadata: Metadata = { metadataBase: new URL(site.app), title: { default: 'Discover events | Hackways', template: '%s | Hackways' }, description: 'Explore published tech events and reserve your place with Hackways.' };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#ffffff' };

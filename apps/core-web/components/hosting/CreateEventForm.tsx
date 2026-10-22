@@ -91,14 +91,10 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
           location_name: String(form.get('location') || '').trim(),
           online_url: String(form.get('online') || '').trim(), registration_mode: approval ? 'approval' : 'instant', space_slug: spaceSlug, ...appearance,
       };
-      // A location is optional while editing, but an in-person or hybrid event
-      // cannot be published until attendees have somewhere to join. Save it as
-      // a draft instead of making a publish request that the API must reject.
-      const publishReady = format === 'online' || String(form.get('location') || '').trim().length > 0;
       const payload = JSON.stringify(fields);
       if (saved.current && saved.current.payload !== payload) throw new Error('Your event record is already saved. Open it from My events to change the details, or restore your entries here to retry the image upload.');
       if (!saved.current) {
-        const result = await fetchApi<{ data: Event }>('/events', { method: 'POST', body: JSON.stringify({ ...fields, status: file || (status === 'published' && !publishReady) ? 'draft' : status }) });
+        const result = await fetchApi<{ data: Event }>('/events', { method: 'POST', body: JSON.stringify({ ...fields, status: file ? 'draft' : status }) });
         saved.current = { event: result.data, payload };
         setSavedID(result.data.id);
       }
@@ -108,7 +104,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
         event = await uploadEventCover(file, event, coverAttempt.current, attempt => { coverAttempt.current = attempt; });
         saved.current.event = event;
       }
-      if (status === 'published' && publishReady && event.status === 'draft') {
+      if (status === 'published' && event.status === 'draft') {
         setBusy('published');
         try {
           event = (await fetchApi<{ data: Event }>(`/events/${event.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'published', revision: event.revision, acknowledge_attendees: false }) })).data;
@@ -180,7 +176,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
           <div className="compose-section-top"><h2 id="where-heading"><Icon name="location" size={19} />Where is it happening?</h2><fieldset className="hw-choice-field"><legend className="visually-hidden">Event format</legend><RadioGroup label="Event format" name="format" options={[{ value: 'in_person', label: 'In person' }, { value: 'online', label: 'Online' }, { value: 'hybrid', label: 'Hybrid' }] as const} value={format} onValueChange={setFormat} disabled={!!busy} /></fieldset></div>
           <div className={`compose-location-fields${format === 'hybrid' ? ' is-hybrid' : ''}`}>
             {format !== 'online' && <div className="compose-line-field"><label htmlFor="event-location">Venue or location</label><input id="event-location" name="location" value={location} onChange={e => setLocation(e.target.value)} maxLength={1000} autoComplete="off" /></div>}
-            {format !== 'in_person' && <div className="compose-line-field"><label htmlFor="event-online">Online joining link</label><input id="event-online" name="online" type="url" pattern="https://.*" value={online} onChange={e => setOnline(e.target.value)} required maxLength={2048} aria-describedby="online-help" /><span className="compose-hint" id="online-help">Use a secure https:// link.</span></div>}
+            {format !== 'in_person' && <div className="compose-line-field"><label htmlFor="event-online">Online joining link</label><input id="event-online" name="online" type="url" pattern="https://.*" value={online} onChange={e => setOnline(e.target.value)} maxLength={2048} aria-describedby="online-help" /><span className="compose-hint" id="online-help">Use a secure https:// link.</span></div>}
           </div>
           </div>
         </details>

@@ -14,7 +14,7 @@ import (
 const createSpace = `-- name: CreateSpace :one
 INSERT INTO spaces(organizer_id,name,slug,description,guidelines,website_url,creation_key,creation_hash)
 VALUES($1,$2,COALESCE(NULLIF(trim(regexp_replace(lower($2),'[^a-z0-9]+','-','g'),'-'),''),'space') || '-' || left(gen_random_uuid()::text,8),$3,$4,$5,$6,$7)
-ON CONFLICT(organizer_id,creation_key) DO NOTHING RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at
+ON CONFLICT(organizer_id,creation_key) DO NOTHING RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
 `
 
 type CreateSpaceParams struct {
@@ -52,6 +52,7 @@ func (q *Queries) CreateSpace(ctx context.Context, arg CreateSpaceParams) (Space
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -223,7 +224,7 @@ func (q *Queries) ListPublicSpaces(ctx context.Context, arg ListPublicSpacesPara
 }
 
 const listSpaceEvents = `-- name: ListSpaceEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required FROM events WHERE space_id=$1 AND deleted_at IS NULL AND visibility='public'
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference FROM events WHERE space_id=$1 AND deleted_at IS NULL AND visibility='public'
 AND (status='published' OR (status='cancelled' AND published_at IS NOT NULL))
 AND (($2::boolean AND ends_at<=clock_timestamp()) OR (NOT $2::boolean AND status='published' AND ends_at>clock_timestamp()))
 ORDER BY CASE WHEN $2::boolean THEN ends_at END DESC, starts_at,id
@@ -296,6 +297,7 @@ func (q *Queries) ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams
 			&i.Visibility,
 			&i.RegistrationFormRevision,
 			&i.RegistrationNameRequired,
+			&i.AdminReference,
 		); err != nil {
 			return nil, err
 		}
@@ -308,7 +310,7 @@ func (q *Queries) ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams
 }
 
 const lockOwnedActiveSpace = `-- name: LockOwnedActiveSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at FROM spaces WHERE id=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
 `
 
 type LockOwnedActiveSpaceParams struct {
@@ -333,12 +335,13 @@ func (q *Queries) LockOwnedActiveSpace(ctx context.Context, arg LockOwnedActiveS
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const lockOwnedActiveSpaceBySlug = `-- name: LockOwnedActiveSpaceBySlug :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at FROM spaces WHERE slug=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE slug=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
 `
 
 type LockOwnedActiveSpaceBySlugParams struct {
@@ -363,12 +366,13 @@ func (q *Queries) LockOwnedActiveSpaceBySlug(ctx context.Context, arg LockOwnedA
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const lockSpace = `-- name: LockSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at FROM spaces WHERE id=$1 FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 FOR UPDATE
 `
 
 func (q *Queries) LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error) {
@@ -388,12 +392,13 @@ func (q *Queries) LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error)
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const readOwnedSpace = `-- name: ReadOwnedSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at FROM spaces WHERE id=$1 AND organizer_id=$2
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 AND organizer_id=$2
 `
 
 type ReadOwnedSpaceParams struct {
@@ -418,6 +423,7 @@ func (q *Queries) ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) 
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -466,7 +472,7 @@ func (q *Queries) ReadPublicSpace(ctx context.Context, slug string) (ReadPublicS
 }
 
 const readSpaceCreation = `-- name: ReadSpaceCreation :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at FROM spaces WHERE organizer_id=$1 AND creation_key=$2
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE organizer_id=$1 AND creation_key=$2
 `
 
 type ReadSpaceCreationParams struct {
@@ -491,6 +497,7 @@ func (q *Queries) ReadSpaceCreation(ctx context.Context, arg ReadSpaceCreationPa
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -573,7 +580,7 @@ func (q *Queries) ReadSpaceSummaryByID(ctx context.Context, id pgtype.UUID) (Rea
 }
 
 const setEventSpace = `-- name: SetEventSpace :one
-UPDATE events SET space_id=$2,revision=revision+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required
+UPDATE events SET space_id=$2,revision=revision+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference
 `
 
 type SetEventSpaceParams struct {
@@ -629,13 +636,14 @@ func (q *Queries) SetEventSpace(ctx context.Context, arg SetEventSpaceParams) (E
 		&i.Visibility,
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const setSpaceStatus = `-- name: SetSpaceStatus :one
 UPDATE spaces SET status=$3,revision=revision+1,updated_at=clock_timestamp()
-WHERE id=$1 AND organizer_id=$2 AND revision=$4 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at
+WHERE id=$1 AND organizer_id=$2 AND revision=$4 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
 `
 
 type SetSpaceStatusParams struct {
@@ -667,13 +675,14 @@ func (q *Queries) SetSpaceStatus(ctx context.Context, arg SetSpaceStatusParams) 
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const updateSpace = `-- name: UpdateSpace :one
 UPDATE spaces SET name=$3,description=$4,guidelines=$5,website_url=$6,revision=revision+1,updated_at=clock_timestamp()
-WHERE id=$1 AND organizer_id=$2 AND revision=$7 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at
+WHERE id=$1 AND organizer_id=$2 AND revision=$7 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
 `
 
 type UpdateSpaceParams struct {
@@ -711,6 +720,7 @@ func (q *Queries) UpdateSpace(ctx context.Context, arg UpdateSpaceParams) (Space
 		&i.CreationHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AdminReference,
 	)
 	return i, err
 }

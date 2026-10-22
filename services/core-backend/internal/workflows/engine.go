@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hackways/core-backend/db"
+	"github.com/hackways/core-backend/internal/auth"
 	"github.com/hackways/core-backend/internal/registrationforms"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -72,7 +73,16 @@ func (e *Engine) Begin(ctx context.Context, id pgtype.UUID) (pgx.Tx, *db.Queries
 	return tx, q, event, nil
 }
 func Audit(ctx context.Context, q *db.Queries, actor, event, entity pgtype.UUID, action, requestID string) error {
-	return q.AppendWorkflowAudit(ctx, db.AppendWorkflowAuditParams{ActorUserID: actor, EventID: event, EntityID: entity, Action: action, RequestID: requestID, Metadata: []byte("{}")})
+	metadata := []byte("{}")
+	if mutation, ok := auth.AdminMutationFromContext(ctx); ok {
+		user, _ := auth.UserFromContext(ctx)
+		actor = user.UserID
+		action = "admin." + action
+		metadata, _ = json.Marshal(struct {
+			Reason string `json:"reason"`
+		}{mutation.Reason})
+	}
+	return q.AppendWorkflowAudit(ctx, db.AppendWorkflowAuditParams{ActorUserID: actor, EventID: event, EntityID: entity, Action: action, RequestID: requestID, Metadata: metadata})
 }
 func Notify(ctx context.Context, q *db.Queries, event db.LockWorkflowEventRow, rsvp db.Rsvps, kind string) error {
 	_, err := NotifyWithMessage(ctx, q, event, rsvp, kind, "")

@@ -12,7 +12,7 @@ import (
 )
 
 const getAccountRegistrationByCode = `-- name: GetAccountRegistrationByCode :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE public_code=$1 AND user_id=$2
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE public_code=$1 AND user_id=$2
 `
 
 type GetAccountRegistrationByCodeParams struct {
@@ -40,6 +40,7 @@ func (q *Queries) GetAccountRegistrationByCode(ctx context.Context, arg GetAccou
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }

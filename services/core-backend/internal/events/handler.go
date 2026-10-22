@@ -290,8 +290,8 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 400, "VALIDATION_ERROR", "Event location or URL exceeds its length limit", nil)
 		return
 	}
-	if (format == db.EventFormatOnline || format == db.EventFormatHybrid) && !validHTTPSURL(req.OnlineURL) {
-		platform.RespondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "A valid HTTPS event URL is required for online events", nil)
+	if req.OnlineURL != "" && !validHTTPSURL(req.OnlineURL) {
+		platform.RespondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Enter a valid HTTPS event URL", nil)
 		return
 	}
 

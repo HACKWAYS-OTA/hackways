@@ -67,7 +67,7 @@ func (q *Queries) CancelEventRegistrations(ctx context.Context, eventID pgtype.U
 const checkInWorkflowTicket = `-- name: CheckInWorkflowTicket :one
 UPDATE tickets t SET status = 'scanned', checked_in_at = clock_timestamp(), checked_in_by = $1, updated_at = clock_timestamp()
 FROM rsvps r WHERE t.id = $2 AND t.rsvp_id = r.id AND r.event_id = $3
-AND r.status = 'confirmed' AND t.status = 'issued' RETURNING t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code
+AND r.status = 'confirmed' AND t.status = 'issued' RETURNING t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, t.admin_reference
 `
 
 type CheckInWorkflowTicketParams struct {
@@ -88,6 +88,7 @@ func (q *Queries) CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflow
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -96,7 +97,7 @@ const claimGuestEventRegistration = `-- name: ClaimGuestEventRegistration :one
 UPDATE rsvps target SET user_id=$1,updated_at=clock_timestamp()
 WHERE target.event_id=$2 AND target.user_id IS NULL AND lower(target.guest_email)=lower($3::text)
 AND target.id=(SELECT r.id FROM rsvps r WHERE r.event_id=$2 AND r.user_id IS NULL AND lower(r.guest_email)=lower($3::text) ORDER BY r.created_at,r.id LIMIT 1)
-RETURNING target.id, target.event_id, target.user_id, target.guest_name, target.guest_email, target.status, target.notes, target.registered_at, target.cancelled_at, target.created_at, target.updated_at, target.offer_expires_at, target.approval_expires_at, target.transfer_count, target.transferred_from, target.public_code
+RETURNING target.id, target.event_id, target.user_id, target.guest_name, target.guest_email, target.status, target.notes, target.registered_at, target.cancelled_at, target.created_at, target.updated_at, target.offer_expires_at, target.approval_expires_at, target.transfer_count, target.transferred_from, target.public_code, target.admin_reference
 `
 
 type ClaimGuestEventRegistrationParams struct {
@@ -125,6 +126,7 @@ func (q *Queries) ClaimGuestEventRegistration(ctx context.Context, arg ClaimGues
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -141,7 +143,7 @@ func (q *Queries) CleanupWorkflowKeys(ctx context.Context) error {
 
 const createTransferredRegistration = `-- name: CreateTransferredRegistration :one
 INSERT INTO rsvps(event_id,user_id,guest_name,guest_email,status,transfer_count,transferred_from)
-VALUES ($1,$2,$3,$4,'confirmed',1,$5) RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+VALUES ($1,$2,$3,$4,'confirmed',1,$5) RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type CreateTransferredRegistrationParams struct {
@@ -178,12 +180,13 @@ func (q *Queries) CreateTransferredRegistration(ctx context.Context, arg CreateT
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const editRegistrationNotes = `-- name: EditRegistrationNotes :one
-UPDATE rsvps SET notes=$2,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+UPDATE rsvps SET notes=$2,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type EditRegistrationNotesParams struct {
@@ -211,6 +214,7 @@ func (q *Queries) EditRegistrationNotes(ctx context.Context, arg EditRegistratio
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -260,7 +264,7 @@ INSERT INTO tickets(rsvp_id) VALUES ($1) ON CONFLICT(rsvp_id) DO UPDATE
 SET id = CASE WHEN tickets.status = 'revoked' THEN gen_random_uuid() ELSE tickets.id END,
 public_code = CASE WHEN tickets.status = 'revoked' THEN 'T-' || encode(public.gen_random_bytes(12),'hex') ELSE tickets.public_code END,
 status = 'issued', checked_in_at = NULL, checked_in_by = NULL, updated_at = clock_timestamp()
-RETURNING id, rsvp_id, status, checked_in_at, checked_in_by, created_at, updated_at, public_code
+RETURNING id, rsvp_id, status, checked_in_at, checked_in_by, created_at, updated_at, public_code, admin_reference
 `
 
 func (q *Queries) EnsureTicket(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error) {
@@ -275,6 +279,7 @@ func (q *Queries) EnsureTicket(ctx context.Context, rsvpID pgtype.UUID) (Tickets
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -359,7 +364,7 @@ func (q *Queries) EventWorkflowActivity(ctx context.Context, eventID pgtype.UUID
 }
 
 const expiredEventApplications = `-- name: ExpiredEventApplications :many
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE event_id=$1 AND status='pending_approval' AND approval_expires_at<=clock_timestamp()
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE event_id=$1 AND status='pending_approval' AND approval_expires_at<=clock_timestamp()
 ORDER BY approval_expires_at,id LIMIT 100 FOR UPDATE
 `
 
@@ -389,6 +394,7 @@ func (q *Queries) ExpiredEventApplications(ctx context.Context, eventID pgtype.U
 			&i.TransferCount,
 			&i.TransferredFrom,
 			&i.PublicCode,
+			&i.AdminReference,
 		); err != nil {
 			return nil, err
 		}
@@ -401,7 +407,7 @@ func (q *Queries) ExpiredEventApplications(ctx context.Context, eventID pgtype.U
 }
 
 const expiredEventOffers = `-- name: ExpiredEventOffers :many
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE event_id = $1 AND status = 'offered' AND offer_expires_at <= clock_timestamp()
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE event_id = $1 AND status = 'offered' AND offer_expires_at <= clock_timestamp()
 ORDER BY offer_expires_at, id LIMIT 100 FOR UPDATE
 `
 
@@ -431,6 +437,7 @@ func (q *Queries) ExpiredEventOffers(ctx context.Context, eventID pgtype.UUID) (
 			&i.TransferCount,
 			&i.TransferredFrom,
 			&i.PublicCode,
+			&i.AdminReference,
 		); err != nil {
 			return nil, err
 		}
@@ -460,7 +467,7 @@ func (q *Queries) FindVerifiedTransferRecipient(ctx context.Context, lower strin
 }
 
 const firstWaitlistedRSVP = `-- name: FirstWaitlistedRSVP :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE event_id = $1 AND status = 'waitlisted' ORDER BY registered_at, id LIMIT 1 FOR UPDATE
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE event_id = $1 AND status = 'waitlisted' ORDER BY registered_at, id LIMIT 1 FOR UPDATE
 `
 
 func (q *Queries) FirstWaitlistedRSVP(ctx context.Context, eventID pgtype.UUID) (Rsvps, error) {
@@ -483,12 +490,13 @@ func (q *Queries) FirstWaitlistedRSVP(ctx context.Context, eventID pgtype.UUID) 
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const getAccountEventRSVP = `-- name: GetAccountEventRSVP :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE event_id = $1 AND user_id = $2
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE event_id = $1 AND user_id = $2
 `
 
 type GetAccountEventRSVPParams struct {
@@ -516,12 +524,13 @@ func (q *Queries) GetAccountEventRSVP(ctx context.Context, arg GetAccountEventRS
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const getAccountTicket = `-- name: GetAccountTicket :one
-SELECT t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, r.event_id FROM tickets t JOIN rsvps r ON r.id = t.rsvp_id
+SELECT t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, t.admin_reference, r.event_id FROM tickets t JOIN rsvps r ON r.id = t.rsvp_id
 WHERE r.id = $1 AND r.user_id = $2 AND r.status = 'confirmed' AND t.status IN ('issued','scanned')
 `
 
@@ -531,15 +540,16 @@ type GetAccountTicketParams struct {
 }
 
 type GetAccountTicketRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	RsvpID      pgtype.UUID        `json:"rsvp_id"`
-	Status      string             `json:"status"`
-	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
-	CheckedInBy pgtype.UUID        `json:"checked_in_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	PublicCode  string             `json:"public_code"`
-	EventID     pgtype.UUID        `json:"event_id"`
+	ID             pgtype.UUID        `json:"id"`
+	RsvpID         pgtype.UUID        `json:"rsvp_id"`
+	Status         string             `json:"status"`
+	CheckedInAt    pgtype.Timestamptz `json:"checked_in_at"`
+	CheckedInBy    pgtype.UUID        `json:"checked_in_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PublicCode     string             `json:"public_code"`
+	AdminReference int64              `json:"admin_reference"`
+	EventID        pgtype.UUID        `json:"event_id"`
 }
 
 func (q *Queries) GetAccountTicket(ctx context.Context, arg GetAccountTicketParams) (GetAccountTicketRow, error) {
@@ -554,13 +564,14 @@ func (q *Queries) GetAccountTicket(ctx context.Context, arg GetAccountTicketPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublicCode,
+		&i.AdminReference,
 		&i.EventID,
 	)
 	return i, err
 }
 
 const getGuestEventRSVP = `-- name: GetGuestEventRSVP :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE event_id = $1 AND lower(guest_email) = lower($2) ORDER BY created_at LIMIT 1
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE event_id = $1 AND lower(guest_email) = lower($2) ORDER BY created_at LIMIT 1
 `
 
 type GetGuestEventRSVPParams struct {
@@ -588,6 +599,7 @@ func (q *Queries) GetGuestEventRSVP(ctx context.Context, arg GetGuestEventRSVPPa
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -616,7 +628,7 @@ func (q *Queries) GetIdempotentResponse(ctx context.Context, arg GetIdempotentRe
 }
 
 const getTicketByRSVP = `-- name: GetTicketByRSVP :one
-SELECT id, rsvp_id, status, checked_in_at, checked_in_by, created_at, updated_at, public_code FROM tickets WHERE rsvp_id=$1
+SELECT id, rsvp_id, status, checked_in_at, checked_in_by, created_at, updated_at, public_code, admin_reference FROM tickets WHERE rsvp_id=$1
 `
 
 func (q *Queries) GetTicketByRSVP(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error) {
@@ -631,12 +643,13 @@ func (q *Queries) GetTicketByRSVP(ctx context.Context, rsvpID pgtype.UUID) (Tick
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const getWorkflowRSVP = `-- name: GetWorkflowRSVP :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps WHERE id = $1
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps WHERE id = $1
 `
 
 func (q *Queries) GetWorkflowRSVP(ctx context.Context, id pgtype.UUID) (Rsvps, error) {
@@ -659,24 +672,26 @@ func (q *Queries) GetWorkflowRSVP(ctx context.Context, id pgtype.UUID) (Rsvps, e
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
 
 const getWorkflowTicket = `-- name: GetWorkflowTicket :one
-SELECT t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, r.event_id FROM tickets t JOIN rsvps r ON r.id = t.rsvp_id WHERE t.id = $1
+SELECT t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, t.admin_reference, r.event_id FROM tickets t JOIN rsvps r ON r.id = t.rsvp_id WHERE t.id = $1
 `
 
 type GetWorkflowTicketRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	RsvpID      pgtype.UUID        `json:"rsvp_id"`
-	Status      string             `json:"status"`
-	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
-	CheckedInBy pgtype.UUID        `json:"checked_in_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	PublicCode  string             `json:"public_code"`
-	EventID     pgtype.UUID        `json:"event_id"`
+	ID             pgtype.UUID        `json:"id"`
+	RsvpID         pgtype.UUID        `json:"rsvp_id"`
+	Status         string             `json:"status"`
+	CheckedInAt    pgtype.Timestamptz `json:"checked_in_at"`
+	CheckedInBy    pgtype.UUID        `json:"checked_in_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PublicCode     string             `json:"public_code"`
+	AdminReference int64              `json:"admin_reference"`
+	EventID        pgtype.UUID        `json:"event_id"`
 }
 
 func (q *Queries) GetWorkflowTicket(ctx context.Context, id pgtype.UUID) (GetWorkflowTicketRow, error) {
@@ -691,6 +706,7 @@ func (q *Queries) GetWorkflowTicket(ctx context.Context, id pgtype.UUID) (GetWor
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublicCode,
+		&i.AdminReference,
 		&i.EventID,
 	)
 	return i, err
@@ -730,7 +746,7 @@ func (q *Queries) GuestClaimEvents(ctx context.Context, arg GuestClaimEventsPara
 
 const insertWorkflowRSVP = `-- name: InsertWorkflowRSVP :one
 INSERT INTO rsvps(event_id, user_id, guest_name, guest_email, notes, status, approval_expires_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type InsertWorkflowRSVPParams struct {
@@ -771,6 +787,7 @@ func (q *Queries) InsertWorkflowRSVP(ctx context.Context, arg InsertWorkflowRSVP
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -882,7 +899,7 @@ func (q *Queries) ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditPa
 }
 
 const lockWorkflowEvent = `-- name: LockWorkflowEvent :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
 `
 
 type LockWorkflowEventRow struct {
@@ -930,6 +947,7 @@ type LockWorkflowEventRow struct {
 	Visibility               string             `json:"visibility"`
 	RegistrationFormRevision int64              `json:"registration_form_revision"`
 	RegistrationNameRequired bool               `json:"registration_name_required"`
+	AdminReference           int64              `json:"admin_reference"`
 	DatabaseNow              pgtype.Timestamptz `json:"database_now"`
 }
 
@@ -981,7 +999,40 @@ func (q *Queries) LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWo
 		&i.Visibility,
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
+		&i.AdminReference,
 		&i.DatabaseNow,
+	)
+	return i, err
+}
+
+const readEventNotificationContext = `-- name: ReadEventNotificationContext :one
+SELECT e.slug, e.banner_url, e.location_name, e.online_url,
+       o.display_name AS organizer_name, s.name AS space_name
+FROM events e
+JOIN organizers o ON o.id=e.organizer_id
+LEFT JOIN spaces s ON s.id=e.space_id
+WHERE e.id=$1 AND e.deleted_at IS NULL
+`
+
+type ReadEventNotificationContextRow struct {
+	Slug          string      `json:"slug"`
+	BannerUrl     pgtype.Text `json:"banner_url"`
+	LocationName  pgtype.Text `json:"location_name"`
+	OnlineUrl     pgtype.Text `json:"online_url"`
+	OrganizerName string      `json:"organizer_name"`
+	SpaceName     pgtype.Text `json:"space_name"`
+}
+
+func (q *Queries) ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error) {
+	row := q.db.QueryRow(ctx, readEventNotificationContext, id)
+	var i ReadEventNotificationContextRow
+	err := row.Scan(
+		&i.Slug,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.OnlineUrl,
+		&i.OrganizerName,
+		&i.SpaceName,
 	)
 	return i, err
 }
@@ -1001,7 +1052,7 @@ func (q *Queries) RegistrationWaitlistPosition(ctx context.Context, id pgtype.UU
 
 const resetWorkflowRSVP = `-- name: ResetWorkflowRSVP :one
 UPDATE rsvps SET status=$2, notes=$3, cancelled_at=NULL, offer_expires_at=NULL,
-approval_expires_at=$4, registered_at=clock_timestamp(), updated_at=clock_timestamp() WHERE id=$1 RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+approval_expires_at=$4, registered_at=clock_timestamp(), updated_at=clock_timestamp() WHERE id=$1 RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type ResetWorkflowRSVPParams struct {
@@ -1036,6 +1087,7 @@ func (q *Queries) ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPPa
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -1067,7 +1119,7 @@ AND ($1::registration_status <> 'confirmed'
     OR status NOT IN ('offered','pending_approval')
     OR (status='offered' AND offer_expires_at>clock_timestamp())
     OR (status='pending_approval' AND approval_expires_at>clock_timestamp()))
-RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type SetWorkflowRSVPStateParams struct {
@@ -1096,6 +1148,7 @@ func (q *Queries) SetWorkflowRSVPState(ctx context.Context, arg SetWorkflowRSVPS
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -1146,7 +1199,7 @@ const transitionWorkflowEvent = `-- name: TransitionWorkflowEvent :one
 UPDATE events SET status=$1::event_status, revision=revision+1, updated_at=clock_timestamp(),
 published_at=CASE WHEN $1::event_status='published' THEN clock_timestamp() ELSE published_at END,
 cancelled_at=CASE WHEN $1::event_status='cancelled' THEN clock_timestamp() ELSE cancelled_at END
-WHERE id=$2 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required
+WHERE id=$2 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference
 `
 
 type TransitionWorkflowEventParams struct {
@@ -1202,6 +1255,7 @@ func (q *Queries) TransitionWorkflowEvent(ctx context.Context, arg TransitionWor
 		&i.Visibility,
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -1211,7 +1265,7 @@ UPDATE events SET title=$2, description=$3, format=$4, starts_at=$5, ends_at=$6,
 capacity=$8, location_name=$9, location_address=$10, online_url=$11, registration_opens_at=$12,
 registration_closes_at=$13, registration_mode=$14, allow_guest=$15, waitlist_enabled=$16,
 offer_minutes=$17, revision=revision+1, updated_at=clock_timestamp()
-WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required
+WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference
 `
 
 type UpdateWorkflowEventParams struct {
@@ -1300,6 +1354,7 @@ func (q *Queries) UpdateWorkflowEvent(ctx context.Context, arg UpdateWorkflowEve
 		&i.Visibility,
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
+		&i.AdminReference,
 	)
 	return i, err
 }

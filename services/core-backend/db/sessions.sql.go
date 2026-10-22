@@ -32,7 +32,7 @@ INSERT INTO sessions (
     $5,
     NOW()
 )
-RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen
+RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen, admin_reference
 `
 
 type CreateSessionParams struct {
@@ -61,6 +61,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.LastSeen,
+		&i.AdminReference,
 	)
 	return i, err
 }
