@@ -1,3 +1,4 @@
+@import "./event-fonts.css";
 .event-theme { --event-tint: #ddd4e9; --event-heading: "FG Futurist"; --event-radius: 16px; }
 .event-theme h1, .event-theme h2, .event-theme .compose-title input { font-family: var(--event-heading); }
 .event-theme .event-registration-panel { background: color-mix(in srgb, var(--event-tint) 25%, white); border-radius: var(--event-radius); }
@@ -92,3 +93,36 @@
 .theme-sheet footer p { color: var(--muted); font-size: 12px; }
 @media (max-width: 900px) { .theme-options { display: flex; overflow-x: auto; gap: 12px; } .theme-choice { width: 104px; flex-shrink: 0; } .theme-adjustments { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .theme-controls { margin-top: 16px; } .theme-sheet-inner { width: calc(100% - 40px); padding-top: 22px; padding-bottom: max(22px, env(safe-area-inset-bottom)); } .theme-sheet h2 { font-size: 19px; line-height: 1.4; } .theme-sheet header p { font-size: 12px; } .theme-sheet footer { align-items: flex-end; } .theme-sheet footer p { max-width: 22ch; } }
+
+/* Editor controls inherit the event palette in both display modes. */
+.event-editor-theme { --edit-ink: var(--ink); --edit-copy: var(--muted); --edit-border: var(--line); --edit-surface: var(--paper); --edit-control: color-mix(in srgb, var(--ink) 7%, var(--paper)); }
+.event-editor-theme :is(.compose-extra > input,.compose-line-field input,.compose-description textarea,.compose-capacity input,.editor-host-current,.theme-sheet,.date-time-dialog) { background: var(--edit-surface); color: var(--edit-ink); border-color: var(--edit-border); }
+.event-editor-theme :is(.compose-option-row,.compose-approval-help,.compose-timezone,.compose-title input) { border-color: var(--edit-border); }
+.event-editor-theme :is(input,textarea)::placeholder { color: var(--edit-copy); opacity: .85; }
+.event-editor-theme :is(.compose-disclosure > summary > svg,.compose-option-row svg,.compose-date-label,.compose-option-value) { color: var(--edit-copy); }
+.event-editor-theme .date-marker-end { background: var(--edit-control); }
+.event-editor-theme .theme-sheet { color-scheme: inherit; }
+.event-editor-theme .theme-adjustments > .theme-font { display: grid; gap: 8px; padding: 12px; background: var(--edit-control); border-radius: 10px; min-width: 0; }
+.theme-font > label { font-size: 12px; color: var(--muted); }
+.theme-font .hw-select-trigger { min-width: 0; width: 100%; }
+
+.event-editor-theme .picker-body header button { color: var(--edit-copy); }
+.event-display-dark .picker-body footer { color: #ffb4c3; }
+.event-display-dark .picker-body .picker-done { background: var(--ink); color: var(--paper); }
+.event-display-dark .picker-body .picker-done:hover { background: var(--accent); color: var(--paper); }
+
+.theme-options.hw-radio-group { display: grid; }
+.theme-options .hw-radio-option { padding: 8px; min-width: 0; justify-content: center; }
+.theme-options .hw-radio-copy { display: grid; justify-items: center; gap: 8px; font-size: 12px; }
+.theme-options .hw-radio { position: absolute; opacity: 0; }
+.theme-options .hw-radio-option:focus-within { outline: 2px solid var(--ink); outline-offset: 3px; }
+.theme-segment { border: 0; margin: 0; min-width: 0; }
+.theme-segment legend { float: left; width: 100%; padding: 0; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.theme-segment .hw-radio-option { padding: 8px 10px; font-size: 12px; }
+.theme-options .hw-radio-option[data-selected] { border-color: var(--ink); }
+
+.theme-options .hw-radio-copy { width: 100%; }
+@media(max-width:900px) { .theme-options.hw-radio-group { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+
+.event-display-dark .field-help { color: var(--muted); }
+.event-display-dark .field-error { color: #ffb4c3; }

@@ -103,6 +103,7 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
+	CampaignDesign   *CampaignDesign    `json:"campaign_design,omitempty"`
 	PromotionSubject string             `json:"promotion_subject"`
 	PromotionBody    string             `json:"promotion_body"`
 	ActionLabel      string             `json:"action_label"`
@@ -274,7 +275,7 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	}
 	subject, body := template.Subject, template.Copy
 	switch e.TemplateType {
-	case "admin_promotion":
+	case "admin_promotion", "admin_service_message":
 		subject = payload.PromotionSubject
 		body = payload.PromotionBody
 		if subject == "" || body == "" {
@@ -357,6 +358,13 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	if template.Category == "promotion" {
 		senderClass = "promotion"
 	}
+	if (e.TemplateType == "admin_promotion" || e.TemplateType == "admin_service_message") && payload.CampaignDesign != nil {
+		var err error
+		htmlBody, body, err = renderCampaignDesign(subject, payload.PromotionBody, payload.ActionLabel, payload.ActionURL, safeHTTPSURL(payload.UnsubscribeURL), payload.IsTest, *payload.CampaignDesign, e.TemplateType == "admin_promotion")
+		if err != nil {
+			return EmailMessage{}, err
+		}
+	}
 	return EmailMessage{SenderClass: senderClass, Recipient: e.RecipientEmail, Subject: subject, BodyText: body, BodyHTML: htmlBody, OperationID: uuid(e.ID)}, nil
 }
 
@@ -426,6 +434,17 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 var errSuperseded = errors.New("notification superseded; no provider send was attempted")
 
 func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) error {
+	if e.TemplateType == "admin_service_message" {
+		active, err := w.queries.AdminMessageRecipientActive(ctx, e.ID)
+		if err != nil {
+			return err
+		}
+		if !active {
+			return errSuperseded
+		}
+		return nil
+	}
+
 	if e.TemplateType == "admin_promotion" {
 		active, err := w.queries.CampaignMessageActive(ctx, e.ID)
 		if err != nil {
@@ -493,10 +512,22 @@ func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) er
 }
 
 // Reuses the exact production renderer for the admin's saved-draft preview.
-func RenderCampaignPreview(subject, body, label, actionURL string) (EmailMessage, error) {
-	payload, err := json.Marshal(templatePayload{PromotionSubject: subject, PromotionBody: body, ActionLabel: label, ActionURL: actionURL})
+func RenderCampaignPreview(subject, body, label, actionURL string, design ...CampaignDesign) (EmailMessage, error) {
+	value := templatePayload{PromotionSubject: subject, PromotionBody: body, ActionLabel: label, ActionURL: actionURL}
+	if len(design) > 0 {
+		value.CampaignDesign = &design[0]
+	}
+	payload, err := json.Marshal(value)
 	if err != nil {
 		return EmailMessage{}, err
 	}
 	return render(db.ClaimEmailOutboxRow{TemplateType: "admin_promotion", PayloadJson: payload})
+}
+
+func RenderAdminMessagePreview(subject, body, label, actionURL string, design CampaignDesign) (EmailMessage, error) {
+	payload, err := json.Marshal(templatePayload{PromotionSubject: subject, PromotionBody: body, ActionLabel: label, ActionURL: actionURL, CampaignDesign: &design})
+	if err != nil {
+		return EmailMessage{}, err
+	}
+	return render(db.ClaimEmailOutboxRow{TemplateType: "admin_service_message", PayloadJson: payload})
 }

@@ -23,33 +23,38 @@ import (
 const campaignAudienceLimit = 1000
 
 type campaignBody struct {
-	Title         string `json:"title"`
-	Subject       string `json:"subject"`
-	Body          string `json:"body"`
-	ActionLabel   string `json:"action_label"`
-	ActionURL     string `json:"action_url"`
-	Revision      int64  `json:"revision"`
-	AudienceCount int64  `json:"audience_count"`
-	Confirmed     bool   `json:"confirmed"`
+	Configuration *campaignConfiguration `json:"configuration"`
+	Title         string                 `json:"title"`
+	Subject       string                 `json:"subject"`
+	Body          string                 `json:"body"`
+	ActionLabel   string                 `json:"action_label"`
+	ActionURL     string                 `json:"action_url"`
+	Revision      int64                  `json:"revision"`
+	AudienceCount int64                  `json:"audience_count"`
+	Confirmed     bool                   `json:"confirmed"`
 }
 type campaignView struct {
-	Reference   int64     `json:"reference"`
-	Title       string    `json:"title"`
-	Subject     string    `json:"subject"`
-	Body        string    `json:"body"`
-	ActionLabel string    `json:"action_label"`
-	ActionURL   string    `json:"action_url"`
-	Status      string    `json:"status"`
-	Revision    int64     `json:"revision"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Configuration json.RawMessage `json:"configuration"`
+	Reference     int64           `json:"reference"`
+	Title         string          `json:"title"`
+	Subject       string          `json:"subject"`
+	Body          string          `json:"body"`
+	ActionLabel   string          `json:"action_label"`
+	ActionURL     string          `json:"action_url"`
+	Status        string          `json:"status"`
+	Revision      int64           `json:"revision"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
 func viewCampaign(c db.EmailCampaigns) campaignView {
-	return campaignView{c.Reference, c.Title, c.Subject, c.Body, c.ActionLabel, c.ActionUrl, c.Status, c.Revision, c.UpdatedAt.Time}
+	return campaignView{json.RawMessage(c.Configuration), c.Reference, c.Title, c.Subject, c.Body, c.ActionLabel, c.ActionUrl, c.Status, c.Revision, c.UpdatedAt.Time}
 }
 func (h *Handler) mountCampaigns(r chi.Router) {
+	r.Post("/messages/preview", h.AdminMessagePreview)
+	r.Post("/messages/send", h.AdminMessageSend)
 	r.Get("/campaigns", h.CampaignList)
 	r.Post("/campaigns", h.CampaignCreate)
+	r.Post("/campaigns/preview", h.CampaignPreview)
 	r.Get("/campaigns/{id}", h.CampaignDetail)
 	r.Post("/campaigns/{id}/{action}", h.CampaignChange)
 	r.Get("/campaign-contacts", h.PromotionContacts)
@@ -108,18 +113,23 @@ func (h *Handler) CampaignDetail(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	count, err := h.queries.CampaignAudienceCount(r.Context())
+	configuration, err := readCampaignConfiguration(c.Configuration)
+	if err != nil {
+		platform.RespondError(w, 500, "CAMPAIGN_UNAVAILABLE", "Saved campaign settings could not be read", nil)
+		return
+	}
+	count, err := h.queries.CampaignAudienceCountSelected(r.Context(), db.CampaignAudienceCountSelectedParams{AudienceSource: configuration.Audience, RecipientEmails: configuration.Recipients})
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	audience, err := h.queries.CampaignAudiencePreview(r.Context())
+	audience, err := h.queries.CampaignAudiencePreviewSelected(r.Context(), db.CampaignAudiencePreviewSelectedParams{AudienceSource: configuration.Audience, RecipientEmails: configuration.Recipients})
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
 	if audience == nil {
-		audience = []db.CampaignAudiencePreviewRow{}
+		audience = []db.CampaignAudiencePreviewSelectedRow{}
 	}
 	deliveries, err := h.queries.CampaignDeliveryList(r.Context(), db.CampaignDeliveryListParams{CampaignID: c.ID, PageOffset: campaignOffset(r)})
 	if err != nil {
@@ -133,20 +143,20 @@ func (h *Handler) CampaignDetail(w http.ResponseWriter, r *http.Request) {
 	if next {
 		deliveries = deliveries[:20]
 	}
-	preview, err := notifications.RenderCampaignPreview(c.Subject, c.Body, c.ActionLabel, c.ActionUrl)
+	preview, err := notifications.RenderCampaignPreview(c.Subject, c.Body, c.ActionLabel, c.ActionUrl, configuration.Design)
 	if err != nil {
 		platform.RespondError(w, 500, "PREVIEW_UNAVAILABLE", "The email preview could not be rendered", nil)
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data          campaignView                    `json:"data"`
-		Stats         db.CampaignStatsRow             `json:"stats"`
-		AudienceCount int64                           `json:"audience_count"`
-		Audience      []db.CampaignAudiencePreviewRow `json:"audience"`
-		Deliveries    []db.CampaignDeliveryListRow    `json:"deliveries"`
-		HasNext       bool                            `json:"has_next"`
-		PreviewHTML   string                          `json:"preview_html"`
-		Sender        string                          `json:"sender"`
+		Data          campaignView                            `json:"data"`
+		Stats         db.CampaignStatsRow                     `json:"stats"`
+		AudienceCount int64                                   `json:"audience_count"`
+		Audience      []db.CampaignAudiencePreviewSelectedRow `json:"audience"`
+		Deliveries    []db.CampaignDeliveryListRow            `json:"deliveries"`
+		HasNext       bool                                    `json:"has_next"`
+		PreviewHTML   string                                  `json:"preview_html"`
+		Sender        string                                  `json:"sender"`
 	}{viewCampaign(c), stats, count, audience, deliveries, next, preview.BodyHTML, "updates@mail.hackways.in"})
 }
 func (h *Handler) campaignMutation(w http.ResponseWriter, r *http.Request) (pgx.Tx, *db.Queries, *auth.SessionUser, string, bool) {
@@ -157,6 +167,15 @@ func (h *Handler) campaignMutation(w http.ResponseWriter, r *http.Request) (pgx.
 	}
 	reason, err := url.PathUnescape(r.Header.Get("X-Admin-Reason"))
 	reason = strings.TrimSpace(reason)
+	if err == nil && reason == "" {
+		reason = "Campaign " + chi.URLParam(r, "action")
+		if chi.URLParam(r, "action") == "" {
+			reason = "Campaign draft created"
+		}
+		if strings.HasSuffix(r.URL.Path, "/campaign-contacts/import") {
+			reason = "Opted-in contacts imported"
+		}
+	}
 	if !allowed {
 		platform.RespondError(w, 403, "INVALID_ORIGIN", "Use the admin console to make changes", nil)
 		return nil, nil, nil, "", false
@@ -227,6 +246,13 @@ func (h *Handler) CampaignCreate(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 422, "INVALID_CAMPAIGN", "Enter a title, subject, message and optional HTTPS action link", nil)
 		return
 	}
+	if body.Configuration == nil {
+		body.Configuration = &campaignConfiguration{}
+	}
+	if err := body.Configuration.normalize(); err != nil {
+		platform.RespondError(w, 422, "INVALID_CONFIGURATION", err.Error(), nil)
+		return
+	}
 	key := r.Header.Get("Idempotency-Key")
 	if len(key) < 16 || len(key) > 128 || strings.ContainsAny(key, " \r\n\t") {
 		platform.RespondError(w, 400, "IDEMPOTENCY_KEY_REQUIRED", "A campaign creation key is required", nil)
@@ -239,7 +265,8 @@ func (h *Handler) CampaignCreate(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 	canonical, _ := json.Marshal(body)
 	hash := actionHash(canonical)
-	c, err := q.CampaignCreate(r.Context(), db.CampaignCreateParams{Title: body.Title, Subject: body.Subject, Body: body.Body, ActionLabel: body.ActionLabel, ActionUrl: body.ActionURL, CreatedBy: user.UserID, CreationKey: key, CreationHash: hash})
+	configurationJSON, _ := json.Marshal(body.Configuration)
+	c, err := q.CampaignCreate(r.Context(), db.CampaignCreateParams{Configuration: configurationJSON, Title: body.Title, Subject: body.Subject, Body: body.Body, ActionLabel: body.ActionLabel, ActionUrl: body.ActionURL, CreatedBy: user.UserID, CreationKey: key, CreationHash: hash})
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -278,6 +305,12 @@ func (h *Handler) CampaignChange(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 422, "INVALID_CAMPAIGN", "Enter valid campaign content and optional HTTPS link", nil)
 		return
 	}
+	if action == "edit" && body.Configuration != nil {
+		if err := body.Configuration.normalize(); err != nil {
+			platform.RespondError(w, 422, "INVALID_CONFIGURATION", err.Error(), nil)
+			return
+		}
+	}
 	tx, q, user, reason, ok := h.campaignMutation(w, r)
 	if !ok {
 		return
@@ -308,10 +341,19 @@ func (h *Handler) CampaignChange(w http.ResponseWriter, r *http.Request) {
 		actionConflict(w)
 		return
 	}
+	configuration, err := readCampaignConfiguration(c.Configuration)
+	if err != nil {
+		platform.RespondError(w, 500, "CAMPAIGN_UNAVAILABLE", "Saved settings could not be read", nil)
+		return
+	}
+	if body.Configuration == nil {
+		body.Configuration = &configuration
+	}
 	var count int64
 	switch action {
 	case "edit":
-		_, err = q.CampaignEdit(r.Context(), db.CampaignEditParams{ID: c.ID, Title: body.Title, Subject: body.Subject, Body: body.Body, ActionLabel: body.ActionLabel, ActionUrl: body.ActionURL, Revision: c.Revision})
+		configurationJSON, _ := json.Marshal(body.Configuration)
+		_, err = q.CampaignEdit(r.Context(), db.CampaignEditParams{Configuration: configurationJSON, ID: c.ID, Title: body.Title, Subject: body.Subject, Body: body.Body, ActionLabel: body.ActionLabel, ActionUrl: body.ActionURL, Revision: c.Revision})
 	case "cancel":
 		err = q.CampaignCancel(r.Context(), c.ID)
 	case "test", "send":
@@ -327,7 +369,11 @@ func (h *Handler) CampaignChange(w http.ResponseWriter, r *http.Request) {
 				platform.RespondError(w, 422, "SEND_CONFIRMATION_REQUIRED", "Review the audience and confirm sending", nil)
 				return
 			}
-			count, err = q.CampaignAudienceCount(r.Context())
+			if configuration.ScheduledAt != nil && configuration.ScheduledAt.Before(time.Now()) {
+				platform.RespondError(w, 422, "SCHEDULE_PASSED", "Choose a new send time or send now", nil)
+				return
+			}
+			count, err = q.CampaignAudienceCountSelected(r.Context(), db.CampaignAudienceCountSelectedParams{AudienceSource: configuration.Audience, RecipientEmails: configuration.Recipients})
 			if err != nil {
 				break
 			}
@@ -340,13 +386,18 @@ func (h *Handler) CampaignChange(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		payload, _ := json.Marshal(struct {
-			Subject     string `json:"promotion_subject"`
-			Body        string `json:"promotion_body"`
-			ActionLabel string `json:"action_label"`
-			ActionURL   string `json:"action_url"`
-		}{c.Subject, c.Body, c.ActionLabel, c.ActionUrl})
+			Design      notifications.CampaignDesign `json:"campaign_design"`
+			Subject     string                       `json:"promotion_subject"`
+			Body        string                       `json:"promotion_body"`
+			ActionLabel string                       `json:"action_label"`
+			ActionURL   string                       `json:"action_url"`
+		}{configuration.Design, c.Subject, c.Body, c.ActionLabel, c.ActionUrl})
 		var queued int64
-		queued, err = q.QueueCampaignMessages(r.Context(), db.QueueCampaignMessagesParams{TestOnly: action == "test", TestContactID: contact, CampaignID: c.ID, Revision: c.Revision, MaxRecipients: campaignAudienceLimit + 1, BasePayload: payload})
+		sendAt := pgtype.Timestamptz{}
+		if action == "send" && configuration.ScheduledAt != nil {
+			sendAt = pgtype.Timestamptz{Time: *configuration.ScheduledAt, Valid: true}
+		}
+		queued, err = q.QueueCampaignMessages(r.Context(), db.QueueCampaignMessagesParams{AudienceSource: configuration.Audience, RecipientEmails: configuration.Recipients, SendAt: sendAt, TestOnly: action == "test", TestContactID: contact, CampaignID: c.ID, Revision: c.Revision, MaxRecipients: campaignAudienceLimit + 1, BasePayload: payload})
 		if err != nil {
 			break
 		}

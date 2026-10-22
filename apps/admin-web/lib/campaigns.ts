@@ -1,9 +1,10 @@
+import type { CampaignConfiguration } from './campaign-design';
 import { adminVerificationRequired, adminVerificationPath } from './admin-verification';
 import 'server-only';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
-export type Campaign = { reference: number; title: string; subject: string; body: string; action_label: string; action_url: string; status: string; revision: number; updated_at: string };
+export type Campaign = { configuration?: CampaignConfiguration; reference: number; title: string; subject: string; body: string; action_label: string; action_url: string; status: string; revision: number; updated_at: string };
 export type CampaignRow = Pick<Campaign, 'reference' | 'title' | 'subject' | 'status' | 'revision' | 'updated_at'>;
 export type CampaignDetail = { data: Campaign; stats: { total: number; pending: number; accepted: number; failed: number; tests: number }; audience_count: number; audience: { reference: number; email: string; display_name: string; source: string; consented_at: string }[]; deliveries: { reference: number; recipient_email: string; status: string; retry_count: number; sent_at: string | null; is_test: boolean }[]; has_next: boolean; preview_html: string; sender: string };
 export type PromotionContact = { reference: number; email: string; display_name: string; source: string; consent_source: string; consented_at: string; subscribed: boolean; unsubscribed_at: string | null };

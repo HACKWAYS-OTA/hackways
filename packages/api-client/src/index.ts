@@ -36,7 +36,7 @@ export interface Event {
   space_id?: string | null;
   theme?: string;
   theme_color?: string;
-  theme_font?: 'futurist' | 'google';
+  theme_font?: 'futurist' | 'google' | 'dm-sans' | 'manrope' | 'space-grotesk' | 'outfit' | 'sora' | 'fraunces' | 'playfair-display' | 'lora' | 'dm-mono' | 'bebas-neue';
   theme_style?: 'soft' | 'crisp';
   theme_display?: 'light' | 'dark';
   visibility?: 'public' | 'private';
@@ -75,7 +75,7 @@ export interface RegistrationQuestion {
   public_code: string; label: string; description: string; kind: QuestionKind;
   required: boolean; options: string[]; placeholder?: string; validation?: QuestionValidation;
 }
-export interface QuestionValidation { min_length?: number; max_length?: number; min?: number; max?: number; integer?: boolean; message?: string }
+export interface QuestionValidation { enabled?: boolean; allowed_domain?: string; min_length?: number; max_length?: number; min?: number; max?: number; integer?: boolean; message?: string }
 export interface RegistrationFormSettings { title?: string; description?: string; submit_label?: string; success_message?: string }
 export interface RegistrationFormConfig {
   revision: number; name_required: boolean; questions: RegistrationQuestion[]; settings?: RegistrationFormSettings;

@@ -31,5 +31,10 @@ func validAppearance(req *createEventRequest) bool {
 	default:
 		return false
 	}
-	return colorValue.MatchString(req.ThemeColor) && (req.ThemeFont == "futurist" || req.ThemeFont == "google") && (req.ThemeStyle == "soft" || req.ThemeStyle == "crisp") && (req.ThemeDisplay == "light" || req.ThemeDisplay == "dark")
+	switch req.ThemeFont {
+	case "futurist", "google", "dm-sans", "manrope", "space-grotesk", "outfit", "sora", "fraunces", "playfair-display", "lora", "dm-mono", "bebas-neue":
+	default:
+		return false
+	}
+	return colorValue.MatchString(req.ThemeColor) && (req.ThemeStyle == "soft" || req.ThemeStyle == "crisp") && (req.ThemeDisplay == "light" || req.ThemeDisplay == "dark")
 }

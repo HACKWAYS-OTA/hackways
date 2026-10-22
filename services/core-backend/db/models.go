@@ -234,6 +234,22 @@ func (ns NullRegistrationStatus) Value() (driver.Value, error) {
 	return string(ns.RegistrationStatus), nil
 }
 
+type AdminCustomMessageDeliveries struct {
+	MessageID pgtype.UUID `json:"message_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+	OutboxID  pgtype.UUID `json:"outbox_id"`
+}
+
+type AdminCustomMessages struct {
+	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
+	ActorUserID  pgtype.UUID        `json:"actor_user_id"`
+	CreationKey  string             `json:"creation_key"`
+	CreationHash string             `json:"creation_hash"`
+	Subject      string             `json:"subject"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type AdminSessionChallenges struct {
 	SessionID  pgtype.UUID        `json:"session_id"`
 	CodeHash   string             `json:"code_hash"`
@@ -285,22 +301,23 @@ type EmailCampaignDeliveries struct {
 }
 
 type EmailCampaigns struct {
-	ID           pgtype.UUID        `json:"id"`
-	Reference    int64              `json:"reference"`
-	Title        string             `json:"title"`
-	Subject      string             `json:"subject"`
-	Body         string             `json:"body"`
-	ActionLabel  string             `json:"action_label"`
-	ActionUrl    string             `json:"action_url"`
-	Status       string             `json:"status"`
-	Revision     int64              `json:"revision"`
-	CreatedBy    pgtype.UUID        `json:"created_by"`
-	CreationKey  string             `json:"creation_key"`
-	CreationHash string             `json:"creation_hash"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	QueuedAt     pgtype.Timestamptz `json:"queued_at"`
-	CancelledAt  pgtype.Timestamptz `json:"cancelled_at"`
+	ID            pgtype.UUID        `json:"id"`
+	Reference     int64              `json:"reference"`
+	Title         string             `json:"title"`
+	Subject       string             `json:"subject"`
+	Body          string             `json:"body"`
+	ActionLabel   string             `json:"action_label"`
+	ActionUrl     string             `json:"action_url"`
+	Status        string             `json:"status"`
+	Revision      int64              `json:"revision"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreationKey   string             `json:"creation_key"`
+	CreationHash  string             `json:"creation_hash"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	QueuedAt      pgtype.Timestamptz `json:"queued_at"`
+	CancelledAt   pgtype.Timestamptz `json:"cancelled_at"`
+	Configuration []byte             `json:"configuration"`
 }
 
 type EmailOutbox struct {

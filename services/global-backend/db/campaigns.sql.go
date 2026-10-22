@@ -23,6 +23,24 @@ func (q *Queries) CampaignAudienceCount(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const campaignAudienceCountSelected = `-- name: CampaignAudienceCountSelected :one
+SELECT count(*) FROM promotion_contacts c WHERE c.subscribed
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND ($1::text='all' OR c.source=$1) AND (coalesce(cardinality($2::text[]),0)=0 OR c.email=ANY($2::text[]))
+`
+
+type CampaignAudienceCountSelectedParams struct {
+	AudienceSource  string   `json:"audience_source"`
+	RecipientEmails []string `json:"recipient_emails"`
+}
+
+func (q *Queries) CampaignAudienceCountSelected(ctx context.Context, arg CampaignAudienceCountSelectedParams) (int64, error) {
+	row := q.db.QueryRow(ctx, campaignAudienceCountSelected, arg.AudienceSource, arg.RecipientEmails)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const campaignAudiencePreview = `-- name: CampaignAudiencePreview :many
 SELECT c.reference,c.email,c.display_name,c.source,c.consented_at FROM promotion_contacts c WHERE c.subscribed
 AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
@@ -63,6 +81,52 @@ func (q *Queries) CampaignAudiencePreview(ctx context.Context) ([]CampaignAudien
 	return items, nil
 }
 
+const campaignAudiencePreviewSelected = `-- name: CampaignAudiencePreviewSelected :many
+SELECT c.reference,c.email,c.display_name,c.source,c.consented_at FROM promotion_contacts c WHERE c.subscribed
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND ($1::text='all' OR c.source=$1) AND (coalesce(cardinality($2::text[]),0)=0 OR c.email=ANY($2::text[]))
+ORDER BY c.reference LIMIT 20
+`
+
+type CampaignAudiencePreviewSelectedParams struct {
+	AudienceSource  string   `json:"audience_source"`
+	RecipientEmails []string `json:"recipient_emails"`
+}
+
+type CampaignAudiencePreviewSelectedRow struct {
+	Reference   int64              `json:"reference"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	Source      string             `json:"source"`
+	ConsentedAt pgtype.Timestamptz `json:"consented_at"`
+}
+
+func (q *Queries) CampaignAudiencePreviewSelected(ctx context.Context, arg CampaignAudiencePreviewSelectedParams) ([]CampaignAudiencePreviewSelectedRow, error) {
+	rows, err := q.db.Query(ctx, campaignAudiencePreviewSelected, arg.AudienceSource, arg.RecipientEmails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CampaignAudiencePreviewSelectedRow
+	for rows.Next() {
+		var i CampaignAudiencePreviewSelectedRow
+		if err := rows.Scan(
+			&i.Reference,
+			&i.Email,
+			&i.DisplayName,
+			&i.Source,
+			&i.ConsentedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const campaignCancel = `-- name: CampaignCancel :exec
 UPDATE email_campaigns SET status='cancelled',cancelled_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1
 `
@@ -73,21 +137,22 @@ func (q *Queries) CampaignCancel(ctx context.Context, id pgtype.UUID) error {
 }
 
 const campaignCreate = `-- name: CampaignCreate :one
-INSERT INTO email_campaigns(title,subject,body,action_label,action_url,created_by,creation_key,creation_hash)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+INSERT INTO email_campaigns(title,subject,body,action_label,action_url,created_by,creation_key,creation_hash,configuration)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
 ON CONFLICT(created_by,creation_key) DO UPDATE SET creation_key=EXCLUDED.creation_key
-RETURNING id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at
+RETURNING id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at, configuration
 `
 
 type CampaignCreateParams struct {
-	Title        string      `json:"title"`
-	Subject      string      `json:"subject"`
-	Body         string      `json:"body"`
-	ActionLabel  string      `json:"action_label"`
-	ActionUrl    string      `json:"action_url"`
-	CreatedBy    pgtype.UUID `json:"created_by"`
-	CreationKey  string      `json:"creation_key"`
-	CreationHash string      `json:"creation_hash"`
+	Title         string      `json:"title"`
+	Subject       string      `json:"subject"`
+	Body          string      `json:"body"`
+	ActionLabel   string      `json:"action_label"`
+	ActionUrl     string      `json:"action_url"`
+	CreatedBy     pgtype.UUID `json:"created_by"`
+	CreationKey   string      `json:"creation_key"`
+	CreationHash  string      `json:"creation_hash"`
+	Configuration []byte      `json:"configuration"`
 }
 
 func (q *Queries) CampaignCreate(ctx context.Context, arg CampaignCreateParams) (EmailCampaigns, error) {
@@ -100,6 +165,7 @@ func (q *Queries) CampaignCreate(ctx context.Context, arg CampaignCreateParams) 
 		arg.CreatedBy,
 		arg.CreationKey,
 		arg.CreationHash,
+		arg.Configuration,
 	)
 	var i EmailCampaigns
 	err := row.Scan(
@@ -119,6 +185,7 @@ func (q *Queries) CampaignCreate(ctx context.Context, arg CampaignCreateParams) 
 		&i.UpdatedAt,
 		&i.QueuedAt,
 		&i.CancelledAt,
+		&i.Configuration,
 	)
 	return i, err
 }
@@ -171,18 +238,19 @@ func (q *Queries) CampaignDeliveryList(ctx context.Context, arg CampaignDelivery
 }
 
 const campaignEdit = `-- name: CampaignEdit :execrows
-UPDATE email_campaigns SET title=$2,subject=$3,body=$4,action_label=$5,action_url=$6,revision=revision+1,updated_at=clock_timestamp()
+UPDATE email_campaigns SET title=$2,subject=$3,body=$4,action_label=$5,action_url=$6,configuration=$8,revision=revision+1,updated_at=clock_timestamp()
 WHERE id=$1 AND status='draft' AND revision=$7
 `
 
 type CampaignEditParams struct {
-	ID          pgtype.UUID `json:"id"`
-	Title       string      `json:"title"`
-	Subject     string      `json:"subject"`
-	Body        string      `json:"body"`
-	ActionLabel string      `json:"action_label"`
-	ActionUrl   string      `json:"action_url"`
-	Revision    int64       `json:"revision"`
+	ID            pgtype.UUID `json:"id"`
+	Title         string      `json:"title"`
+	Subject       string      `json:"subject"`
+	Body          string      `json:"body"`
+	ActionLabel   string      `json:"action_label"`
+	ActionUrl     string      `json:"action_url"`
+	Revision      int64       `json:"revision"`
+	Configuration []byte      `json:"configuration"`
 }
 
 func (q *Queries) CampaignEdit(ctx context.Context, arg CampaignEditParams) (int64, error) {
@@ -194,6 +262,7 @@ func (q *Queries) CampaignEdit(ctx context.Context, arg CampaignEditParams) (int
 		arg.ActionLabel,
 		arg.ActionUrl,
 		arg.Revision,
+		arg.Configuration,
 	)
 	if err != nil {
 		return 0, err
@@ -253,7 +322,7 @@ func (q *Queries) CampaignList(ctx context.Context, arg CampaignListParams) ([]C
 }
 
 const campaignLock = `-- name: CampaignLock :one
-SELECT id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at FROM email_campaigns WHERE reference=$1 FOR UPDATE
+SELECT id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at, configuration FROM email_campaigns WHERE reference=$1 FOR UPDATE
 `
 
 func (q *Queries) CampaignLock(ctx context.Context, reference int64) (EmailCampaigns, error) {
@@ -276,6 +345,7 @@ func (q *Queries) CampaignLock(ctx context.Context, reference int64) (EmailCampa
 		&i.UpdatedAt,
 		&i.QueuedAt,
 		&i.CancelledAt,
+		&i.Configuration,
 	)
 	return i, err
 }
@@ -296,7 +366,7 @@ func (q *Queries) CampaignMessageActive(ctx context.Context, outboxID pgtype.UUI
 }
 
 const campaignRead = `-- name: CampaignRead :one
-SELECT id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at FROM email_campaigns WHERE reference=$1
+SELECT id, reference, title, subject, body, action_label, action_url, status, revision, created_by, creation_key, creation_hash, created_at, updated_at, queued_at, cancelled_at, configuration FROM email_campaigns WHERE reference=$1
 `
 
 func (q *Queries) CampaignRead(ctx context.Context, reference int64) (EmailCampaigns, error) {
@@ -319,6 +389,7 @@ func (q *Queries) CampaignRead(ctx context.Context, reference int64) (EmailCampa
 		&i.UpdatedAt,
 		&i.QueuedAt,
 		&i.CancelledAt,
+		&i.Configuration,
 	)
 	return i, err
 }
@@ -458,36 +529,43 @@ WITH audience AS MATERIALIZED (
  (($1::boolean AND c.id=$2::uuid)
  OR (NOT $1::boolean AND c.subscribed AND
  (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))))
- AND NOT EXISTS(SELECT 1 FROM email_campaign_deliveries d WHERE d.campaign_id=$3 AND d.contact_id=c.id AND d.revision=$4 AND d.is_test=$1)
- ORDER BY c.reference LIMIT $5 FOR SHARE OF c
+ AND ($1::boolean OR (($3::text='all' OR c.source=$3) AND (coalesce(cardinality($4::text[]),0)=0 OR c.email=ANY($4::text[]))))
+ AND NOT EXISTS(SELECT 1 FROM email_campaign_deliveries d WHERE d.campaign_id=$5 AND d.contact_id=c.id AND d.revision=$6 AND d.is_test=$1)
+ ORDER BY c.reference LIMIT $7 FOR SHARE OF c
 ), outboxes AS (
- INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json)
- SELECT a.outbox_id,a.email,a.display_name,'admin_promotion',$6::jsonb || jsonb_build_object('unsubscribe_url','https://hackways.in/auth/unsubscribe?key='||a.unsubscribe_key,'is_test',$1::boolean)
+ INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json,scheduled_at)
+ SELECT a.outbox_id,a.email,a.display_name,'admin_promotion',$8::jsonb || jsonb_build_object('unsubscribe_url','https://hackways.in/auth/unsubscribe?key='||a.unsubscribe_key,'is_test',$1::boolean), CASE WHEN $1::boolean THEN clock_timestamp() ELSE coalesce($9::timestamptz,clock_timestamp()) END
  FROM audience a RETURNING id
 ), deliveries AS (
  INSERT INTO email_campaign_deliveries(outbox_id,campaign_id,contact_id,revision,is_test,unsubscribe_hash)
- SELECT a.outbox_id,$3,a.id,$4,$1,encode(digest(a.unsubscribe_key,'sha256'),'hex') FROM audience a JOIN outboxes o ON o.id=a.outbox_id
+ SELECT a.outbox_id,$5,a.id,$6,$1,encode(digest(a.unsubscribe_key,'sha256'),'hex') FROM audience a JOIN outboxes o ON o.id=a.outbox_id
  RETURNING outbox_id
 ) SELECT count(*) FROM deliveries
 `
 
 type QueueCampaignMessagesParams struct {
-	TestOnly      bool        `json:"test_only"`
-	TestContactID pgtype.UUID `json:"test_contact_id"`
-	CampaignID    pgtype.UUID `json:"campaign_id"`
-	Revision      int64       `json:"revision"`
-	MaxRecipients int32       `json:"max_recipients"`
-	BasePayload   []byte      `json:"base_payload"`
+	TestOnly        bool               `json:"test_only"`
+	TestContactID   pgtype.UUID        `json:"test_contact_id"`
+	AudienceSource  string             `json:"audience_source"`
+	RecipientEmails []string           `json:"recipient_emails"`
+	CampaignID      pgtype.UUID        `json:"campaign_id"`
+	Revision        int64              `json:"revision"`
+	MaxRecipients   int32              `json:"max_recipients"`
+	BasePayload     []byte             `json:"base_payload"`
+	SendAt          pgtype.Timestamptz `json:"send_at"`
 }
 
 func (q *Queries) QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error) {
 	row := q.db.QueryRow(ctx, queueCampaignMessages,
 		arg.TestOnly,
 		arg.TestContactID,
+		arg.AudienceSource,
+		arg.RecipientEmails,
 		arg.CampaignID,
 		arg.Revision,
 		arg.MaxRecipients,
 		arg.BasePayload,
+		arg.SendAt,
 	)
 	var count int64
 	err := row.Scan(&count)

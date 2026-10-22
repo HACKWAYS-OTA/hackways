@@ -391,6 +391,31 @@ func TestOwnerLifecycle_RegistrationQuestionsAndPrivateAnswers(t *testing.T) {
 			t.Fatalf("invalid %s answer accepted", kind)
 		}
 	}
+	website := registrationforms.Question{PublicCode: "Q-ci", Label: "Profile", Kind: "url", Validation: registrationforms.Validation{AllowedDomain: "linkedin.com"}}
+	for _, item := range []struct {
+		link  string
+		valid bool
+	}{
+		{"https://linkedin.com/in/person", true}, {"https://www.linkedin.com/in/person", true},
+		{"https://LINKEDIN.COM./in/person", true}, {"https://linkedin.com.evil.example", false},
+		{"https://notlinkedin.com", false}, {"https://evil.example/?next=linkedin.com", false},
+		{"https://linkedin.com@evil.example", false}, {"http://linkedin.com", false},
+	} {
+		_, err := registrationforms.ValidateAnswers(registrationforms.Form{Questions: []registrationforms.Question{website}}, "", []registrationforms.Answer{{Code: "Q-ci", Text: item.link}})
+		if (err == nil) != item.valid {
+			t.Fatalf("website domain validation for %s: %v", item.link, err)
+		}
+	}
+	disabledValidation := false
+	website.Validation.Enabled = &disabledValidation
+	if _, err := registrationforms.ValidateAnswers(registrationforms.Form{Questions: []registrationforms.Question{website}}, "", []registrationforms.Answer{{Code: "Q-ci", Text: "https://example.com"}}); err != nil {
+		t.Fatalf("disabled custom validation: %v", err)
+	}
+	website.Validation.Enabled = nil
+	website.Validation.AllowedDomain = "https://linkedin.com/path"
+	if err := registrationforms.ValidateQuestions([]registrationforms.Question{website}); err == nil {
+		t.Fatal("invalid allowed domain accepted")
+	}
 	// Exercise the owner status contract with this suite's existing isolated registration.
 	statusRequest := func(target string, updated time.Time, notify bool, message, key string, cookie *http.Cookie) *httptest.ResponseRecorder {
 		payload, _ := json.Marshal(struct {
@@ -639,7 +664,7 @@ func TestOwnerLifecycle_DashboardFiltersSummaryAndAppearance(t *testing.T) {
 	if w = requestJSON(t, handler, "GET", "/organizer?view=invalid", nil, f.cookie); w.Code != 400 {
 		t.Fatal("invalid event view accepted")
 	}
-	appearance := []byte(`{"theme":"ambient","theme_color":"#ced9da","theme_font":"google","theme_style":"crisp","theme_display":"dark","revision":1,"remove_banner":true}`)
+	appearance := []byte(`{"theme":"ambient","theme_color":"#ced9da","theme_font":"fraunces","theme_style":"crisp","theme_display":"dark","revision":1,"remove_banner":true}`)
 	if w = requestJSON(t, handler, "PUT", path+"/appearance", appearance, other.cookie); w.Code != 404 {
 		t.Fatal("cross-owner appearance update allowed")
 	}
@@ -647,7 +672,7 @@ func TestOwnerLifecycle_DashboardFiltersSummaryAndAppearance(t *testing.T) {
 		t.Fatalf("appearance save: %d %s", w.Code, w.Body.String())
 	}
 	stored, err := f.q.GetEventByID(context.Background(), f.event.ID)
-	if err != nil || stored.Theme != "ambient" || stored.ThemeDisplay != "dark" || stored.ThemeFont != "google" || stored.Revision != 2 || stored.CurrentRsvpCount != 1 {
+	if err != nil || stored.Theme != "ambient" || stored.ThemeDisplay != "dark" || stored.ThemeFont != "fraunces" || stored.Revision != 2 || stored.CurrentRsvpCount != 1 {
 		t.Fatal("appearance save changed inventory or failed to persist")
 	}
 	if w = requestJSON(t, handler, "PUT", path+"/appearance", appearance, f.cookie); w.Code != 409 {

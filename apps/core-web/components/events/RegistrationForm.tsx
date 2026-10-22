@@ -234,7 +234,7 @@ export function RegistrationForm({
   }
   const heading = (
     <header className="event-detail-heading">
-      <h1>
+      <h2>
         {confirmed
           ? confirmed.status === "confirmed"
             ? "You’re registered"
@@ -243,8 +243,7 @@ export function RegistrationForm({
               : "Application submitted"
           : form.settings?.title ||
             (invited ? "Accept your invitation" : "Register for this event")}
-      </h1>
-      <p className="registration-event-title">{event.title}</p>
+      </h2>
       <p className="registration-event-date">
         {eventDate(event, {
           month: "long",

@@ -45,7 +45,7 @@ export function answerError(
 ): string {
   const text = answer?.text.trim() || "",
     selected = answer?.selected || [],
-    v = q.validation || {},
+    v = q.validation?.enabled === false ? {} : q.validation || {},
     custom = (fallback: string) => v.message || fallback;
   if (q.kind === "checkbox")
     return q.required && !answer?.checked ? "Please confirm this answer." : "";
@@ -82,6 +82,9 @@ export function answerError(
       const url = new URL(text);
       if (url.protocol !== "https:" || url.username || url.password)
         return custom("Use a full https:// website address.");
+      const domain = v.allowed_domain?.trim().toLowerCase();
+      const host = url.hostname.toLowerCase().replace(/\.$/, "");
+      if (domain && host !== domain && !host.endsWith(`.${domain}`)) return custom(`Use a link from ${domain}.`);
     } catch {
       return custom("Use a full https:// website address.");
     }

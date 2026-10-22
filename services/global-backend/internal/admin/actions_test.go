@@ -14,6 +14,7 @@ import (
 
 	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/auth"
+	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
 	"github.com/hackways/global-backend/internal/testsupport"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -315,7 +316,7 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 		req := httptest.NewRequest(method, path, strings.NewReader(string(body)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", origin)
-		req.Header.Set("X-Admin-Reason", url.PathEscape("Authorized isolated campaign regression"))
+		// Campaign actions retain automatic audit metadata without requiring a reason.
 		req.Header.Set("Idempotency-Key", "campaign-create-"+nonce)
 		if signed {
 			req.AddCookie(&http.Cookie{Name: auth.AdminSessionCookie, Value: token})
@@ -335,6 +336,9 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 		t.Fatalf("anonymous campaign access %d", got.Code)
 	}
 	body := campaignBody{Title: "CI campaign", Subject: "CI subject", Body: "Hello <unsafe>", ActionLabel: "Discover", ActionURL: "https://hackways.in/discover"}
+	scheduled := time.Now().Add(2 * time.Hour).UTC()
+	body.Configuration = &campaignConfiguration{Design: notifications.CampaignDesign{Heading: "CI <heading>", Accent: "#123456", Blocks: []notifications.CampaignBlock{{Kind: "text", Text: "CI additional paragraph"}}}, Audience: "all", ScheduledAt: &scheduled}
+
 	if got := call("POST", "/campaigns", marshal(body), "https://untrusted.example.invalid", true); got.Code != 403 {
 		t.Fatal("untrusted origin accepted")
 	}
@@ -375,6 +379,17 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 	if imported.Code != 200 {
 		t.Fatalf("import %d %s", imported.Code, imported.Body.String())
 	}
+	selectedCount, selectionErr := q.CampaignAudienceCountSelected(ctx, db.CampaignAudienceCountSelectedParams{AudienceSource: "import", RecipientEmails: []string{contactEmail}})
+	if selectionErr != nil || selectedCount != 1 {
+		t.Fatal("specific imported audience was not selected")
+	}
+	selectedCount, selectionErr = q.CampaignAudienceCountSelected(ctx, db.CampaignAudienceCountSelectedParams{AudienceSource: "account", RecipientEmails: []string{contactEmail}})
+	if selectionErr != nil || selectedCount != 0 {
+		t.Fatal("audience source restriction was bypassed")
+	}
+	if got := call("POST", "/campaigns/preview", marshal(body), "http://localhost:3103", true); got.Code != 200 || !strings.Contains(got.Body.String(), "#123456") {
+		t.Fatalf("live campaign preview: %d %s", got.Code, got.Body.String())
+	}
 	detail := call("GET", path, nil, "", true)
 	if detail.Code != 200 || strings.Contains(detail.Body.String(), "unsubscribe_hash") {
 		t.Fatal("campaign detail failed or exposed secrets")
@@ -396,6 +411,7 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	body.Revision = 1
+	body.Configuration = nil // Old clients must preserve saved design and delivery settings.
 	body.Subject = "Reviewed subject"
 	if got := call("POST", path+"/edit", marshal(body), "http://localhost:3103", true); got.Code != 200 {
 		t.Fatalf("edit %d %s", got.Code, got.Body.String())
@@ -431,6 +447,13 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 	var payload []byte
 	if err = pool.QueryRow(ctx, "SELECT o.id,o.payload_json FROM email_outbox o JOIN email_campaign_deliveries d ON d.outbox_id=o.id WHERE d.campaign_id=$1 AND NOT d.is_test AND o.recipient_email=$2", c.ID, contactEmail).Scan(&outbox, &payload); err != nil {
 		t.Fatal(err)
+	}
+	var planned time.Time
+	if err = pool.QueryRow(ctx, "SELECT scheduled_at FROM email_outbox WHERE id=$1", outbox).Scan(&planned); err != nil || planned.Before(scheduled.Add(-time.Second)) {
+		t.Fatal("campaign schedule was not persisted into the real outbox")
+	}
+	if !strings.Contains(string(payload), "#123456") {
+		t.Fatal("custom design was not preserved through old-client edit and queue")
 	}
 	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || !active {
 		t.Fatal("valid campaign suppressed")
@@ -470,6 +493,39 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 	}
 	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || active {
 		t.Fatal("cancelled campaign still active")
+	}
+
+	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM admin_custom_message_deliveries WHERE message_id IN (SELECT id FROM admin_custom_messages WHERE actor_user_id=$1)", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM admin_custom_messages WHERE actor_user_id=$1", actor.ID)
+	}()
+	custom := adminMessageBody{Subject: "CI service update", Body: "Existing isolated actor message", Recipients: []string{actor.Email, contactEmail}, Confirmed: true}
+	messageJSON, _ := json.Marshal(custom)
+	if got := call("POST", "/messages/send", messageJSON, "http://localhost:3103", true); got.Code != 422 {
+		t.Fatalf("unverified recipient accepted: %d", got.Code)
+	}
+	custom.Recipients = []string{actor.Email}
+	messageJSON, _ = json.Marshal(custom)
+	if got := call("POST", "/messages/preview", messageJSON, "https://untrusted.example.invalid", true); got.Code != 403 {
+		t.Fatal("message preview allowed untrusted origin")
+	}
+	if got := call("POST", "/messages/send", messageJSON, "http://localhost:3103", false); got.Code != 401 {
+		t.Fatal("anonymous message queued")
+	}
+	if got := call("POST", "/messages/send", messageJSON, "http://localhost:3103", true); got.Code != 202 {
+		t.Fatalf("service queue: %d %s", got.Code, got.Body.String())
+	}
+	if got := call("POST", "/messages/send", messageJSON, "http://localhost:3103", true); got.Code != 200 {
+		t.Fatal("service replay did not succeed")
+	}
+	var serviceCount int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM admin_custom_message_deliveries d JOIN admin_custom_messages m ON m.id=d.message_id WHERE m.actor_user_id=$1", actor.ID).Scan(&serviceCount); err != nil || serviceCount != 1 {
+		t.Fatal("service message was duplicated")
+	}
+	custom.Body = "Changed message"
+	messageJSON, _ = json.Marshal(custom)
+	if got := call("POST", "/messages/send", messageJSON, "http://localhost:3103", true); got.Code != 409 {
+		t.Fatal("message receipt reused for different content")
 	}
 
 }

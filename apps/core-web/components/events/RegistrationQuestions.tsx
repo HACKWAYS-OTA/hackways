@@ -162,7 +162,7 @@ export function RegistrationQuestions({
                   : ["email", "number", "date", "time"].includes(q.kind)
                     ? q.kind
                     : "text",
-            v = q.validation || {};
+            v = q.validation?.enabled === false ? {} : q.validation || {};
           return (
             <div className="field" key={id}>
               <label htmlFor={id}>{label}</label>

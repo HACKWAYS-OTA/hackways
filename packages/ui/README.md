@@ -63,3 +63,7 @@ npm run lint --workspace @hackways/ui
 ```
 
 Run affected app checks as well when shared behavior changes. Type and lint checks are not a substitute for keyboard, focus, reduced-motion, or browser-journey verification. This package is private and is not documented as a published npm package.
+
+## Event fonts
+
+`@hackways/ui/event-fonts` exports the presentation-only font options and family mapping shared by Create and event management. The Go appearance validator and migration 000020 independently enforce accepted saved values. The original Futurist and Google Sans choices remain valid; ten additional fonts are selectable. Font files are self-hosted, and only the selected face is requested by the browser. Core/public assets share `/fonts`; management uses `/manage/fonts`.
