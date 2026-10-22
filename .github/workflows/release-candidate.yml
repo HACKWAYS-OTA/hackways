@@ -68,8 +68,8 @@ jobs:
             NEXT_PUBLIC_GLOBAL_API_URL=/api/v1
             NEXT_PUBLIC_SITE_URL=https://hackways.in
             NEXT_PUBLIC_PUBLIC_URL=https://hackways.in
-            NEXT_PUBLIC_APP_URL=https://app.hackways.in
-            NEXT_PUBLIC_ORGANIZER_URL=https://app.hackways.in/manage
+            NEXT_PUBLIC_APP_URL=https://hackways.in
+            NEXT_PUBLIC_ORGANIZER_URL=https://hackways.in/manage
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
       - name: Record immutable image identity
