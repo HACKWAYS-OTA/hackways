@@ -13,3 +13,14 @@ body {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   min-height: 100vh;
 }
+
+::selection {
+  background: #d9dcff;
+  color: #17202e;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #5d62d6;
+  outline-offset: 3px;
+}
