@@ -31,7 +31,7 @@ export function RegistrationForm({ event, user, initialForm }: { event: Event; u
   const awaitingApproval = confirmed?.status === 'pending_approval';
   const waitlisted = confirmed?.status === 'waitlisted';
   const joiningWaitlist = state.label === 'Join waiting list';
-  const heading = <header className="event-detail-heading"><h1>{confirmed ? waitlisted ? 'Youâ€™re on the waiting list.' : awaitingApproval ? 'Your application is submitted.' : 'Your place is reserved.' : joiningWaitlist ? 'Join the waiting list.' : event.registration_mode === 'approval' ? 'Request a place.' : 'Reserve your place.'}</h1><p className="registration-event-title">{event.title}</p><p className="registration-event-date">{eventDate(event, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</p></header>;
+  const heading = <header className="event-detail-heading"><h1>{confirmed ? waitlisted ? 'You’re on the waiting list.' : awaitingApproval ? 'Your application is submitted.' : 'Your place is reserved.' : joiningWaitlist ? 'Join the waiting list.' : event.registration_mode === 'approval' ? 'Request a place.' : 'Reserve your place.'}</h1><p className="registration-event-title">{event.title}</p><p className="registration-event-date">{eventDate(event, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</p></header>;
   useEffect(() => { if (error || confirmed) feedback.current?.focus({ preventScroll: true }); }, [error, confirmed]);
 
   async function reloadQuestions() {

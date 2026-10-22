@@ -1,4 +1,4 @@
-# Engineering Progress Log â€” Hackways
+# Engineering Progress Log — Hackways
 
 All completed work is logged here with verified commands and output.
 
@@ -87,7 +87,7 @@ All completed work is logged here with verified commands and output.
 
 ### 2026-10-20 APP-042 - Complete footer information pages and regular reading typography
 
-- Expanded all eight public information routes: About, Organizers, Help, Contact, Privacy, Terms, Cookies and Acceptable use. Reused a server-rendered Article layout with section anchors, a desktop contents sidebar, a collapsed mobile contents disclosure and related page links. Replaced the oversized organizer hero with the same reading layout. Text is regular 400 weight with no synthetic stroke: 17px body, 16px navigation/secondary text, 23â€“24px section headings and 30â€“36px primary headings. Footer/header navigation is readable at 16px with useful tap targets.
+- Expanded all eight public information routes: About, Organizers, Help, Contact, Privacy, Terms, Cookies and Acceptable use. Reused a server-rendered Article layout with section anchors, a desktop contents sidebar, a collapsed mobile contents disclosure and related page links. Replaced the oversized organizer hero with the same reading layout. Text is regular 400 weight with no synthetic stroke: 17px body, 16px navigation/secondary text, 23–24px section headings and 30–36px primary headings. Footer/header navigation is readable at 16px with useful tap targets.
 - Rebuilt the FAQ source into six topics covering discovery, registration status, offers, cancellation/notes/transfer, guest claiming, accounts, hosting and support; landing FAQs consume the same source. Corrected obsolete claims that waiting lists and cancellation were absent. Removed the unsupported format-filter claim after tracing the actual discovery UI. Expanded practical hosting, support, privacy, cookie and conduct information without inventing a backend contact form, sent-message acknowledgement, paid checkout or unsupported account features.
 - Published user-confirmed SUPPORT@hackota.com through Contact, Help, policy pages and the footer, with a valid configurable public override and confirmed fallback. Support links open the mail client. Legal operator name/address, fixed retention schedule and platform minimum age were not supplied; no jurisdiction-specific compliance guarantee or fabricated details were added. Cookie instructions link to official Chrome and Firefox guidance. See docs/PUBLIC_CONTENT.md for content sources and remaining policy decisions.
 - Also improved regular text sizes on the actual event discovery and organizer sign-in destinations linked from the footer, preserving their real search, pagination and authentication paths. Discovery guidance distinguishes a pending application/waiting list from a confirmed place. No API, schema, backend, dependency, fixture or real data mutation.
@@ -157,120 +157,120 @@ All completed work is logged here with verified commands and output.
 - Save failures, discard failures, file validation and invalid form fields now use one themed dialog, replacing duplicate inline errors on the Edit page. Success uses the existing Hugeicons tick with draw/scale animation; reduced-motion users see the static icon. Escape, backdrop dismissal and an explicit return button are supported. Azure Blob configuration is still required for actual banner upload; this failure is surfaced, not simulated.
 - Verification: organizer-web type checks and lint passed via npm test; scoped Impeccable detection returned []; PostCSS parsed event-edit.css. Anonymous edit/appearance/registration each returned HTTP 307 to sign-in. The reported crash included a Router hook-order error but omitted the first editor exception. The interrupted ref/combined-save refactor is complete and compiles; current editor hooks are unconditional. Signed-in runtime crash reproduction, browser/device appearance and Azure upload remain unverified without a connected authenticated browser and storage configuration. No backend, schema, dependency, application record or test-fixture changes.
 
-### 2026-10-20 APP-031 â€” Event editing with the creation studio composition
+### 2026-10-20 APP-031 — Event editing with the creation studio composition
 
 - Rebuilt the existing management Edit route around the creation page's banner/editor layout. The left column exposes the real cover picker and theme controls; the right holds hosting/visibility, populated event-name input, separate date/time blocks, event time zone, expandable venue/online joining and description controls. FAQ, contact, rewards and the published-event attendee-notification acknowledgment remain available. Mobile stacks the cover above the editor. Capacity/approval controls remain linked to the existing Registration page, and the dedicated appearance route remains available.
 - Reused the existing detail PUT, appearance PUT and Azure SAS upload/finalization workflow. The two forms have explicit Save event details and Save cover & theme actions. A small React edit-session context serializes saves and tracks only confirmed server revisions, including confirmed banner attachment before a later theme failure. Forms are keyed by explicit reload generation, so an ordinary save/refresh does not remount and discard the other form's dirty controls. Failures retain selections; explicit Reload saved event (discard edits) reads the actual owner-scoped endpoint and resets the editing session. No new business API, database operation or dependency.
 - Retained UTC schedule editing with clear labels instead of silently changing time conversion while matching the create layout. Venue/address/online values survive format toggles locally. Required fields inside collapsed sections open on invalid submission. Success indicators clear on further interaction; completed banner selections clear only after confirmed appearance save.
 - Verification: organizer-web `npm test` passed type checks and lint; the scoped Impeccable detector returned no findings and PostCSS parsed the new stylesheet. Anonymous edit, appearance and registration requests each returned HTTP 307 to authentication. Signed-in dual-save/revision-conflict/device interactions remain unverified without an enabled signed-in browser. Azure credentials are unavailable locally, so external banner upload is also unverified. No application records or test fixtures were created.
 
-### 2026-10-20 APP-030 â€” Management button hover shading
+### 2026-10-20 APP-030 — Management button hover shading
 
 - Added visible lavender hover/focus shading to organizer outline and secondary buttons, including View event and Edit event. Press states use a deeper shade. Disabled controls are excluded, existing keyboard outlines remain visible, and reduced-motion preferences disable button transitions.
 - Verification: organizer-web `npm test` passed type checks and lint; PostCSS parsed the stylesheet and scoped Impeccable detection returned no findings. Browser appearance remains unverified without an enabled surface. CSS-only change; no API or data changes.
 
-### 2026-10-20 APP-029 â€” Management typography and direct task controls
+### 2026-10-20 APP-029 — Management typography and direct task controls
 
 - Replaced management workspace heading typography with the existing Google Sans font at its supplied regular weight, removing synthetic bold and text stroke. Tightened the shared event header, added a direct Edit event action for editable events, and reduced excessive header spacing. The workspace keeps its own layout on desktop and stacks on mobile.
 - Reorganized registration into a readable form and compact summary. Public/private choices sit together with custom, keyboard-focusable radio controls; narrow screens stack them. Summary totals link to actual confirmed/offered guest filters, and contextual actions jump to visibility, capacity/joining, registration timing and the persistent question editor. Saving follows the form in normal flow so it does not cover controls. All existing values, Go mutations, revision checks and recoverable input retention remain in place.
 - Guest/check-in totals now link to real server-filtered lists; guest rows expose Approve/Decline where currently allowed. These open the existing confirmation drawer after a fresh private read, then use the existing Go decision endpoints. No immediate approval is performed by clicking the row shortcut. Kept abort handling and mutation locks. Overview attendance and schedule/location/joining details lead to the relevant guest list or editing controls. Safe HTTPS website answers open as links; historical answers are not changed.
 - Verification: organizer-web `npm test` passed type checks and lint after the final functional edits; scoped Impeccable detection returned no findings. PostCSS parsed the stylesheet and source checks confirmed normal-flow saving, title weight correction and matching registration anchor destinations. Anonymous overview/registration/guests/questions requests each returned HTTP 307 to authentication. Authenticated mutations and browser/device appearance remain unverified without an enabled signed-in surface. No application records, backend operations, queries, schema, dependencies or test fixtures were added. New backend capabilities such as editing submitted guest answers remain outside this pass pending the user's scope response.
 
-### 2026-10-20 APP-028 â€” Mobile event interaction and spacing refinement
+### 2026-10-20 APP-028 — Mobile event interaction and spacing refinement
 
 - Increased mobile navigation/home/account targets to 44 by 44 pixels, standardized icon sizing and added a subtle account surface with explicit press/focus states. Below 360 pixels, Create event shortens visually to Create while retaining its full accessible name. Header foreground/background combinations retain at least 6.12:1 in light mode and 9.40:1 in dark mode across tint extremes, calculated from the authored opaque header colors.
 - Refined mobile title sizing/wrapping, primary/secondary joining actions, real closed/access-error states, fact-label spacing and description typography. Calendar/share actions use two aligned equal-width controls with stronger boundaries. Mobile page gutters respect device safe areas. Long generated-poster titles use two lines to fit narrow banners; the actual cover retains its 16:10 ratio and responsive image sizing matches the new gutters. No content, routes, permissions, stored data, desktop pinning or service contracts were changed.
 - Verification: core-web `npm test` passed type checks and lint; scoped Impeccable detection returned no findings. PostCSS parsed the stylesheet; a source check confirmed the original cover ratio and no nested-scroll rules. Actual event, registration and Discover routes returned HTTP 200; anonymous event markup still omits Manage event. Browser inventory returned no enabled surfaces, so visual/touch interaction and signed-in owner behavior remain unverified. No new tests, dependencies or fixtures were added.
 
-### 2026-10-20 APP-027 â€” Mobile event composition and themed navigation
+### 2026-10-20 APP-027 — Mobile event composition and themed navigation
 
 - Reordered the existing mobile detail groups into banner, title, full-width registration/authorized management actions, date/location, host and story. Retained the 16:10 cover, real joining states, permission checks, calendar/share functions and normal document scrolling. Desktop layout and its controller were not changed. Mobile Back retains its explicit Discover destination.
 - Replaced the initial centered mobile masthead treatment with the user's subsequent icon-navigation reference: Hackways home, existing Discover/Spaces/My events links, Create event and Account. The event layout supplies the header within its saved appearance context, so tint and light/dark colors are present on the server render. Compact links have accessible names, focus indicators and 44-pixel height. No notification service, unread state or user image was invented. The shared full navigation retains its text outside this compact variant.
 - Verification: core-web `npm test` passed type checks and lint; scoped Impeccable detection returned no findings. PostCSS parsed the event stylesheet and confirmed the original banner ratio and absence of nested scroll rules. Live event and registration routes returned HTTP 200 with real event content; the anonymous page omits Manage event. Device/browser visuals and signed-in owner interaction remain unverified because no browser surface is available. No backend, schema, dependency or stored event changes.
 
-### 2026-10-20 APP-026 â€” Permission-aware Manage event link
+### 2026-10-20 APP-026 — Permission-aware Manage event link
 
 - Added a secondary Manage event action beside Register when the existing Go `manage-by-slug` endpoint confirms access for the current session. Links use the event slug and configured organizer origin (localhost:3002). The permission read runs concurrently with the public event read, is request-scoped and no-store, and is skipped without a session cookie. No frontend role/organizer comparison grants access; management remains protected by Go authentication, organizer and ownership checks.
 - Expected anonymous/expired/forbidden/not-found results hide the link. Unexpected failures fail closed, log a safe slug/error code and offer an explicit retry while preserving public content. No new API, database query, dependency or permission-granting workflow. Current backend access remains owner-only; delegated staff roles were not introduced.
 - Verification: core-web `npm test` passed type checks/lint, event CSS parsed, and actual anonymous and invalid-session event requests returned HTTP 200 with public content and no Manage event link. Authenticated owner visibility/cross-account browser interaction remains unverified without a signed-in browser surface; no user sessions were fabricated or credentials extracted for verification.
 
-### 2026-10-20 APP-025 â€” Right-side event actions and concise registration
+### 2026-10-20 APP-025 — Right-side event actions and concise registration
 
 - Moved Add to calendar and Copy event link back beneath the right-side date/location group, spanning both fact columns. Removed the helper sentences under the public Register/approval/waiting-list action. Actual closed/full/ended states and their recovery remain visible. Removed unused helper/story-action styles; registration checkout remains unchanged.
 - Verification: core-web `npm test` passed type checks/lint; PostCSS parsed the stylesheet. The real event page returned HTTP 200 with both actions inside the right aside, Register retained and the generic confirmation helper absent. No backend/data/API changes. Browser visual review remains unverified.
 
-### 2026-10-20 APP-024 â€” Event content hierarchy and grouping
+### 2026-10-20 APP-024 — Event content hierarchy and grouping
 
 - Reorganized the reading hierarchy with a more compact title/host introduction and a registration row that places the real joining guidance beside Register on wider screens. Reduced excessive top/section spacing. The story now starts with â€œAbout this event,â€ followed directly by calendar/share actions and then optional FAQ/rewards/contact content.
 - Grouped date/time and location into two readable columns beneath the unchanged 16:10 banner. Phones stack these facts. Styling is scoped to the public detail rail so registration summaries retain their existing arrangement. Removed the artificial reading-stage height that created empty scroll distance for short descriptions; the existing pin controller now follows only the real document length. No popup frame, inner scroll region, fake content or new dependency was introduced.
 - Verification: core-web `npm test` passed type checks and lint without warnings. PostCSS parsed the stylesheet and confirmed the original banner ratio and absence of artificial stage height. A real event detail and its registration route returned HTTP 200 with the expected content/actions and checkout layout. Browser visual/device interaction remains unverified because no browser surface is enabled. No backend/data/API changes.
 
-### 2026-10-20 APP-023 â€” Native page scroll with a bounded reading position
+### 2026-10-20 APP-023 — Native page scroll with a bounded reading position
 
 - Following the user's detailed screenshots, preserved the initial event layout and added a 40-pixel reading threshold: the existing title and right-side banner/visit details hold their measured positions while the remaining left content continues through the normal document scrollbar. No wheel interception, pointer-dependent scrolling, nested scroll region, popup decoration, hidden scrollbar or banner height/ratio change. Mobile retains normal flow.
 - Measured layout slots retain their dimensions when their contents pin. A passive scroll listener batches updates through animation frames; resize/font/content observations refresh dimensions. The reading stage provides document scroll distance for short event copy. At the footer, held elements release inside its leading boundary. The first release calculation incorrectly used the footer's bottom; the user supplied a screenshot showing clipped/overlapping content. Corrected it to the footer's top with 24 pixels of clearance. Moved calendar/share actions to the scrolling story on event detail pages so they cannot collide with the footer from the held column. Registration keeps its existing actions.
 - Verification: core-web `npm test` passed type checks/lint; event CSS parsed; the real event detail route and stylesheet returned HTTP 200 with initial unpinned markup and conditional pin rules. Actual HTML retains the banner and calendar action, with the latter outside the pinned aside. Browser inventory remains empty, so post-correction interactive scrolling and viewport behavior are not reported as verified. No backend/data/dependency changes.
 
-### 2026-10-20 APP-022 â€” Remove rejected popup treatment
+### 2026-10-20 APP-022 — Remove rejected popup treatment
 
 - Tried a fixed, non-modal event panel based on the guest-drawer reference. The user rejected the visual direction during implementation. Removed that new component, header, collapse/reopen controls, border, shadow, internal overflow and fixed positioning, restoring the clean normal-scrolling event layout from APP-021. The banner retains its original size rules and 16:10 ratio; Register and page spacing remain intact. The requested anchored-right behavior is unresolved and is not reported as delivered.
 - Verification after restoration: core-web `npm test` passed type checks/lint, PostCSS parsed the stylesheet, and the actual event page returned HTTP 200 without the added popup header/controls. No backend/data/dependency changes. No browser interaction was verified.
 
-### 2026-10-20 APP-021 â€” Revert custom event scrolling
+### 2026-10-20 APP-021 — Revert custom event scrolling
 
 - At the user's request, removed the independent left scroll region, fixed viewport height, scroll containment, scrollbar masking and right-side sticky positioning. Both columns now participate in ordinary browser document scrolling. Kept the current visual styling, Register label, side spacing and original 16:10 banner ratio.
 - Verification: core-web `npm test` passed type checks and lint. PostCSS confirmed no custom scroll-region/sticky/containment/masking rules remain in the event stylesheet. The actual event page and stylesheet returned HTTP 200 with the updated markup/CSS and original banner ratio. Browser interaction remains unverified without an enabled browser surface. No data/backend/dependency changes.
 
-### 2026-10-20 APP-020 â€” Independent left content scrolling
+### 2026-10-20 APP-020 — Independent left content scrolling
 
 - Grouped the event title, host, Register action and story in a keyboard-focusable left information region with a viewport-sized scroll area. Scroll chaining is contained in that region, so reaching its ends does not carry wheel scrolling into the page. The banner and visit details are siblings outside that region and retain their existing size, 16:10 ratio and sticky styling, with no right-side scroll container. The left scrollbar is visually hidden as requested for the minimal layout; keyboard scrolling remains available.
 - Mobile returns to normal document flow with title, banner/details and story ordering. Registration pages and the global navbar were not changed.
 - Verification: core-web `npm test` passed type checks and lint without warnings. PostCSS confirmed left overflow/scroll containment, original banner ratio and no right overflow/height cap. The actual event page returned HTTP 200 with a separate left region and right aside. Browser scrolling/device interaction remains unverified because no browser surface is enabled. No backend/data/dependency changes.
 
-### 2026-10-20 APP-019 â€” Remove the right panel scroll container
+### 2026-10-20 APP-019 — Remove the right panel scroll container
 
 - Removed the right panel's overflow container, maximum height, scrollbar-hiding rules and redundant keyboard tab stop. Desktop uses normal CSS sticky positioning; there is no separate right-side scroll surface. Mobile remains normal document flow. Removed an attempted banner height cap after the user requested the original proportions; the banner retains its original 16:10 aspect ratio. Tall panel content remains in document layout rather than being clipped.
 - Verification: core-web `npm test` passed type checks/lint. PostCSS confirmed the sticky rule, original aspect ratio and absence of panel overflow/height constraints or masking rules. The actual event page and served stylesheet returned HTTP 200 with those rules. Browser inventory still has no enabled surface, so interactive scroll behavior remains unverified. No backend/data/dependency changes.
 
-### 2026-10-20 APP-018 â€” Remove duplicate visible scrollbar
+### 2026-10-20 APP-018 — Remove duplicate visible scrollbar
 
 - Hid the event panel's inner scrollbar using standard and WebKit rules. The main page scrollbar remains visible, desktop sticky positioning is preserved, and tall panels retain wheel/touch/keyboard access to all details rather than clipping content.
 - Verification: PostCSS parsed both scrollbar rules; the real event page and served stylesheet returned HTTP 200 with the hiding rules and sticky positioning. Browser visual behavior remains unverified. No backend/data/dependency changes.
 
-### 2026-10-20 APP-017 â€” Sticky event visit panel
+### 2026-10-20 APP-017 — Sticky event visit panel
 
 - Grouped the banner, schedule, location and event actions into one desktop sticky right column. The title and story now occupy the left column independently, so scrolling the event copy does not carry the right panel away. Tall panels have a bounded, keyboard-focusable independent scroll area to keep all details/actions reachable. Mobile returns to normal single-column document flow.
 - Verification: core-web `npm test` passed type checks and lint without warnings. PostCSS parsed the stylesheet and confirmed desktop sticky/mobile static rules. The real event page returned HTTP 200 with the cover and visit details inside one focusable aside and without the old separate row wrappers. No backend, data or dependency changes. Browser scroll/device behavior remains unverified without an enabled browser surface.
 
-### 2026-10-20 APP-016 â€” Discovery divider removal
+### 2026-10-20 APP-016 — Discovery divider removal
 
 - Removed the horizontal divider below the discovery results heading that met the featured event block. Kept the banner, event content and existing page spacing.
 - Verification: PostCSS parsed the stylesheet and confirmed the heading has no bottom border. Discover and its served stylesheet returned HTTP 200; the featured event remains present. No business logic, data or API changes.
 
-### 2026-10-20 APP-015 â€” Banner/detail spacing and Register label
+### 2026-10-20 APP-015 — Banner/detail spacing and Register label
 
 - Shortened the standard public registration action to â€œRegister.â€ Tightened the banner-to-details spacing to 24 pixels, removed the full-row separator and right-side divider/inset, and aligned the practical details with the banner's left edge. Preserved the previously requested outer gutters and right-column placement. The user was offered a choice between inner and outer margins; without a clarification, applied the inner-spacing interpretation.
 - Verification: core-web lint passed without warnings. PostCSS parsed the updated stylesheet. The real event page and stylesheet returned HTTP 200 with the Register label and updated alignment rules. No data/API changes; browser visual review remains unverified.
 
-### 2026-10-20 APP-014 â€” Event invitation copy
+### 2026-10-20 APP-014 — Event invitation copy
 
 - Removed the event heading's format/free-entry line and its unused styles/import. Kept a deliberate gap between the host and action. Renamed the standard registration button to â€œRSVP / Registerâ€; approval and waiting-list actions retain their specific labels.
 - Verification: core-web lint passed without warnings, the stylesheet parsed, and the real event route returned HTTP 200 with the new button label and without the removed line. No data or API changes were needed.
 
-### 2026-10-20 APP-013 â€” Event page side spacing
+### 2026-10-20 APP-013 — Event page side spacing
 
 - Increased the shared event content gutter from 48 to 96 CSS pixels per side on desktop, with a 1600-pixel content ceiling. Tablet uses 40 pixels and mobile 24 pixels per side. The title, banner, story and visit details retain their aligned columns; the navbar is unchanged.
 - Verification: PostCSS parsed the stylesheet successfully. The real event page and its stylesheet returned HTTP 200, and the served CSS contains the updated desktop/mobile gutters and width ceiling. No business logic, data, dependencies or API contracts changed. Browser visual review remains unverified.
 
-### 2026-10-20 APP-012 â€” Public event presentation and local services
+### 2026-10-20 APP-012 — Public event presentation and local services
 
 - Rebuilt the public event page as an invitation: title, real host/Space and one registration action at left, actual cover or branded event poster at right. A second aligned row holds readable event copy and practical date/location details. Mobile places the invitation above the image, followed by visit details and the story. Removed duplicated reservation panels and empty optional-content tabs; FAQ, rewards and contact appear only when provided.
 - Replaced the event-route stylesheet with scoped layout rules and consistent spacing/type. Preserved saved themes, actual-banner Ambient, light/dark appearance, calendar download, sharing, link-only visibility and server-loaded data. Registration has its own form/cover/visit-details layout; dark input and choice contrast is explicit. No API, database, dependency or service-boundary changes were made.
 - Removed decorative Published/Live badges from management headings and hosted-event lists in both apps. Draft, paused and cancelled states remain plain text; actionable attendee registration states remain visible.
-- Started all four local web apps and both Go engines. HTTP checks returned 200 for web ports 3000â€“3003 (protected pages after sign-in redirects), both database-backed `/health` endpoints, a real published event and its registration page. Requested event stylesheets returned 200 and contained the new responsive layout and dark field rules. Anonymous management still reaches sign-in. `/create` responded without an application error; authenticated creation was not exercised.
+- Started all four local web apps and both Go engines. HTTP checks returned 200 for web ports 3000–3003 (protected pages after sign-in redirects), both database-backed `/health` endpoints, a real published event and its registration page. Requested event stylesheets returned 200 and contained the new responsive layout and dark field rules. Anonymous management still reaches sign-in. `/create` responded without an application error; authenticated creation was not exercised.
 - Core-web and organizer-web `npm test` passed type checks and lint with no warnings. Both changed stylesheets parsed through PostCSS; scoped design detection returned no findings. Browser visual/device review remains unavailable because no enabled browser surface is present. No fake data, database mutations, production build or deployment was used for verification. Azure upload/email remain unverified without credentials.
 
-### 2026-10-20 APP-011 â€” Registration workspace and guest review
+### 2026-10-20 APP-011 — Registration workspace and guest review
 
 - Used the supplied Luma screenshots as workflow references. Kept Hackways typography, quiet lavender surfaces and a task navigation, with a readable registration worksheet and a distinct guest drawer. Added overview links to details, appearance and questions; moved joining policy out of general Settings. No sidebar, fabricated analytics or copied reference layout was added.
 - Added the dedicated Registration area (joining/places and questions), optional name requirement, seven answer types, help text, required/optional controls, explicit ordering, editing and removal. Up to 20 questions and 20 choices per choice question. Changes persist through owner-only Go/sqlc endpoints with independent form revisions, event locking and audit. Started/cancelled events are read-only. Conflicts and failed saves retain edits.
@@ -279,7 +279,7 @@ All completed work is logged here with verified commands and output.
 - Verification: sqlc generation in both engines; Go builds/vet; both standard Go suites against isolated schemas passed. Extended the existing mandatory lifecycle suite to verify cross-owner/anonymous answer isolation, event scope, required answers, stale revisions, persistence, preserved snapshots, typed validation and successful replay after edits. Capacity contention again returned 10 confirmations, 90 expected conflicts, zero unexpected outcomes. `go test ./... -v -race -count=1` could not run because CGO is disabled.
 - Core-web/organizer-web `npm test` passed type-check/lint. Shared contracts compile. Both changed stylesheets parse; scoped design detection reports no findings. Actual published registration and new management route compilation/authentication redirects returned HTTP 200 after redirects; backend readiness endpoints returned 200. Signed-in browser/device interaction remains unverified because no browser surface is enabled. Azure upload/email remain unverified without local credentials; no production deployment or new external dependency was introduced.
 
-### 2026-10-20 APP-010 â€” Event management workspace on 3002
+### 2026-10-20 APP-010 — Event management workspace on 3002
 
 - Built a minimal event-focused management experience with real covers and a searchable/paginated hosted-event directory (all/upcoming/draft/past/cancelled). Each slug-based workspace has Overview, Guests, Check-in, Event page, Activity and Settings. Desktop uses a compact desk and roster rows; mobile stacks tasks and keeps navigation scrollable. No sidebar, invented chart/metric, mock guest or simulated success was introduced.
 - Added owner-only Go/sqlc summary counts, literal search/status filtering across the full roster and filtered owner-event listing. Independent resources load concurrently; failed totals show unavailable rather than zero. Pages request an extra row to determine pagination, preserving filters. Approval decisions use the existing capacity engine. Check-in accepts a real short/signed entry code or an owned ticket with a recorded manual reason; duplicate/revoked admission remains guarded in PostgreSQL.
@@ -289,7 +289,7 @@ All completed work is logged here with verified commands and output.
 - Organizer-web and core-web `npm test` passed type-check/lint without warnings. CSS parsed and scoped design detection returned no findings. All seven event routes compiled and anonymous requests redirected to sign-in; both backend readiness endpoints and app ports respond. No browser surface is enabled, so signed-in interactions, mobile visuals and real Azure uploads remain unverified. No production build/deployment or throughput claim was made.
 - `npm audit` reports 12 existing findings (2 moderate, 9 high, 1 critical) in the unchanged Next/Tailwind/tooling graph; Hugeicons is not listed. Framework/security upgrades remain a separate change under the fixed Next.js architecture. Local PostgreSQL remains 18.6 rather than target 16.
 
-### 2026-10-20 APP-009 â€” Spaces, event layout and creation controls
+### 2026-10-20 APP-009 — Spaces, event layout and creation controls
 
 - Implemented Spaces with real PostgreSQL membership and owner-only hosting: public directory/profile/event feeds, owned/joined views, create/edit/archive/reactivation, join/leave, selection during creation and existing-event assignment. Go enforces ownership/revisions; a composite database foreign key prevents cross-organizer association. Creation replay keys reject changed payloads. No community records were fabricated in application data.
 - Browser event/management links use slugs; registration navigation and visible entry references use persisted short codes. UUIDs remain internal database/API transport identifiers for compatibility. Ticket reissue rotates its short code; check-in retains event ownership, revocation and one-use guards.
@@ -297,10 +297,10 @@ All completed work is logged here with verified commands and output.
 - Fixed the reproduced create-page API mismatch by restarting the old Go process with the mounted Space routes. Server-rendered creation handles unavailable services and invalid/not-owned/archived Space links with explicit recovery. Signed-in browser recovery remains unverified.
 - Added separate date/time blocks, a styled calendar, repeating hour/minute lists, keyboard wraparound, AM/PM and optional clearing. Existing seconds are preserved until time changes. Creation and management use these controls. No native date/time/color picker or browser alert/confirm/prompt was introduced. The compact theme sheet uses six colour circles and style/font/light-dark controls. Themes apply across the create page and persist with the event; After the user clarified Ambient, its background now comes from the actual selected/saved banner, with a static blur in both modes. Creation prepares a small 96-pixel texture; there is no animated full-size image processing, and no image means a neutral background. Selected host/visibility rows are highlighted.
 - Private now means published and link-only, separate from draft status. SQL excludes private events from Discover/search/public Space feeds; slug registration remains available with noindex metadata. Hosts can change visibility with revision checks. Sharing links supports manual invitations; outbound invitations and email allowlists are not implemented.
-- Applied additive migrations 000003â€“000006 to the local application and separate CI schemas. Both Go sqlc packages generated and both engines built/vetted successfully. Core/global `go test ./... -v -count=1` passed on isolated schemas, including capacity contention (10 successes, 90 expected conflicts) and lifecycle checks for Space ownership/replay/archive/membership, appearance/content persistence and private listing exclusion. Extended the existing mandatory lifecycle suite using its existing isolated fixtures. Core-web and organizer-web `npm test` passed type-check/lint with no warnings.
+- Applied additive migrations 000003–000006 to the local application and separate CI schemas. Both Go sqlc packages generated and both engines built/vetted successfully. Core/global `go test ./... -v -count=1` passed on isolated schemas, including capacity contention (10 successes, 90 expected conflicts) and lifecycle checks for Space ownership/replay/archive/membership, appearance/content persistence and private listing exclusion. Extended the existing mandatory lifecycle suite using its existing isolated fixtures. Core-web and organizer-web `npm test` passed type-check/lint with no warnings.
 - HTTP checks returned 200 for both Go readiness endpoints, Spaces API/page, organizer login and a real event detail/registration page. Both app ports remain running. One design-detector advisory flags the deliberately requested decorative theme presets; retained as selectable event themes. No interactive browser surface was available, so mobile visuals, wheel/focus behavior and authenticated create/edit are not browser-verified. Race instrumentation remains unavailable (CGO/compiler); local PostgreSQL is 18.6 rather than target 16; Azure Blob/ACS credentials remain missing. No deployment or throughput claim is made.
 
-### 2026-10-19 APP-008 â€” Compact event editor and requested banner upload
+### 2026-10-19 APP-008 — Compact event editor and requested banner upload
 
 - Replaced the long creation form with the supplied compact-editor direction: banner picker at left, host/visibility controls and event name at right, a grouped start/end schedule, expandable location and description, free entry, approval switch and expandable capacity. Mobile stacks the banner above the editor. The user first excluded an event preview and then requested an image banner; the left area now previews only the actual selected image. No stock image, fake calendar, fabricated slug, placeholder event or duplicate event-page preview was added. Host setup is inline, and native validation opens collapsed required fields.
 - Kept public and owner-only private-draft visibility tied to implemented event statuses. The host menu shows the actual organizer and an account link; shared calendars/teams and unlisted public registration are not claimed. Extended Go event creation with validated optional registration_mode, stored atomically through sqlc; omitted mode remains instant and approval mode disables guest registration.
@@ -308,7 +308,7 @@ All completed work is logged here with verified commands and output.
 - Reviewed Azure's official Put Blob and Get Blob Properties contracts, narrowed new banner SAS permissions to create-only, and removed raw signing-key fallback. No migration, new dependency or Next API handler was needed. Updated API, architecture and workflow documentation. External Azure credentials/CORS/public-read configuration remain unavailable locally, so real upload/delivery is not claimed; failures retain the saved event and expose a management/retry path. Content scanning and orphan-object cleanup remain separate operational work.
 - Verification: core-web npm test, separate type-check/lint, CSS parsing, design detection and scoped whitespace checks passed. Both changed Go sqlc packages generated successfully; builds, vet and the existing core/global suites passed against their separate workflow CI schemas. No new test fixtures or application records were created for checks. Existing suites do not establish authenticated browser creation, the new external Azure completion path or visual/device quality. Race instrumentation remains unavailable because CGO is disabled, and no interactive browser surface is available. Restarted both local Go engines; their health endpoints and organizer login return 200, /create redirects anonymous users to sign-in, and banner completion rejects anonymous requests with 401. Port 3001 and port 3002 remain running.
 
-### 2026-10-19 APP-007 â€” Personal dashboard and creation on 3001; management on 3002
+### 2026-10-19 APP-007 — Personal dashboard and creation on 3001; management on 3002
 
 - Implemented the requested route split while preserving four independent Next applications and two Go engines. Port 3001 now contains My events with attending/hosting views, account access, host profile setup, event creation with draft/publish actions, and private registration details. Port 3002 now contains existing-event selection, overview, event settings, publication/hiding/cancellation/removal, paginated guests, approval decisions and signed entry-code check-in. Legacy organizer creation/onboarding paths redirect to 3001. Marketing creation links point to 3001; management links use the configured organizer environment.
 - Replaced the organizer metrics/table/modal scaffold with restrained event lists, plain task labels, a short top navigation and contextual actions. Mobile navigation moves to its own header row; event actions sit below the corresponding details and forms stack. Reused local FG Futurist and Google Sans Flex fonts with their licenses. No new framework, state library, icon dependency, mock event, fabricated metric or Next API handler was introduced.
@@ -317,7 +317,7 @@ All completed work is logged here with verified commands and output.
 - Verification: core-web and organizer-web `npm test` (their existing type-check/lint scripts) and separate type-check commands passed; public-web type-check/lint passed. Both Go sqlc generation for the changed core query and core `go build ./...` / `go vet ./...` passed; generated Go formatting check was clean. The existing core `go test ./... -v -count=1` suite passed against the separate workflow_core_ci_20261019 schema, including real database capacity/ownership/lifecycle checks; no application records were used as fixtures and no new tests were added. Race instrumentation remains unavailable because CGO is disabled. CSS parsed successfully, the design detector returned no findings, and the scoped whitespace check passed.
 - Live checks: 3001 and 3002 are running; management login, My events and Discover return 200. Anonymous create/account/management requests redirect to sign-in with a safe relative return path; organizer /create redirects to 3001; an invalid event ID returns 404. Local font files return 200. The core Go dev server was restarted to load the regenerated roster query. These HTTP checks do not establish authenticated browser interactions, mobile visual quality or production capacity. No interactive browser surface was available. ACS email/Blob credentials remain unavailable locally; no email delivery, upload or production deployment is claimed. The implementation and limits are recorded in APP_DASHBOARD.md.
 
-### 2026-10-19 BACKEND-001 â€” Free-event workflow engine and request middleware
+### 2026-10-19 BACKEND-001 — Free-event workflow engine and request middleware
 - Read the supplied Downloads/workflow.md, retained a reference copy under docs/backend, researched PostgreSQL row locking/queue claims, OWASP API controls and ACS request authentication/repeatability, and documented concrete failure/recovery cases. Preserved four independent Next apps and two Go engines; no new runtime framework, ORM, queue, search engine or dependency. User selected free events first and explicitly deferred payments. The wider brief is not declared complete: the backend matrix lists remaining identity, community, admin, form, scheduling and offline-scanner work.
 - Added event draft creation, revision-checked updates/status changes, acknowledged material attendee changes/cancellation, owner-scoped management/roster/audit/check-in, and soft deletion of inactive drafts. Added current-state idempotent RSVP replay, normalized guest uniqueness, account-only approvals and instant-event waitlists, offer/approval expiry, cancellation/notes, verified-email guest claim, one-time verified-account transfers, persisted tickets, Ed25519 ticket codes and duplicate/revoked ticket rejection. All capacity transitions use the event lock, generated two-second statement timeout, separate confirmed/held counters, database constraint, and atomic ticket/audit/outbox changes. Approval/waitlist combinations cannot bypass review.
 - Added origin/CSRF checks, strict typed JSON decoding, bounded request/header/body/concurrency/time controls, sanitized correlation IDs, structured database errors, persisted per-identifier auth limits, session management and one-use email verification. Invalid session and database failure remain distinct. Corrected shutdown order to drain HTTP/workers before pool closure and bound local listeners to loopback. Added an ignored local environment and a hidden-window launcher; no credentials were committed. An initial local environment-loading error skipped database checks and exposed newly generated local signing values in diagnostic output; the file was repaired, those values were regenerated before use, logging was tightened, and all checks were rerun successfully.
@@ -326,15 +326,15 @@ All completed work is logged here with verified commands and output.
 - Extended the mandatory CI database-backed tests for approval/waitlist/replay/expiry, event revision/ownership/cancellation, transfer/ticket signatures and check-in. Added an isolation guard and removed automatic application-database test fallbacks. Tests ran with search_path restricted to separate core/global CI schemas; public application data was not used as fixtures. Both `go test ./... -v -count=1` suites passed, including 100 contenders for 10 places (10 confirmations, 90 conflicts), rollback and timeout checks. New tests exposed PostgreSQL enum parameter ambiguity; explicit typed sqlc arguments fixed it. Race-instrumented execution was attempted but blocked because CGO is disabled and no C compiler is configured. No race result is claimed.
 - Verification: sqlc generation, Go builds/vet/format review, shared API contract compilation, and core-web type-check/lint passed. Live local health/catalog/pages returned 200; private routes rejected anonymous reads with 401, hostile origins with 403, unsupported content type with 415 and oversized bodies with 413; credentialed preflight including Idempotency-Key returned 204. Both engines listen on 127.0.0.1, attendee web remains on 3001, and the real catalog contains nine future events. The form now sends a stable key for unchanged retries and presents pending approval separately from confirmed RSVP. Whitespace/secret review passed. Production deployment, external integrations, browser checks and multi-process/VM-load measurements were not performed.
 
-### 2026-10-19 APP-006 â€” Place event content left and banner right
+### 2026-10-19 APP-006 — Place event content left and banner right
 - Reversed the desktop event grid so title, details, and registration occupy the left column and the banner/organizer occupy the right. Added 4px to the body edge gutters across breakpoints while preserving the navbar and stacked mobile composition.
 - Verification: core-web type-check and lint passed. Live detail/register pages and stylesheet returned HTTP 200; served CSS includes the revised gutters, desktop column order, and mobile stack and parsed successfully. Layout detection returned no findings. Browser rendering remains unverified; no booking or data changes ran.
 
-### 2026-10-19 APP-005 â€” Widen event details and registration layouts
+### 2026-10-19 APP-005 — Widen event details and registration layouts
 - Removed the shared event layout's 1,040px width cap. Detail and registration pages now use the available width with 24px desktop edge gutters, 20px mobile gutters, and 16px on the smallest screens; device safe-area insets take precedence. Kept the two-column desktop composition and stacked mobile reading order, made column spacing fluid, and removed the mobile poster's separate width cap. Reduced excess top spacing while preserving the accepted theme and registration behavior.
 - Verification: core-web type-check and lint passed. The actual detail and registration URLs returned HTTP 200 with their shared layout; the served stylesheet returned 200, included the updated gutters, and parsed successfully. Layout detection returned no findings. Browser viewport rendering remains unverified because no browser surface is connected. No tests, booking mutations, backend changes, dependencies, production build, or deployment ran.
 
-### 2026-10-19 APP-004 â€” Add slug-based event details and registration pages
+### 2026-10-19 APP-004 — Add slug-based event details and registration pages
 - Added `/discover`, `/events/{slug}`, and `/events/{slug}/register`; `/` and `/events` now return HTTP 307 redirects to discovery. Discover covers, titles, and actions use actual stored slugs and normal links, with eager catalog-wide prefetch disabled. Preserved the accepted banner, typography, colors, and responsive controls.
 - Added an additive Go `GET /api/v1/events/by-slug/{slug}` endpoint and a sqlc-generated query using the existing unique slug constraint. The query only returns published, non-deleted events and public organizer name, bio, website, and verification fields. Invalid slug input is rejected; the UUID endpoint remains unchanged. No migration or stored-data update was needed.
 - Event pages render the actual poster/cover, full description, start/end schedule and timezone, location and map/online links when supplied, public organizer details, and registration availability. Added browser calendar downloads derived from the event and clipboard links with an explicit fallback when copying fails. Metadata includes each event's title, description, and canonical slug URL; registration pages are noindex.
@@ -342,19 +342,19 @@ All completed work is logged here with verified commands and output.
 - Kept catalog loading UI scoped to Discover so missing event slugs return actual HTTP 404 responses before event-page streaming. Added event-specific not-found recovery and request-scoped memoization across metadata/layout/page reads. Reused cover rendering rather than duplicating upload/failure behavior.
 - Verification: `sqlc generate`, `gofmt` on the changed handler, `go build ./...`, and `go vet ./...` succeeded; core-web type-check/lint passed. Live reads verified all nine detail pages and all nine registration pages returned HTTP 200 with nine correct canonical URLs and organizer sections. Six forms were available and three pages displayed their current unavailable state. Missing detail/register URLs returned HTTP 404; invalid slug API input returned 400; existing UUID lookup returned 200. Root/index redirects returned 307; Discover contained 27 slug links and no RSVP dialog. CSS parsed, design detection returned no findings, and whitespace review passed. The local core engine was restarted with the additive endpoint. No tests, booking mutations, migrations, production build, or deployment ran; browser interactions and actual reservation submission remain unverified.
 
-### 2026-10-19 APP-003 â€” Add event banners and rework the Discover presentation
+### 2026-10-19 APP-003 — Add event banners and rework the Discover presentation
 - Reworked discovery around a large lead event banner and compact poster/content rows, with warmer neutral reading surfaces, clearer date information, and restrained black actions. Mobile stacks the lead banner and uses a compact poster arrangement for subsequent events. The removed Filters control stays absent.
 - Read the actual catalog: all nine events currently have no uploaded `banner_url`. Added a reusable branded poster composed from each real published event title, date, and format, with authored vector artwork. Existing valid organizer covers take precedence; a failed cover falls back to the event's designed poster within the same media space. No fabricated event, stock cover, uploaded media, or database record was introduced. The earliest displayed event leads the page without a synthetic featured/sponsored claim or duplicate listing.
 - Updated loading skeletons to preserve the lead/regular media layouts. Event search, pagination, and real RSVP operations retain their existing endpoints and behavior. No new dependencies, backend code, or API contracts changed.
 - Verification: core-web type-check and lint passed; page and served stylesheet returned HTTP 200 with nine real event rows, one lead banner, and nine designed event posters. CSS parsed successfully, the design detector reported no findings, and whitespace review passed. No uploaded-cover request could be verified because the current records have no cover URLs. Browser rendering/interaction checks remain unavailable; no booking, test suite, production build, or deployment ran.
 
-### 2026-10-19 APP-002 â€” Simplify navigation and give Discover its own layout
+### 2026-10-19 APP-002 — Simplify navigation and give Discover its own layout
 - Replaced the outlined organizer action and extra navigation link with a compact 64px header, smaller wordmark, centered icon/Discover link, and a quiet Create event destination. Mobile keeps the wordmark and creation action with appropriate touch targets.
 - Removed the Filters button, format/date controls, related state and icon import, and every associated stylesheet rule. Replaced the reference-style timeline/date gutter and framed feed cards with a wider white catalog: dates inside each event row, clearer metadata and descriptions, optional real covers, and a dedicated arrow action. Search is always visible. Mobile uses its own compact arrangement of dates, content, images, and actions. No business records or API contracts changed.
 - Preserved server-rendered real catalog data, backend full-text search, pagination, availability refresh, RSVP validation and recovery, keyboard access, and reduced motion. Updated loading skeletons and the deployment runbook to match the removed filters.
 - Verification: core-web type-check and lint passed; live page and stylesheet returned HTTP 200 with nine real event rows and nine integrated date blocks. Markup has no Filter events control; served CSS has no old timeline/filter selectors. Search and Create event markup remain present. PostCSS parsed the stylesheet, design detection returned no findings, and whitespace review passed. Browser interaction and screenshot inspection remain unavailable; no test suite, booking, production build, or deployment ran.
 
-### 2026-10-19 APP-001 â€” Rebuild attendee discovery around a chronological feed
+### 2026-10-19 APP-001 — Rebuild attendee discovery around a chronological feed
 - Replaced core-web's old marketing-style catalog and the interim sidebar/grid layout with a centered date-grouped event feed informed by the supplied references. Added restrained lavender surfaces, white event rows, real optional event covers, compact Hugeicons, locally hosted FG Futurist headings and Google Sans Flex body text, and black pill actions. Missing or failed covers are omitted; no sample events, placeholder covers, fake pricing, bookmark controls, or unsupported account features were added.
 - Desktop dates sit beside the cards and timeline; mobile dates move above their event group, with compact cards and a native bottom-sheet registration dialog. Search and filters expand on demand. Keyboard skip navigation does not create a URL fragment; focus styles, native dialog focus containment/return, dismissal protection during reservation submission, coarse-pointer targets, reduced motion, explicit loading/error/empty states, and a custom 404/error recovery surface are included.
 - Initial catalog reads happen on the Next.js server. Debounced full-text search and 24-record pagination use the existing Go endpoints with abort/timeout handling and protection against older responses. Format/date filtering is explicitly scoped to loaded events. Confirmed reservations refresh actual event availability from Go; the old synthetic local RSVP-counter increment was removed. Confirmation requires a real matching confirmed response, duplicate submission is guarded, and recoverable failures preserve form input. No booking records were created for verification.
@@ -362,61 +362,61 @@ All completed work is logged here with verified commands and output.
 - Added an attendee environment example, documented environment/build-time requirements, and included public fonts in the standalone image paths. Added only the already approved Hugeicons packages to core-web. No frontend production build, image publication, deployment, or automated test suite ran.
 - Verification: core-web type-check and lint passed; design detector reported no findings; PostCSS parsed the stylesheet and whitespace review passed. Live page, stylesheet, and both fonts returned HTTP 200. Served CSS includes the timeline/mobile rules and omits the old sidebar/grid selectors; markup has no fragment URLs or hardcoded production destinations. Invalid page returned HTTP 404. A browser inventory check returned no connected surfaces, so screenshot, touch/keyboard interaction, image delivery, and actual reservation submission remain unverified.
 
-### 2026-10-19 LANDING-021 â€” Share the approved Hugeicons drawing animation
+### 2026-10-19 LANDING-021 — Share the approved Hugeicons drawing animation
 - Applied the same 0.8-second GSAP stroke-drawing sequence and 0.05-second shape stagger to every existing Hugeicons instance: event introductions, tab panels, mosaic tiles, and the explore arrow (23 rendered icons). No icon colors, dimensions, placement, or page layouts changed.
 - Replaced the event-symbol-only triggers with one shared IntersectionObserver. Icons draw once on visibility, including after horizontal swipes and when hidden tabs open. Default/server HTML remains fully visible; reduced-motion mode keeps static icons. GSAP context cleanup and observer disconnection handle route changes and media preference changes. No dependencies were added.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed. Live homepage returned HTTP 200 with 23 marked icons and all fourteen sections. Browser animation timing, touch interactions, and viewport rendering remain unverified because no browser surface is connected. No tests, production build, or deployment ran.
 
-### 2026-10-19 LANDING-020 â€” Responsive composition, GSAP motion, and centered animated hero
+### 2026-10-19 LANDING-020 — Responsive composition, GSAP motion, and centered animated hero
 - Reworked landing spacing into wider desktop compositions, a three-column event introduction band, and a native swipeable track with keyboard navigation and previous/next controls on smaller screens. Improved section separation, disclosure spacing, FAQ positioning, and mobile padding while preserving all fourteen sections and environment-specific destinations.
 - Replaced Lenis and repeated generic reveal work with native wheel/touch scrolling, GSAP 3.15.0 mosaic assembly and SVG icon stroke drawing. Navigation progress uses ScrollTrigger; carousel scrolling reads a cached card stride instead of measuring every card on each scroll. Motion contexts, observers, and refresh callbacks clean up on navigation and respect reduced motion.
 - Removed the rejected hero connection diagram, its component, styles, and MotionPath animation. The hero is text only and centered on both desktop and mobile, with distinct responsive button arrangements. Added the user-supplied Magic UI Text Animate pattern using Motion 14.3.0, adapted for visible server HTML, a single accessible heading label, reduced motion, and a slower one-time word reveal (0.15-second delay, 0.15-second stagger, 0.72-second word transition). GSAP does not also animate the headline.
 - Verification: public-web type-check and lint passed. All nine public page routes returned HTTP 200; homepage markup contains fourteen sections, six headline words, no hero diagram markers, and no fragment links. Served CSS returned HTTP 200 and PostCSS parsed the stylesheet. Dependency lock contains GSAP/Motion and no Lenis. Design detector returned no findings; whitespace review passed. No tests, production build, or deployment ran. Browser interaction, viewport screenshots, and measured frame performance remain unverified because no browser surface is connected.
 
-### 2026-10-19 LANDING-019 â€” Remove all ASCII artwork
+### 2026-10-19 LANDING-019 — Remove all ASCII artwork
 - Removed the hackathon, conference, and meetup ASCII scenes, their animation component and character renderer, all associated styles, and the now-unused Google Sans Code font definition/asset/license. No ASCII animation remains in the public application source.
 - Rebalanced the three event stories into compact heading/content columns on desktop and a single column on smaller screens. Removed the illustration-only minimum heights and reversed art placement, preserving the event content, practical disclosures, actions, shared pastel surface, and all fourteen landing sections.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed; PostCSS parsed the served stylesheet. Live homepage returned HTTP 200 with three event stories, fourteen sections, zero ASCII component/style references, zero preformatted artwork elements, and no former 540px illustration minimum. Browser visual verification remains unavailable.
 
-### 2026-10-19 LANDING-018 â€” Moderate desktop type scale and stronger FG Futurist
+### 2026-10-19 LANDING-018 — Moderate desktop type scale and stronger FG Futurist
 - Reduced desktop reading text from 24/34px to 20/30px, the hero maximum from 54px to 48px, section headings from a 42px maximum to 36px, and prominent panel/closing subheadings from 24px to 22px. Phone reading and hero size overrides remain in place.
 - Inspected the supplied FG Futurist file: it is a static Regular/400 face with no variation axes. Added a controlled, size-relative text stroke for stronger heading weight and a smaller stroke for FG navigation, actions, and disclosure labels; did not mislabel the regular file as a genuine bold font asset. Google Sans Flex body text retains its regular weight.
 - Verification: design detection returned no findings; changed-file whitespace checks passed; PostCSS parsed the served stylesheet. Live homepage returned HTTP 200 and served the new desktop scale, both weight treatments, and existing phone size overrides. CSS-only change; browser visual verification remains unavailable.
 
-### 2026-10-19 LANDING-017 â€” Interactive landing composition across desktop and mobile
+### 2026-10-19 LANDING-017 — Interactive landing composition across desktop and mobile
 - Reworked presentation across the full fourteen-section landing page in response to the document-like reading experience. Replaced stacked event-category, attendance-format, and audience explanations with three accessible content switchers. These explain existing content; they do not simulate event filters or API results. All nine panels are server-rendered, with one selected per group; client state, roving tab focus, Left/Right/Home/End handling, and labelled panel relationships support selection. Imported only the six individual Hugeicons entries needed by the client component.
 - Converted RSVP guidance into an ordered, numbered expandable flow. Added native disclosures for preparation and organizer brief guidance, and folded secondary practical copy in the three event stories and hosting/FAQ introductions. First entries in the three guidance groups remain open initially. Existing practical information remains available without displaying every paragraph at once. Tightened repeated introductory and closing copy without adding product claims or fabricated records.
 - Added sticky Events/Attending/Hosting/Questions navigation with real section destinations, keyboard focus, reduced-motion support, and no URL fragments. Extended the existing Lenis focus handoff to these destinations so native navigation can settle wheel inertia.
 - Rebuilt the phone hero with a left-aligned, naturally wrapping headline, larger full-width pill actions, and a compact three-column benefit strip. Removed the hidden-break whitespace problem visible in the user's screenshot by replacing the longer benefit headings with concise titles and desktop supporting text. Placed the tiny ASCII scenes beside story headings on phones, and gave discovery, RSVP, hosting, FAQs, and closing actions distinct layouts. Kept the current type families, palette, mosaic, environment destinations, and all fourteen sections.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed; served CSS parsed with PostCSS. All nine public routes returned HTTP 200 with device-width metadata. Actual main markup contained three tablists, nine tabs/panels, three selected tabs, six hidden panels, an ordered RSVP guide, four focusable page-navigation destinations, fourteen sections, and zero fragment links. Local font metrics identified narrow-phone tab/navigation width pressure; adjusted label sizes, navigation padding, and heading wrapping. Browser visual, keyboard, touch, and overflow checks remain unavailable because the preview inventory has no connected browser; no interaction pass is claimed.
 
-### 2026-10-19 LANDING-016 â€” Extended mosaic edges and responsive public pages
+### 2026-10-19 LANDING-016 — Extended mosaic edges and responsive public pages
 - Replaced per-tile corner decoration with shared SVG joins at unique grid vertices, for both desktop and compact compositions. Exact circular arcs retain the 20% tile radius, with thin rounded line extensions around exposed edges as requested. The SVG layer remains decorative, server-rendered, and behind the existing gradient tiles and Hugeicons.
 - Corrected the global 24px reading rule's mobile override by introducing responsive reading-size/leading variables (24/34 desktop, 18/28 phone). Adapted landing headings, story copy, preparation guidance, organizer notes, FAQ text, and static article typography for narrow screens. Retained FG Futurist/Google Sans Flex and the current desktop theme.
 - Moved dense landing columns and event stories into stacked layouts earlier on tablets; stacked organizer/contact layouts and organizer steps; removed the hero viewport minimum on phones. Added narrow-phone full-width hero actions, wrapping action controls, stacked organizer detail labels, compact footer columns, and 44px minimum standalone link targets. The mobile navigation fits short viewports, scrolls when needed, and closes after selecting a link while preserving Escape and focus-return behavior.
 - Added a wider stacking breakpoint for the mosaic's heading to prevent collisions near tablet widths. No dependencies, route destinations, product copy, APIs, or service boundaries changed.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed; PostCSS parsed the stylesheet successfully. All nine public routes (`/`, `/organizers`, `/about`, `/help`, `/contact`, `/privacy`, `/terms`, `/cookies`, `/acceptable-use`) returned HTTP 200 with device-width viewport metadata and the shared mobile navigation. Inspected offline desktop/compact exports using the served SVGs and current gradient colors; the extended edge joins follow both tile arrangements. Browser inventory contained no connected browsers or apps, so browser viewport, overflow, and touch-interaction verification could not be performed.
 
-### 2026-10-19 LANDING-015 â€” Continuous tile corner joins
+### 2026-10-19 LANDING-015 — Continuous tile corner joins
 - Traced the visible corner gaps to the decorative join's cubic curves, which did not follow the tiles' circular border radius. Replaced those curves with exact circular arcs sharing the tiles' 20% radius and responsive scaling.
 - Verification: design detection returned no findings; changed-file whitespace checks passed. Live homepage returned HTTP 200 and served the circular path with the previous cubic path absent. Inspected an offline before/after geometry export: the corrected arcs meet the tile edges without the former sliver gaps. This was a geometry render, not browser visual verification. CSS-only change; no application logic or dependencies changed.
 
-### 2026-10-19 LANDING-014 â€” Soft gradient tile surfaces
+### 2026-10-19 LANDING-014 — Soft gradient tile surfaces
 - Replaced the mosaic's flat lavender, cream, mist, and neutral fills with light diagonal gradients, following the supplied close-up references. Kept the existing tile geometry, raised white Hugeicons, content, and responsive arrangement.
 - Verification: public-web type-check and lint passed; design detection returned no findings; CSS whitespace checks passed. Live homepage returned HTTP 200, with all four gradients and the white icon-tile override present in the served stylesheet. Browser visual verification was not performed.
 
-### 2026-10-19 LANDING-013 â€” Stepped Hugeicons mosaic
+### 2026-10-19 LANDING-013 — Stepped Hugeicons mosaic
 - Added a new section below the three event stories using the supplied reference's stepped, interlocking rounded tiles. Ten raised white tiles contain Hugeicons for code, learning, conversation, and community; muted lavender, cream, and mist tiles sit on a softly blended neutral surface. Preserved the existing typography and soft-black actions.
 - Added the requested MIT-licensed free Hugeicons data (`@hugeicons/core-free-icons@4.3.5`) and React renderer (`@hugeicons/react@1.1.10`), following the official React integration. The component renders on the server with named imports; artwork is decorative and hidden from assistive technology. Its single Explore events action uses the environment-configured attendee origin. No logos, invented totals, event records, or simulated filters were added.
 - Created a compact eight-column composition for mobile, retaining all ten icons and placing the content above the artwork. The desktop composition has 61 tiles. Updated only public-web dependency manifests and supplemented the existing shared local node_modules junction without pruning other applications' packages.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed. Live homepage returned HTTP 200 with fourteen sections and ten icon tiles in the actual section markup. Inspected offline 1440px and 390px artwork exports using the served SVGs and local FG Futurist/Google Sans Flex glyphs. These exports review composition, not browser layout or interaction; browser visual verification remains unavailable.
 
-### 2026-10-19 NAV-001 â€” Centered discovery navigation and heavier wordmark
+### 2026-10-19 NAV-001 — Centered discovery navigation and heavier wordmark
 - Replaced the header's former four links with Discover (public home), Explore (environment-configured attendee app), and Create (environment-configured organizer app). A three-column grid centers the navigation independently of the wordmark and right-hand Host an event action.
 - Preserved the mobile disclosure, Escape-to-close behavior, focus return, and mobile hosting action. Made the shared FG Futurist wordmark visually heavier with a small text stroke while retaining the actual regular font asset and existing body/heading weights.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed. Live homepage returned HTTP 200 and served the three new labels, centered-header rules, and heavier-wordmark style with none of the old header labels.
 
-### 2026-10-19 LANDING-012 â€” Dedicated event stories and continuous ASCII scenes
+### 2026-10-19 LANDING-012 — Dedicated event stories and continuous ASCII scenes
 - Restored section 2's original three-column Hackathons/Conferences/Meetups content following the user's correction. Added three separate stories immediately below it, corresponding to 2.1, 2.2, and 2.3, before the original format section. The homepage now has thirteen sections.
 - Alternated text/art positions: hackathon text left/art right, conference art left/text right, and meetup text left/art right. Added restrained once-on-entry content motion and a continuous lavender/peach/powder-blue gradient. Toned down the earlier green/yellow hotspots and removed the oversized green code backdrop.
 - Self-hosted the regular Latin Google Sans Code WOFF2 from the official Google Fonts CSS API (12,796 bytes), with the official OFL license. Font metadata identified Google Sans Code Monospace Regular. FG Futurist and Google Sans Flex remain the heading/body families.
@@ -425,75 +425,75 @@ All completed work is logged here with verified commands and output.
 - Restarted public-web preview at http://localhost:3000. Verification: type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed. Live HTML returned HTTP 200 with all three restored category columns, three additional stories, thirteen sections, and no hash navigation links. The local font returned HTTP 200, and the former green values were absent from served CSS.
 - Inspected exported ASCII frames at 0, 1.65, and 3.3 seconds using the actual Google Sans Code glyphs. Corrected frame margins; final exports had clear top/bottom margins for all three scenes. These were offline frame renders, not browser screenshots. Browser visual/interaction verification remains unavailable, and no browser frame-rate measurement is claimed.
 
-### 2026-10-18 LANDING-011 â€” More useful sections, action hierarchy, and continuous animated background
+### 2026-10-18 LANDING-011 — More useful sections, action hierarchy, and continuous animated background
 - Added event-preparation guidance and organizer brief-writing guidance, bringing the homepage to ten sections. Kept content factual and retained the existing attendee/organizer destinations.
 - Removed the hero's promotional hosting sentence in favour of a concise Host an event action. Grouped related actions horizontally and aligned the closing attendee/organizer buttons at the bottom of their columns. Following the user's clarification, reserved pill buttons for event actions and sign-in; supporting guide links and footer navigation remain plain links. Removed the redundant Help/About button row above the footer.
 - Replaced the hash-based skip anchor with an accessible button that focuses the main element without changing the URL; clears an existing legacy `#main-content` fragment while preserving path, query, and browser history state. Landing scroll inertia yields to the keyboard skip action.
 - Gave the hero and discovery section a shared pastel background so there is no separate gradient edge between them. Added a decorative, aria-hidden ASCII field behind discovery content, with sparse character changes and no resource cards. The animation suspends offscreen, in hidden tabs, and under reduced motion; the initial frame is rendered on the server and reserves no extra layout space.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed. Home and organizer routes returned HTTP 200. Live HTML/CSS/JavaScript contained ten sections, the shared background, ASCII component, Lenis, and hero grain; zero active snap rules, hash navigation links, former tags, image elements, footer buttons, or production-domain links were found. Browser visual/interaction verification remains unavailable.
 
-### 2026-10-18 LANDING-010 â€” Free scrolling, Lenis, subtle hero grain, and hosting actions
+### 2026-10-18 LANDING-010 — Free scrolling, Lenis, subtle hero grain, and hosting actions
 - Removed CSS scroll snapping and viewport minimum heights from content sections; retained the hero's minimum height. Added the explicitly requested `lenis@1.3.27` dependency, its recommended stylesheet, and a landing-only client lifecycle using automatic RAF, native touch scrolling, anchor support, and cleanup on unmount. Reduced-motion preferences disable the instance and preference changes are handled dynamically.
 - Added a low-opacity repeating SVG grain texture to the hero background, without an animated full-screen filter or image asset. Removed the three hero topic tags and their styles. Added Host an event actions to the homepage hosting area and organizer guide.
 - Implementation follows the [official Lenis setup and API](https://github.com/darkroomengineering/lenis). Only the public-web dependency manifest and lockfile changed; existing shared local node_modules was supplemented with the requested package without pruning dependencies used by other apps.
 - Verification: public-web type-check and lint passed; Lenis package/version and option types were inspected locally. Live home and organizer pages returned HTTP 200; served assets contained Lenis and grain, with zero active scroll-snap rules or removed tag text. No browser smoothness or performance result is claimed.
 
-### 2026-10-18 LANDING-009 â€” Revert illustration additions
+### 2026-10-18 LANDING-009 — Revert illustration additions
 - At the user's request, removed all six Hairline illustrations, their component, source/build files, generated SVG/HTML/runtime assets, draft plan, and illustration-only layout and Dockerfile changes. Restored the previous eight-section layout with the violet/soft-black theme and environment-specific links.
 - Verification: public-web type-check and lint passed; changed-file whitespace checks passed. The live homepage returned HTTP 200 with eight sections, zero image tags, and zero illustration references.
 
-### 2026-10-18 LANDING-008 â€” Cohesive violet sections and environment destinations
+### 2026-10-18 LANDING-008 — Cohesive violet sections and environment destinations
 - Extended the hero's violet and soft-black palette across the remaining seven homepage sections. Added centered introductions, balanced event-category columns, a split format guide, numbered RSVP steps, an organizer details panel, participation rows, a centered FAQ, and a violet closing section. Retained all eight sections, dedicated pages, real destinations, font families, pill controls, responsive stacking, and reduced-motion behavior.
 - Removed hardcoded production-domain defaults from public navigation, actions, canonical metadata, sitemap, and robots. Public, attendee, and organizer origins now come from `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL`, and `NEXT_PUBLIC_ORGANIZER_URL`, with local defaults at ports 3000, 3001, and 3002. Configured origins reject unsupported protocols, credentials, paths, queries, and fragments.
 - Updated the public environment example, added matching public-web Docker build arguments and GitHub repository-variable forwarding, and documented environment-specific build configuration in `docs/DEPLOYMENT.md`. No repository variables were changed and no image or deployment was published.
 - Verification: public-web type-check and lint passed; design detection returned no findings; changed-file whitespace checks passed; workflow YAML parsed. All nine public pages plus sitemap and robots returned HTTP 200 with no production domains. Live HTML contained eight sections, attendee links to localhost:3001, organizer links to localhost:3002, and a local canonical URL. Served CSS contained violet section styles and soft-black actions with no former blue accent values.
 - Browser visual review remains unavailable in this session. Docker builds, CI execution, deployed environment values, and attendee/organizer backend workflows were not verified by this UI change.
 
-### 2026-10-18 COLOR-001 â€” Soft-black actions and violet accents
+### 2026-10-18 COLOR-001 — Soft-black actions and violet accents
 - Replaced the public website's bright blue primary color with soft black `#1f1f23`, retaining white button labels and pill shapes. Links and secondary controls use dark violet; borders, selection, hover colors, and public Tailwind tokens now match the violet hero.
 - Shared button variants use the site's CSS variables so they follow the same palette as navigation and landing actions.
 - Verification: public-web type-check and lint passed. The live homepage returned HTTP 200, its stylesheet contained the dark primary and retained the violet gradient, and no former blue accent values remained in the served stylesheet. Changed-file whitespace checks passed. No browser screenshot result is claimed.
 
-### 2026-10-18 HERO-001 â€” Centered reference layout with violet gradient
+### 2026-10-18 HERO-001 — Centered reference layout with violet gradient
 - Replaced the split homepage hero with a centered headline, supporting copy, blue pill action with a circular arrow, and a secondary hosting link. Added a compact topic strip and three benefit columns to follow the supplied reference's composition without fabricated ratings, testimonials, or pricing claims.
 - Applied a white-to-light-violet gradient concentrated along the hero's lower edge. Other page surfaces, the eight-section structure, existing destinations, local FG Futurist/Google Sans Flex fonts, and the primary `#2691fc` button color are preserved. Topic chips wrap and benefit columns stack on narrow screens; the hero may grow when its content requires more space.
 - Verification: public-web `npm run type-check` and `npm run lint` passed; the design detector returned no findings; changed-file `git diff --check` passed. The live homepage returned HTTP 200 with the new heading, eight landing sections, three benefit marks, zero image tags, the violet gradient, and zero generic sans-serif font declarations.
 - Browser visual verification remains unavailable in this session; no screenshot or visual rendering result is claimed.
 
-### 2026-10-18 FONT-002 â€” Separate heading and body fonts
+### 2026-10-18 FONT-002 — Separate heading and body fonts
 - Applied FG Futurist to headings, the wordmark, navigation, buttons, action links, FAQ questions, and definition labels. Main text content now uses Google Sans Flex at the existing 24px/34px, weight 400, `#1f1f1f` settings.
 - Downloaded the regular Latin Google Sans Flex WOFF2 from the official Google Fonts CSS API and included its OFL license from `googlefonts/googlesans-flex`. The 20,076-byte font is served locally and preloaded alongside FG Futurist; visitors do not need a Google Fonts request.
 - Removed the generic `sans-serif` fallback from the site's font declarations and Tailwind font families. Explicitly scoped public-web's PostCSS Tailwind plugin to its own configuration, then restarted the preview to clear a stale generated font declaration.
 - Verification: public-web `npm test` passed (type-check and lint); changed-file `git diff --check` passed. The live page and both font endpoints returned HTTP 200; the served stylesheet has Google Sans Flex for the body, FG Futurist for headings, and zero generic sans-serif font declarations.
 
-### 2026-10-18 FONT-001 â€” FG Futurist primary typeface
+### 2026-10-18 FONT-001 — FG Futurist primary typeface
 - Loaded the user's `Downloads/futurist-regular.woff2` as a local public font asset. Next.js's bundled font metadata reader confirmed the family is `FG Futurist`, style `Regular`, PostScript name `FG_Futurist-Regular`, with no variable weight axes.
 - Replaced the former primary-font loader with a preloaded CSS font face and the exact stack `"FG Futurist", "Google Sans Flex", sans-serif`. The fallback is a font-stack entry; no external font service is called.
 - Applied the requested main-copy settings: 24px size, 400 weight, 34px line height, and `#1f1f1f` text. Removed synthesized heavier weights from the public site's CSS. Navigation/action labels retain their compact sizes and blue primary buttons retain white labels.
 - Verification: public-web `npm test` passed (type-check and lint); changed-file `git diff --check` passed. The live page and font endpoint both returned HTTP 200, the font response was 44,812 bytes, and the served stylesheet contains the requested font stack and text settings.
 
-### 2026-10-18 LANDING-007 â€” Requested blue replacement
+### 2026-10-18 LANDING-007 — Requested blue replacement
 - Replaced the public site's `#3a83f7` accent with `#2691fc` in the global styles, reusable pill buttons, focus rings, Tailwind token, and related shadow colors. Updated the hover shade to `#187cdb`.
 - Verification: public-web `npm test` passed (type-check and lint), changed-file `git diff --check` passed, and the live page returned HTTP 200. Its served stylesheet contains the new accent and no old accent declaration.
 
-### 2026-10-18 LANDING-006 â€” Expanded landing-page content
+### 2026-10-18 LANDING-006 — Expanded landing-page content
 - Expanded the landing page from four to eight viewport-height sections. Added event-format guidance, an ordered RSVP walkthrough, participation guidance for different audiences, and attendee/organizer starting points.
 - Added substantive copy to the original hero, event categories, and organizer section; expanded the homepage FAQ from three to six questions. Copy describes existing discovery, guest RSVP, profile setup, and event publication features without adding fabricated event data or unsupported integrations.
 - Retained plain white surfaces, medium typography, exact-blue pill buttons with white labels, and the image-free layout. New multi-column content stacks on mobile, and sections may grow to accommodate the added content or expanded answers.
 - Verification: public-web `npm test` passed (type-check and lint), `git diff --check` passed for the changed page/styles, and the design detector returned no findings. The live HTML returned HTTP 200 with eight landing sections, six FAQ summaries, and zero image tags.
 
-### 2026-10-18 LANDING-005 â€” Plain white surfaces and balanced typography
+### 2026-10-18 LANDING-005 — Plain white surfaces and balanced typography
 - Removed the blue section gradients and tinted page, footer, and menu backgrounds. All public page surfaces are plain white; primary pill buttons retain `#3a83f7` with white labels as requested.
-- Settled typography between the earlier thin and bold versions: medium-weight headings, regular 15â€“16px main copy, 14px button labels, and clearer navigation. Preserved the viewport-height sections and image-free layout.
+- Settled typography between the earlier thin and bold versions: medium-weight headings, regular 15–16px main copy, 14px button labels, and clearer navigation. Preserved the viewport-height sections and image-free layout.
 - Verification: public-web `npm test` passed (type-check and lint), changed-file `git diff --check` passed, and the live landing page returned HTTP 200.
 - Color limitation: the explicitly requested white text on `#3a83f7` measures 3.64:1 contrast, below the 4.5:1 target for normal-sized text. This change does not claim WCAG AA conformance for that pairing.
 
-### 2026-10-18 LANDING-004 â€” Exact blue accent and pill buttons
+### 2026-10-18 LANDING-004 — Exact blue accent and pill buttons
 - Set the public site's primary button background and selected accents to `#3a83f7`. Retained white surfaces and pale blue gradients, and aligned the public Tailwind palette and reusable button variants with that color.
 - All styled action buttons, including the mobile Menu/Close control, use a pill radius. Normal-sized links use a darker blue for readability; primary buttons use navy text with a measured 4.76:1 contrast against the requested exact blue.
 - Verification: public-web `npm test` passed (type-check and lint); `git diff --check` passed for the changed styles/components; the live landing page returned HTTP 200.
 
-### 2026-10-18 LANDING-003 â€” Minimal blue public website and viewport sections
+### 2026-10-18 LANDING-003 — Minimal blue public website and viewport sections
 - Rebuilt the public website with a pale blue gradient theme, regular-weight typography, compact controls, and no photographs, SVG graphics, fabricated event records, or visible placeholders. The deleted design-guide files were not recreated.
 - Added dedicated About, organizer guide, Help, Contact, Privacy, Terms, Cookies, and Acceptable Use pages; shared navigation and footer link to those routes and the existing attendee/organizer services. Added page metadata, sitemap, robots configuration, and a locally served font with its license.
 - Added optional `NEXT_PUBLIC_SUPPORT_EMAIL` configuration in `apps/public-web/.env.example`; the contact address is rendered only when a valid public address is configured. No fabricated address or nonfunctional contact form is shown.
@@ -501,52 +501,52 @@ All completed work is logged here with verified commands and output.
 - Verification: public-web `npm test` passed (the existing type-check and lint scripts). All nine public page routes returned HTTP 200 with unique titles and no image/SVG tags or placeholder markers. Main text and link contrast against the pale blue surface measured at least 5:1. `git diff --check` passed.
 - Visual verification remains incomplete: the initial headless renderer failed to initialize its GPU context, and automatic approval review blocked the final Chrome screenshot launch with the reason `blocked by policy`.
 
-### 2026-10-18 LANDING-001 â€” Landing page simplification and guide removal
+### 2026-10-18 LANDING-001 — Landing page simplification and guide removal
 - Replaced the crowded public landing page with concise, plain-language copy and direct routes to attendee discovery and organizer event creation. Removed fabricated event promotion, repeated capability claims, long section stack, redundant navigation, and stale footer links.
 - Removed the root and docs design-guide files and their `AGENTS.md` design/landing-specific rule sections, as explicitly requested. Preserved general accessibility and product-integrity requirements elsewhere in the engineering rules.
 - Verification: public-web `npm run type-check` and `npm run lint` passed; the Impeccable detector returned no findings; `git diff --check` passed; `http://localhost:3000/` returned HTTP 200 and served the new landing copy.
 
-### 2026-10-18 LANDING-002 â€” Clear landing page and custom metadata
+### 2026-10-18 LANDING-002 — Clear landing page and custom metadata
 - Removed all landing-page content, navigation, footer, and custom title/description metadata. The route renders no visible content.
 - Verification: public-web type-check and lint passed; live response returned HTTP 200 and contains none of the prior page copy or custom title/description. Next.js still injects its charset and viewport meta tags.
 
-### 2026-10-18 AUDIT-005 â€” Attendee design-system alignment
+### 2026-10-18 AUDIT-005 — Attendee design-system alignment
 - Replaced the core attendee app's dark scaffold with the documented light palette, loaded Plus Jakarta Sans through `next/font`, and aligned event cards, RSVP dialog, form controls, badges, filters, and loading skeletons.
 - Removed the dead Sign In hash link, the unverified â€œSystem Operationalâ€ claim, and an API Docs link without a matching route. Added stable `useId` fallback IDs for inputs, an accessible search name, keyboard focus styles, and filter pressed states.
 - Preserved the existing RSVP count field correction in the event success callback.
 - Verified: `npm run type-check`, `npm run lint`, and `npm run build` in `apps/core-web` passed after network access was approved for Next.js to fetch the Google font. `git diff --check` passed (line-ending warnings only).
 - Remaining visual audit: organizer and admin apps; remaining functional gaps: attendee sign-in, organizer roster, event editing/cancellation, and admin management workflows.
 
-### 2026-10-18 AUDIT-006 â€” Organizer profile and event creation path
+### 2026-10-18 AUDIT-006 — Organizer profile and event creation path
 - Added authenticated organizer profile setup, organizer-scoped event listing, and event creation through core-backend using the existing shared PostgreSQL session and organizer tables. Public event detail now hides drafts and unpublished records.
 - Added validation for event format, dates, IANA timezone, capacity, location, online URL, request size, and required fields. Event owner IDs come from the session-bound organizer profile, never request input.
 - Routed auth endpoints through the organizer host so its host-only session cookie can be issued and read there. Added organizer login/registration and profile onboarding pages. Removed fake event time, venue, and capacity defaults from the create form.
 - Verification: `sqlc generate`, `gofmt`, `go build ./...`, and `go vet ./...` passed for core-backend; organizer-web type-check and lint passed. Live database workflow checks remain pending. Existing integration tests create persistent rows without cleanup, so they were not run against the configured local database.
 
-### 2026-10-18 AUDIT-007 â€” Admin health integrity and shared UI alignment
+### 2026-10-18 AUDIT-007 — Admin health integrity and shared UI alignment
 - Removed the admin dashboard's request to an unimplemented global-backend event route. Core/global health checks now settle independently so one unavailable service does not erase the other's result; database readiness, uptime, version, environment, and check time come from the actual health payloads.
 - Removed static claims about Blob SAS and ACS worker telemetry, the unsupported event moderation table, and UI claims that the ingress IP allowlist and admin cookie had been verified.
 - Aligned the organizer and admin shells and shared controls toward the light-first tokens; corrected organizer capacity utilization so RSVP counts from unlimited events cannot inflate the capped-event fill rate.
 - Verification: organizer-web, admin-web, and public-web `npm run type-check` and `npm run lint` passed. Core-web type-check, lint, and build passed in AUDIT-005. The live public-web preview on port 3000 returned HTTP 200. Database-backed organizer and attendee workflows remain unverified because existing integration tests write persistent rows into the configured local database.
 
-### 2026-10-18 AUDIT-004 â€” RSVP identity and registration-window enforcement
+### 2026-10-18 AUDIT-004 — RSVP identity and registration-window enforcement
 - **Findings fixed:** The RSVP create route did not run auth middleware, so `UserFromContext` was always empty and signed-in attendees were recorded as guests. Added optional session validation while preserving unauthenticated guest registration; invalid supplied cookies now fail closed. Authenticated RSVP confirmation addresses are taken from the account, not caller input. Added database-clock registration-open and registration-close checks inside the existing event row lock, plus a 1 MiB request body cap and length/email validation.
 - **Verification:** `sqlc generate`, `gofmt`, `go vet ./...`, and `go build ./...` succeeded in `services/core-backend`. Database-backed RSVP tests were not rerun because they write fixture rows into the configured local PostgreSQL database. Race checks remain unavailable on this Windows host without GCC.
-### 2026-10-18 AUDIT-003 â€” Atomic outbox claims
+### 2026-10-18 AUDIT-003 — Atomic outbox claims
 - **Finding fixed:** The worker previously selected pending rows with `FOR UPDATE SKIP LOCKED` outside a transaction; the row locks ended before email dispatch, allowing concurrent instances to send the same row. `FetchPendingOutbox` now atomically updates the selected rows' `scheduled_at` to a five-minute lease while returning them. Dispatch is bounded to two minutes so a live send finishes before lease expiry; crashed workers become eligible again when the lease expires.
 - **Verification:** `sqlc generate`, `gofmt`, `go vet ./...`, and `go build ./...` completed successfully in `services/global-backend`. The database-backed worker tests were not run in this pass. Delivery remains at-least-once if the email provider accepts a message but writing the sent state fails.
-### 2026-10-18 AUDIT-002 â€” CI deployment correctness and runbook reconciliation
+### 2026-10-18 AUDIT-002 — CI deployment correctness and runbook reconciliation
 - **Findings fixed:** The deployment script previously validated registry configuration before sourcing `.env` and ignored the CI commit tag, so it could fail configuration checks or deploy a mutable `latest` image instead of the CI-verified SHA. It now loads configuration first, applies `DEPLOY_IMAGE_TAG`, fails on pull/migration/health/reload errors, and does not build images on the host. The deployer now accepts signed successful `workflow_run` payloads for the configured branch and exact CI SHA, no longer polls raw pushes, bounds webhook body size, and removes its unused dashboard, API, and disk-history code.
 - **Documentation:** Replaced the deployment guide's aspirational production claims with the actual CI, webhook, Compose, migration, and operational requirements. Corrected the Compose resource comments and README budget labeling. GitHub webhook configuration, GHCR credentials, firewall state, and production database placement remain external/unverified.
 - **Verification:** Deployer `go vet ./...` and `go test ./...` completed successfully (`[no test files]`). `bash -n` could not launch because the bundled Bash executable was denied by Windows (`E_ACCESSDENIED`). Docker/Compose is unavailable, so Compose validation and end-to-end deployment remain unverified.
 - **Remaining gaps:** CI workflow does not configure or trigger the repository webhook; operators must configure it externally. Systemd deploys only `develop`. No deployment rollback exists. Main/develop image publishing and target tag behavior need a deliberate release policy. Core-web remains out of DESIGN.md compliance; organizer/admin workflows, ACS delivery, upload ownership checks, remain incomplete. The outbox now uses an atomic five-minute lease; provider-accepted emails can still be duplicated if the sent-state write fails.
-### 2026-10-18 AUDIT-001 â€” Architecture, data exposure, and production-mode corrections
+### 2026-10-18 AUDIT-001 — Architecture, data exposure, and production-mode corrections
 - **Scope:** Current six-service implementation and canonical documentation.
 - **Changes:** Corrected both sqlc schema paths to `deploy/migrations/`; added an owner-scoped RSVP detail query and required authentication for RSVP detail and upload-SAS issuance; made all RSVP insert conflicts idempotent; aligned production environment variables and Go memory/connection limits; removed production's development Azure signing-key fallback; replaced false-success production email logging with explicit unavailable-provider failures; corrected the event count contract across the shared client/apps; removed a false email-delivered success claim and fake admin health fallback; removed local Mailpit; reconciled architecture, API, database, testing, and design docs; corrected resource-budget arithmetic and removed unmeasured performance claims.
 - **Verification:** `sqlc generate` succeeded for both Go services. Core `go test ./... -v -count=1`, global `go test ./... -count=1`, and `go vet ./...` in both modules succeeded. `gofmt -l .` returned no files. Shared API client build, and type-check plus lint in all four apps, succeeded. `go test ./... -race -count=1` could not run because this Windows environment has no GCC C compiler for cgo; race results are unverified.
 - **Open gaps:** ACS delivery is not implemented; production email rows now retry/fail honestly. Upload SAS issuance still lacks resource ownership validation. Organizer event creation is a dead-end 404; organizer scoping and all admin operations are absent. Admin event/moderation operations are absent; the health view no longer substitutes a healthy result when checks fail. `apps/core-web` still conflicts with DESIGN.md's light-first rules.
 
-### 2026-10-16 PHASE-010 â€” Azure Managed Services Migration & Scalability Hardening
+### 2026-10-16 PHASE-010 — Azure Managed Services Migration & Scalability Hardening
 - **Agent:** Principal Cloud Architect / SRE Lead
 - **Files changed:**
   - `docs/ARCHITECTURE_PLAN.md` (Version 3.0.0: Azure Managed Cloud & Single-VM High-Scalability Blueprint)
@@ -563,7 +563,7 @@ All completed work is logged here with verified commands and output.
 
 ---
 
-### 2026-10-14 PHASE-008 â€” Production Deployment, VM Sanitization & Live Ingress Setup
+### 2026-10-14 PHASE-008 — Production Deployment, VM Sanitization & Live Ingress Setup
 - **Agent:** Principal SRE / Cloud & Infrastructure Lead
 - **Files changed:**
   - `deploy/docker/Dockerfile.core-backend` (Go 1.23+ builder -> alpine:3.20 runner, static binary, non-root user)
@@ -585,7 +585,7 @@ All completed work is logged here with verified commands and output.
 
 ---
 
-### 2026-10-13 PHASE-009 â€” Dual Go Backend Engines Decoupling & API Completion
+### 2026-10-13 PHASE-009 — Dual Go Backend Engines Decoupling & API Completion
 - **Agent:** Principal Backend Architect / SRE Lead
 - **Files changed:**
   - `services/core-backend/` (independent module `github.com/hackways/core-backend`, port 8081, pool max 28, events & rsvps)
@@ -614,7 +614,7 @@ All completed work is logged here with verified commands and output.
 
 ---
 
-### 2026-10-10 ARCH-001 â€” Production Codebase Architecture & Modular Refactoring
+### 2026-10-10 ARCH-001 — Production Codebase Architecture & Modular Refactoring
 - **Agent:** Chief Architect / Go Backend Engineer / Frontend Engineer
 - **Files changed:**
   - `.editorconfig` (multi-language team formatting configuration)
@@ -647,7 +647,7 @@ All completed work is logged here with verified commands and output.
 
 ---
 
-### 2026-10-10 SETUP-001 â€” Production Git & GitHub Repository Initialization
+### 2026-10-10 SETUP-001 — Production Git & GitHub Repository Initialization
 - **Agent:** Chief Architect / Supervisor
 - **Files changed:**
   - `README.md`, `.gitignore`, `.env.example`, `docker-compose.yml`, `LICENSE`
@@ -656,7 +656,7 @@ All completed work is logged here with verified commands and output.
 - **Summary:** Initialized isolated Git repository on `main`. Connected to official GitHub remote `https://github.com/varshith-dev/HACKWAYS-IN.git`. Established production branching strategy (`main`, `develop`, `feature/*`, `fix/*`, `release/*`, `hotfix/*`). Configured GitHub metadata, CI workflows, and complete engineering documentation.
 - **Review status:** Supervisor verified
 
-### 2026-10-21 AUTH-008 â€” Google OAuth bridge (PR #15)
+### 2026-10-21 AUTH-008 — Google OAuth bridge (PR #15)
 - **Branch:** `feature/google-oauth` (based on `main`; PR targets `develop`)
 - **Files changed:** Go global-backend OAuth handlers/config, `000008_google_oauth` migration and sqlc queries, attendee/organizer sign-in and callback pages, production Compose/env templates, Google OAuth documentation.
 - **Summary:** Added a state and PKCE protected Google authorization-code flow that links verified provider identities to existing PostgreSQL users and exchanges a short-lived one-time code for the existing host-only Hackways session cookie. Better Auth remains unconfigured.
