@@ -18,6 +18,16 @@ func TestGoogleUserInfoUsesCurrentVerifiedEmailField(t *testing.T) {
 	}
 }
 
+func TestGoogleUserInfoAcceptsLegacyVerifiedEmailField(t *testing.T) {
+	var info googleUserInfo
+	if err := json.Unmarshal([]byte(`{"sub":"google-sub","email":"user@example.com","verified_email":true}`), &info); err != nil {
+		t.Fatalf("decode legacy Google user info: %v", err)
+	}
+	if !info.VerifiedEmail {
+		t.Fatal("expected legacy verified_email=true to remain compatible")
+	}
+}
+
 func testGoogleHandler() *Handler {
 	return NewHandler(nil, false, GoogleOAuthConfig{
 		ClientID: "client-id", ClientSecret: "client-secret",

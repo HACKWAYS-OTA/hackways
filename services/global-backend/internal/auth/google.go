@@ -54,11 +54,25 @@ func (c GoogleOAuthConfig) oauthConfig() *oauth2.Config {
 }
 
 type googleUserInfo struct {
-	Sub           string `json:"sub"`
-	Email         string `json:"email"`
-	VerifiedEmail bool   `json:"email_verified"`
-	Name          string `json:"name"`
-	Picture       string `json:"picture"`
+	Sub                 string `json:"sub"`
+	Email               string `json:"email"`
+	VerifiedEmail       bool   `json:"email_verified"`
+	LegacyVerifiedEmail bool   `json:"verified_email,omitempty"`
+	Name                string `json:"name"`
+	Picture             string `json:"picture"`
+}
+
+// UnmarshalJSON accepts Google's current email_verified field and the legacy
+// verified_email spelling returned by older userinfo clients.
+func (i *googleUserInfo) UnmarshalJSON(data []byte) error {
+	type alias googleUserInfo
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*i = googleUserInfo(decoded)
+	i.VerifiedEmail = decoded.VerifiedEmail || decoded.LegacyVerifiedEmail
+	return nil
 }
 
 // GoogleStart redirects the browser to Google's consent screen.
