@@ -829,3 +829,10 @@ All completed work is logged here with verified commands and output.
 - Added pinned jsqr 1.4.0 for local camera/image decoding. Camera tracks are bounded and stopped on closing/hidden tabs, late permission results are discarded, and camera start can be cancelled. No video/image upload or external scanner service.
 - Local Go suites, vet, SQL compile, frontend type/lint and repository source checks passed. Real isolated PostgreSQL/Go HTTP journeys passed for form reads, invitation matching, rendered event/register/builder/invitation/scanner pages, owner approval and pass issuance. An actual backend PNG decoded through jsQR, checked in with HTTP 200, persisted as scanned and was rejected on repeat with 409. No guest email was sent by these checks.
 - Computer-use review found no connected browser; interactive desktop/mobile camera/step navigation was not exercised. The browser implementation was checked through compilation and rendered/API contracts; a physical camera check remains outstanding. Release CI and deployment are pending.
+
+
+### Admin viewport containment correction
+
+- Anchored the authenticated console frame to the viewport and gave both navigation and content bounded grid tracks. This prevents document scrolling from carrying the sidebar above the screen or leaving a blank lower viewport. Small screens retain bounded navigation above independently scrolling content.
+- Authentication pages retain their own document layout. Shared fonts, Hugeicons, hidden scrollbar chrome and dedicated routes are unchanged.
+- Verification: admin TypeScript/lint and release CI are recorded with this release; interactive browser inspection remains unavailable in this session.
