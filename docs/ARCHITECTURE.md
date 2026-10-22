@@ -24,6 +24,10 @@ The production topology has four independently deployed Next.js applications and
 
 The four frontend Dockerfiles install the root locked workspace with `npm ci`, build the shared API client, and then independently compile/package their target app. CI image construction is off the production VM; registry availability and standalone runtime contents must be verified for the proposed release.
 
+## Canonical browser URLs
+
+The main application is served on `hackways.in` alongside public-web, with event management at `/manage`. Nginx routes reserved app paths to core-web and `/manage` to organizer-web. Core assets use `/_core/_next/`; public assets use `/_next/`; management retains `/manage/_next/`. The independent services remain intact. Legacy app and organizer hosts only redirect. Auth and admin retain their dedicated hosts.
+
 ## Runtime request paths
 
 ```text
