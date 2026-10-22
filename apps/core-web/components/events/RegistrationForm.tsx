@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Icon } from '@/components/ui/Icon';
 import { fetchApi, ApiClientError } from '@/lib/api';
 import { eventDate, eventPath, eventZone, registrationState } from '@/lib/events';
-import { RefreshEvent } from './RefreshEvent';
+
 import { RegistrationQuestions } from './RegistrationQuestions';
 
 export function RegistrationForm({ event, user, initialForm }: { event: Event; user: User | null; initialForm: RegistrationFormConfig }) {
@@ -31,7 +31,7 @@ export function RegistrationForm({ event, user, initialForm }: { event: Event; u
   const awaitingApproval = confirmed?.status === 'pending_approval';
   const waitlisted = confirmed?.status === 'waitlisted';
   const joiningWaitlist = state.label === 'Join waiting list';
-  const heading = <header className="event-detail-heading"><h1>{confirmed ? waitlisted ? 'You’re on the waiting list.' : awaitingApproval ? 'Your application is submitted.' : 'Your place is reserved.' : joiningWaitlist ? 'Join the waiting list.' : event.registration_mode === 'approval' ? 'Request a place.' : 'Reserve your place.'}</h1><p className="registration-event-title">{event.title}</p><p className="registration-event-date">{eventDate(event, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</p></header>;
+  const heading = <header className="event-detail-heading"><h1>{confirmed ? waitlisted ? 'Youâ€™re on the waiting list.' : awaitingApproval ? 'Your application is submitted.' : 'Your place is reserved.' : joiningWaitlist ? 'Join the waiting list.' : event.registration_mode === 'approval' ? 'Request a place.' : 'Reserve your place.'}</h1><p className="registration-event-title">{event.title}</p><p className="registration-event-date">{eventDate(event, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</p></header>;
   useEffect(() => { if (error || confirmed) feedback.current?.focus({ preventScroll: true }); }, [error, confirmed]);
 
   async function reloadQuestions() {
@@ -63,7 +63,7 @@ export function RegistrationForm({ event, user, initialForm }: { event: Event; u
   }
 
   if (confirmed) return <>{heading}<div className="registration-success registration-page-success" ref={feedback} tabIndex={-1} role="status"><span className="success-icon"><Icon name="check" size={32} /></span><Badge variant={awaitingApproval || waitlisted ? 'warning' : 'success'}>{waitlisted ? 'On the waiting list' : awaitingApproval ? 'Awaiting organizer approval' : 'RSVP confirmed'}</Badge>{waitlisted && <p>No place is reserved yet. Check My events for an offer when a place becomes available.</p>}{awaitingApproval && <p>The organizer will review your application. A place has not been reserved yet.</p>}{(confirmed.guest_name || confirmed.guest_email) && <p className="confirmed-attendee">{awaitingApproval || waitlisted ? 'Submitted for' : 'Reserved for'} {confirmed.guest_name || confirmed.guest_email}</p>}<div className="reservation-reference"><span>Registration reference</span><span>{confirmed.public_code}</span></div><Link className="app-button app-button-primary" href={eventPath(event)}>Back to event <Icon name="arrow" size={17} /></Link><Link className="detail-text-link" href="/my-events">View my events</Link></div></>;
-  if (state.disabled) return <>{heading}<section className="event-registration-panel"><h2>{state.label}</h2><p>Registration is not available at the moment.</p><RefreshEvent /><Link className="detail-text-link" href={eventPath(event)}>Back to event details</Link></section></>;
+  if (state.disabled) return <>{heading}<section className="event-registration-panel"><h2>{state.label}</h2><p>Registration is not available at the moment.</p><Link className="detail-text-link" href={eventPath(event)}>Back to event details</Link></section></>;
   if (!user && (event.allow_guest === false || event.registration_mode === "approval" || joiningWaitlist)) return <>{heading}<section className="event-registration-panel"><h2>Sign in to join.</h2><p>This event requires an account so you can keep track of your registration.</p><Link className="app-button app-button-primary" href={`/login?next=${encodeURIComponent(eventPath(event) + "/register")}`}>Sign in or create an account</Link></section></>;
   return <>{heading}<form onSubmit={submit} className="registration-form event-page-form"><p className="registration-intro">{user ? `Registering as ${user.display_name} (${user.email}).` : <>Share your details with the event organizer. <Link className="quiet-link" href={`/login?next=${encodeURIComponent(eventPath(event) + "/register")}`}>Sign in to keep this in My events</Link></>}</p>{error && <div className="form-alert" role="alert" ref={feedback} tabIndex={-1}><Icon name="alert" size={19} /><p>{error}</p></div>}
     {needsReload && <button className="app-button app-button-outline" type="button" disabled={loading} onClick={async () => { setLoading(true); try { await reloadQuestions(); setError('Questions updated. Review your answers before submitting again.'); } catch (err) { setError(err instanceof Error ? err.message : 'The latest questions could not be loaded.'); } finally { setLoading(false); } }}>Reload questions</button>}

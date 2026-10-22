@@ -9,7 +9,8 @@ export function safeAdminDestination(requested = '/') {
   if (requested.includes('\\') || requested.includes('#') || /[\u0000-\u001f\u007f]/.test(requested)) return '/';
   const path = requested.split('?')[0];
   return path === '/' || adminModuleOrder.some(name => path === `/${name}`
-    || (name === 'audit' ? new RegExp(`^/${name}/details/[1-9][0-9]*$`) : new RegExp(`^/${name}/details/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)).test(path)) ? requested : '/';
+    || new RegExp(`^/${name}/details/[1-9][0-9]*$`).test(path)
+    || name !== 'audit' && new RegExp(`^/${name}/details/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).test(path)) ? requested : '/';
 }
 
 // React cache deduplicates within this render only. Permissions are never shared

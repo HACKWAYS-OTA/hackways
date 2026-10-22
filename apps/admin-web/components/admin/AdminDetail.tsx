@@ -55,8 +55,7 @@ const groups: Record<AdminModule, Group[]> = {
   ] }],
   audit: [{ title: 'Recorded action', fields: [
     { key: 'action', label: 'Action' }, { key: 'actor_name', label: 'Changed by', resource: 'people', idKey: 'actor_user_id' },
-    { key: 'event_title', label: 'Event', resource: 'events', idKey: 'event_id' }, { key: 'entity_id', label: 'Affected record' },
-    { key: 'request_id', label: 'Request reference' },
+    { key: 'event_title', label: 'Event', resource: 'events', idKey: 'event_id' },
   ] }],
 };
 
@@ -73,9 +72,11 @@ function display(value: AdminCell | undefined, field: Field): string {
 function valueNode(record: AdminRecord, field: Field): ReactNode {
   const value = record[field.key];
   const valueText = display(value, field);
-  const target = record[field.idKey || field.key];
-  if (field.resource && typeof target === 'string' && /^[0-9a-f-]{36}$/i.test(target)) return <a className="quiet-link" href={detailPath(field.resource, target)}>{field.idKey ? valueText : 'View record'}<Icon name="arrow" size={15} /></a>;
-  if (field.url && typeof value === 'string' && /^https:\/\//i.test(value)) return <a className="quiet-link admin-detail-url" href={value} rel="noreferrer" target="_blank">{value}<Icon name="external" size={15} /></a>;
+  const referenceKey = field.key === 'checked_in_by' ? 'checked_in_by_reference' : (field.idKey || field.key).replace(/_id$/, '_reference');
+  const reference = record[referenceKey];
+  if (field.resource && typeof reference === 'number' && Number.isSafeInteger(reference) && reference > 0) return <a className="quiet-link" href={detailPath(field.resource, reference)}>{field.idKey ? valueText : `#${reference}`}<Icon name="arrow" size={15} /></a>;
+  if (field.resource && !field.idKey) return 'Not provided';
+  if (field.url && typeof value === 'string' && /^https:\/\//i.test(value)) return <a className="quiet-link admin-detail-url" href={value} rel="noreferrer" target="_blank">{field.key === 'url' ? 'Open image' : 'Open link'}<Icon name="external" size={15} /></a>;
   return valueText;
 }
 
@@ -87,7 +88,14 @@ function titleFor(resource: AdminModule, record: AdminRecord) {
 
 function auditMetadata(value: AdminCell | undefined) {
   if (typeof value !== 'string') return '';
-  try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+  try {
+    return JSON.stringify(JSON.parse(value), (key: string, item: unknown) => {
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (/^(?:id|.*_ids?)$/.test(key) && (typeof item === 'string' && uuid.test(item)
+        || Array.isArray(item) && item.every(entry => typeof entry === 'string' && uuid.test(entry)))) return undefined;
+      return item;
+    }, 2);
+  } catch { return ''; }
 }
 
 export function AdminDetail({ resource, detail }: { resource: AdminModule; detail: DetailResponse }) {
@@ -96,10 +104,10 @@ export function AdminDetail({ resource, detail }: { resource: AdminModule; detai
   const description = typeof record.description === 'string' ? record.description : '';
   const hasPrimaryActions = ['people', 'spaces', 'storage'].includes(resource)
     || (['events', 'moderation'].includes(resource) && (record.editable === true || record.status !== 'cancelled'));
-  const recordFields: Field[] = [{ key: 'id', label: 'Record ID' }, { key: 'created_at', label: 'Created', date: true }, { key: 'updated_at', label: 'Last changed', date: true }];
+  const recordFields: Field[] = [{ key: 'reference', label: 'Reference' }, { key: 'created_at', label: 'Created', date: true }, { key: 'updated_at', label: 'Last changed', date: true }];
   return <>
-    <a className="quiet-link admin-detail-back" href={`/${resource}`}>Back to {adminModules[resource].label.toLowerCase()}</a>
-    <div className="admin-page-heading admin-detail-heading"><h1>{titleFor(resource, record)}</h1><a className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.id, related.section, related.offset, kind)}><Icon name="reload" size={17} />Refresh</a></div>
+    <a className="app-button app-button-outline app-button-sm admin-detail-back" href={`/${resource}`}><Icon name="back" size={17} />Back</a>
+    <div className="admin-page-heading admin-detail-heading"><h1>{titleFor(resource, record)}</h1></div>
     {description && <p className="admin-detail-description">{description}</p>}
     {(hasPrimaryActions || related.tabs.length > 0) && <nav className="admin-detail-shortcuts" aria-label="On this record">
       {hasPrimaryActions && <SectionJumpButton targetId="record-actions" className="quiet-link">Edit &amp; actions<Icon name="arrow" size={15} /></SectionJumpButton>}
@@ -108,7 +116,7 @@ export function AdminDetail({ resource, detail }: { resource: AdminModule; detai
     <div className="admin-detail-layout">
       <div className="admin-detail-facts">
         {groups[resource].map(group => <section key={group.title} className="admin-detail-group"><h2>{group.title}</h2><dl>{group.fields.map(field => <div key={field.key}><dt>{field.label}</dt><dd>{valueNode(record, field)}</dd></div>)}</dl></section>)}
-        {resource === 'storage' && isAdminModule(String(record.parent_resource)) && <p className="admin-detail-parent"><a className="quiet-link" href={detailPath(record.parent_resource as AdminModule, record.id)}>View attached {record.parent_resource === 'events' ? 'event' : 'profile'}<Icon name="arrow" size={16} /></a></p>}
+        {resource === 'storage' && isAdminModule(String(record.parent_resource)) && <p className="admin-detail-parent"><a className="quiet-link" href={detailPath(record.parent_resource as AdminModule, record.reference)}>View attached {record.parent_resource === 'events' ? 'event' : 'profile'}<Icon name="arrow" size={16} /></a></p>}
         {resource === 'audit' && <section className="admin-detail-group"><h2>Change details</h2><pre className="admin-audit-metadata">{auditMetadata(record.metadata)}</pre></section>}
         <section className="admin-detail-group"><h2>Record</h2><dl>{recordFields.filter(field => record[field.key] !== undefined).map(field => <div key={field.key}><dt>{field.label}</dt><dd>{valueNode(record, field)}</dd></div>)}</dl></section>
       </div>
@@ -116,15 +124,15 @@ export function AdminDetail({ resource, detail }: { resource: AdminModule; detai
     </div>
     {related.tabs.length > 0 && <section className="admin-related" id="record-related">
       <h2>Related records</h2>
-      <nav className="admin-detail-tabs" aria-label="Related records">{related.tabs.map(tab => <Link key={tab.key} href={relatedPath(resource, record.id, tab.key, 0, kind)} scroll={false} prefetch={false} aria-current={related.section === tab.key ? 'page' : undefined}>{tab.label}</Link>)}</nav>
+      <nav className="admin-detail-tabs" aria-label="Related records">{related.tabs.map(tab => <Link key={tab.key} href={relatedPath(resource, record.reference, tab.key, 0, kind)} scroll={false} prefetch={false} aria-current={related.section === tab.key ? 'page' : undefined}>{tab.label}</Link>)}</nav>
       {related.rows.length === 0 ? <p className="admin-related-empty">No records in this view.</p> : <div className="admin-table-scroll" role="region" aria-label={`${related.tabs.find(tab => tab.key === related.section)?.label || 'Related records'} table`} tabIndex={0}><table className="admin-table">
         <caption className="sr-only">Related records</caption><thead><tr><th scope="col">Record</th><th scope="col">Details</th><th scope="col">Status</th><th scope="col">When</th>{related.section === 'sessions' && <th scope="col">Action</th>}</tr></thead>
-        <tbody>{related.rows.map(row => <tr key={`${row.resource}-${row.id}`}><th scope="row">{isAdminModule(row.resource) ? <a className="admin-record-link" href={detailPath(row.resource, row.id)}>{row.label}</a> : row.label}</th><td>{row.detail}</td><td>{row.status.replaceAll('_', ' ')}</td><td>{display(row.occurred_at, { key: 'occurred_at', label: 'When', date: true })}</td>{related.section === 'sessions' && <td>{row.status === 'active' ? <SessionRevoke person={record} sessionID={row.id} /> : row.status === 'current' ? 'This session' : ''}</td>}</tr>)}</tbody>
+        <tbody>{related.rows.map(row => <tr key={`${row.resource}-${row.reference}`}><th scope="row">{isAdminModule(row.resource) ? <a className="admin-record-link" href={detailPath(row.resource, row.reference)}>{row.label}</a> : row.label}</th><td>{row.detail}</td><td>{row.status.replaceAll('_', ' ')}</td><td>{display(row.occurred_at, { key: 'occurred_at', label: 'When', date: true })}</td>{related.section === 'sessions' && <td>{row.status === 'active' ? <SessionRevoke person={record} sessionID={row.reference} /> : row.status === 'current' ? 'This session' : ''}</td>}</tr>)}</tbody>
       </table></div>}
       <nav className="admin-pagination" aria-label="Related records pagination">
-        {related.offset > 0 && <Link className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.id, related.section, Math.max(0, related.offset - 20), kind)} scroll={false} prefetch={false}>Previous</Link>}
+        {related.offset > 0 && <Link className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.reference, related.section, Math.max(0, related.offset - 20), kind)} scroll={false} prefetch={false}>Previous</Link>}
         <span>Page {Math.floor(related.offset / 20) + 1}</span>
-        {related.has_next && <Link className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.id, related.section, related.offset + 20, kind)} scroll={false} prefetch={false}>Next</Link>}
+        {related.has_next && <Link className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.reference, related.section, related.offset + 20, kind)} scroll={false} prefetch={false}>Next</Link>}
       </nav>
     </section>}
   </>;

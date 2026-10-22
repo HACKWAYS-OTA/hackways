@@ -29,6 +29,7 @@ type Querier interface {
 	AdminPersonMessages(ctx context.Context, arg AdminPersonMessagesParams) ([]AdminPersonMessagesRow, error)
 	AdminPersonRegistrations(ctx context.Context, arg AdminPersonRegistrationsParams) ([]AdminPersonRegistrationsRow, error)
 	AdminPersonSessions(ctx context.Context, arg AdminPersonSessionsParams) ([]AdminPersonSessionsRow, error)
+	AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error)
 	AdminRetryMessage(ctx context.Context, arg AdminRetryMessageParams) (pgtype.UUID, error)
 	AdminRevokeAccess(ctx context.Context, userID pgtype.UUID) (int64, error)
 	AdminRevokeAdminSessions(ctx context.Context, userID pgtype.UUID) error

@@ -12,22 +12,25 @@ import (
 )
 
 const adminAuditDetail = `-- name: AdminAuditDetail :one
-SELECT a.id,a.action,a.actor_user_id,COALESCE(u.display_name,'System')::text AS actor_name,a.event_id,COALESCE(e.title,'')::text AS event_title,
+SELECT a.id,a.id AS reference,a.action,a.actor_user_id,u.admin_reference AS actor_user_reference,COALESCE(u.display_name,'System')::text AS actor_name,a.event_id,e.admin_reference AS event_reference,COALESCE(e.title,'')::text AS event_title,
 a.entity_id,a.request_id,a.metadata::text AS metadata,a.created_at
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id LEFT JOIN events e ON e.id=a.event_id WHERE a.id=$1
 `
 
 type AdminAuditDetailRow struct {
-	ID          int64              `json:"id"`
-	Action      string             `json:"action"`
-	ActorUserID pgtype.UUID        `json:"actor_user_id"`
-	ActorName   string             `json:"actor_name"`
-	EventID     pgtype.UUID        `json:"event_id"`
-	EventTitle  string             `json:"event_title"`
-	EntityID    pgtype.UUID        `json:"entity_id"`
-	RequestID   string             `json:"request_id"`
-	Metadata    string             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID                 int64              `json:"id"`
+	Reference          int64              `json:"reference"`
+	Action             string             `json:"action"`
+	ActorUserID        pgtype.UUID        `json:"actor_user_id"`
+	ActorUserReference pgtype.Int8        `json:"actor_user_reference"`
+	ActorName          string             `json:"actor_name"`
+	EventID            pgtype.UUID        `json:"event_id"`
+	EventReference     pgtype.Int8        `json:"event_reference"`
+	EventTitle         string             `json:"event_title"`
+	EntityID           pgtype.UUID        `json:"entity_id"`
+	RequestID          string             `json:"request_id"`
+	Metadata           string             `json:"metadata"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) AdminAuditDetail(ctx context.Context, id int64) (AdminAuditDetailRow, error) {
@@ -35,10 +38,13 @@ func (q *Queries) AdminAuditDetail(ctx context.Context, id int64) (AdminAuditDet
 	var i AdminAuditDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.Action,
 		&i.ActorUserID,
+		&i.ActorUserReference,
 		&i.ActorName,
 		&i.EventID,
+		&i.EventReference,
 		&i.EventTitle,
 		&i.EntityID,
 		&i.RequestID,
@@ -77,7 +83,7 @@ func (q *Queries) AdminEditEvent(ctx context.Context, arg AdminEditEventParams) 
 }
 
 const adminEntityHistory = `-- name: AdminEntityHistory :many
-SELECT a.id::text AS id,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
+SELECT a.id::text AS id,a.id::text AS reference,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id WHERE a.entity_id=$1 ORDER BY a.id DESC LIMIT $2 OFFSET $3
 `
 
@@ -89,6 +95,7 @@ type AdminEntityHistoryParams struct {
 
 type AdminEntityHistoryRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -107,6 +114,7 @@ func (q *Queries) AdminEntityHistory(ctx context.Context, arg AdminEntityHistory
 		var i AdminEntityHistoryRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -124,18 +132,20 @@ func (q *Queries) AdminEntityHistory(ctx context.Context, arg AdminEntityHistory
 }
 
 const adminEventDetail = `-- name: AdminEventDetail :one
-SELECT e.id,e.organizer_id,o.user_id AS host_user_id,o.display_name AS host_name,e.title,e.slug,e.description,
+SELECT e.id,e.admin_reference AS reference,e.organizer_id,o.user_id AS host_user_id,(SELECT admin_reference FROM users WHERE id=o.user_id) AS host_user_reference,o.display_name AS host_name,e.title,e.slug,e.description,
 e.status::text AS status,e.format::text AS format,e.starts_at,e.ends_at,e.timezone,e.capacity,e.current_rsvp_count,e.held_rsvp_count,
 e.location_name,e.location_address,e.online_url,e.visibility,e.registration_mode,e.allow_guest,e.waitlist_enabled,e.offer_minutes,
-e.registration_opens_at,e.registration_closes_at,COALESCE(split_part(split_part(e.banner_url,'?',1),'#',1),'')::text AS banner_url,e.space_id,e.revision,e.created_at,e.updated_at,
+e.registration_opens_at,e.registration_closes_at,COALESCE(split_part(split_part(e.banner_url,'?',1),'#',1),'')::text AS banner_url,e.space_id,linked_space.admin_reference AS space_reference,e.revision,e.created_at,e.updated_at,
 (e.status!='cancelled' AND e.starts_at>clock_timestamp())::boolean AS editable
-FROM events e JOIN organizers o ON o.id=e.organizer_id WHERE e.id=$1 AND e.deleted_at IS NULL
+FROM events e JOIN organizers o ON o.id=e.organizer_id LEFT JOIN spaces linked_space ON linked_space.id=e.space_id WHERE e.id=$1 AND e.deleted_at IS NULL
 `
 
 type AdminEventDetailRow struct {
 	ID                   pgtype.UUID        `json:"id"`
+	Reference            int64              `json:"reference"`
 	OrganizerID          pgtype.UUID        `json:"organizer_id"`
 	HostUserID           pgtype.UUID        `json:"host_user_id"`
+	HostUserReference    int64              `json:"host_user_reference"`
 	HostName             string             `json:"host_name"`
 	Title                string             `json:"title"`
 	Slug                 string             `json:"slug"`
@@ -160,6 +170,7 @@ type AdminEventDetailRow struct {
 	RegistrationClosesAt pgtype.Timestamptz `json:"registration_closes_at"`
 	BannerUrl            string             `json:"banner_url"`
 	SpaceID              pgtype.UUID        `json:"space_id"`
+	SpaceReference       pgtype.Int8        `json:"space_reference"`
 	Revision             int64              `json:"revision"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
@@ -171,8 +182,10 @@ func (q *Queries) AdminEventDetail(ctx context.Context, id pgtype.UUID) (AdminEv
 	var i AdminEventDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.OrganizerID,
 		&i.HostUserID,
+		&i.HostUserReference,
 		&i.HostName,
 		&i.Title,
 		&i.Slug,
@@ -197,6 +210,7 @@ func (q *Queries) AdminEventDetail(ctx context.Context, id pgtype.UUID) (AdminEv
 		&i.RegistrationClosesAt,
 		&i.BannerUrl,
 		&i.SpaceID,
+		&i.SpaceReference,
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -206,7 +220,7 @@ func (q *Queries) AdminEventDetail(ctx context.Context, id pgtype.UUID) (AdminEv
 }
 
 const adminEventHistory = `-- name: AdminEventHistory :many
-SELECT a.id::text AS id,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
+SELECT a.id::text AS id,a.id::text AS reference,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id WHERE a.event_id=$1 ORDER BY a.id DESC LIMIT $2 OFFSET $3
 `
 
@@ -218,6 +232,7 @@ type AdminEventHistoryParams struct {
 
 type AdminEventHistoryRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -236,6 +251,7 @@ func (q *Queries) AdminEventHistory(ctx context.Context, arg AdminEventHistoryPa
 		var i AdminEventHistoryRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -253,7 +269,7 @@ func (q *Queries) AdminEventHistory(ctx context.Context, arg AdminEventHistoryPa
 }
 
 const adminEventRegistrations = `-- name: AdminEventRegistrations :many
-SELECT r.id::text AS id,r.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
+SELECT r.id::text AS id,r.admin_reference::text AS reference,r.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=$1 ORDER BY r.registered_at DESC,r.id LIMIT $2 OFFSET $3
 `
 
@@ -265,6 +281,7 @@ type AdminEventRegistrationsParams struct {
 
 type AdminEventRegistrationsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -283,6 +300,7 @@ func (q *Queries) AdminEventRegistrations(ctx context.Context, arg AdminEventReg
 		var i AdminEventRegistrationsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -300,7 +318,7 @@ func (q *Queries) AdminEventRegistrations(ctx context.Context, arg AdminEventReg
 }
 
 const adminEventTickets = `-- name: AdminEventTickets :many
-SELECT t.id::text AS id,t.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'tickets'::text AS resource,t.status,t.created_at AS occurred_at
+SELECT t.id::text AS id,t.admin_reference::text AS reference,t.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'tickets'::text AS resource,t.status,t.created_at AS occurred_at
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=$1 ORDER BY t.created_at DESC,t.id LIMIT $2 OFFSET $3
 `
 
@@ -312,6 +330,7 @@ type AdminEventTicketsParams struct {
 
 type AdminEventTicketsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -330,6 +349,7 @@ func (q *Queries) AdminEventTickets(ctx context.Context, arg AdminEventTicketsPa
 		var i AdminEventTicketsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -369,9 +389,9 @@ func (q *Queries) AdminOrganizerByID(ctx context.Context, id pgtype.UUID) (Organ
 }
 
 const adminRegistrationDetail = `-- name: AdminRegistrationDetail :one
-SELECT r.id,r.public_code,r.event_id,e.title AS event_title,r.user_id,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT r.id,r.admin_reference AS reference,r.public_code,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(u.display_name,r.guest_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,r.status::text AS status,r.notes,r.registered_at,r.updated_at,r.offer_expires_at,
-r.approval_expires_at,r.transfer_count,t.id AS ticket_id,t.status AS ticket_status,
+r.approval_expires_at,r.transfer_count,t.id AS ticket_id,t.admin_reference AS ticket_reference,t.status AS ticket_status,
 (e.status='published' AND e.starts_at>clock_timestamp())::boolean AS editable,
 (e.status='published' AND e.starts_at>clock_timestamp() AND (e.registration_opens_at IS NULL OR e.registration_opens_at<=clock_timestamp())
  AND (e.registration_closes_at IS NULL OR e.registration_closes_at>clock_timestamp()))::boolean AS registration_open
@@ -380,10 +400,13 @@ FROM rsvps r JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_i
 
 type AdminRegistrationDetailRow struct {
 	ID                pgtype.UUID        `json:"id"`
+	Reference         int64              `json:"reference"`
 	PublicCode        string             `json:"public_code"`
 	EventID           pgtype.UUID        `json:"event_id"`
+	EventReference    int64              `json:"event_reference"`
 	EventTitle        string             `json:"event_title"`
 	UserID            pgtype.UUID        `json:"user_id"`
+	UserReference     pgtype.Int8        `json:"user_reference"`
 	Name              string             `json:"name"`
 	Email             string             `json:"email"`
 	Status            string             `json:"status"`
@@ -394,6 +417,7 @@ type AdminRegistrationDetailRow struct {
 	ApprovalExpiresAt pgtype.Timestamptz `json:"approval_expires_at"`
 	TransferCount     int32              `json:"transfer_count"`
 	TicketID          pgtype.UUID        `json:"ticket_id"`
+	TicketReference   pgtype.Int8        `json:"ticket_reference"`
 	TicketStatus      pgtype.Text        `json:"ticket_status"`
 	Editable          bool               `json:"editable"`
 	RegistrationOpen  bool               `json:"registration_open"`
@@ -404,10 +428,13 @@ func (q *Queries) AdminRegistrationDetail(ctx context.Context, id pgtype.UUID) (
 	var i AdminRegistrationDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.PublicCode,
 		&i.EventID,
+		&i.EventReference,
 		&i.EventTitle,
 		&i.UserID,
+		&i.UserReference,
 		&i.Name,
 		&i.Email,
 		&i.Status,
@@ -418,6 +445,7 @@ func (q *Queries) AdminRegistrationDetail(ctx context.Context, id pgtype.UUID) (
 		&i.ApprovalExpiresAt,
 		&i.TransferCount,
 		&i.TicketID,
+		&i.TicketReference,
 		&i.TicketStatus,
 		&i.Editable,
 		&i.RegistrationOpen,
@@ -425,27 +453,51 @@ func (q *Queries) AdminRegistrationDetail(ctx context.Context, id pgtype.UUID) (
 	return i, err
 }
 
+const adminResolveReferenceID = `-- name: AdminResolveReferenceID :one
+SELECT id FROM events WHERE $1::text IN ('events','moderation') AND admin_reference=$2::bigint
+UNION ALL
+SELECT id FROM spaces WHERE $1::text='spaces' AND admin_reference=$2::bigint
+UNION ALL
+SELECT id FROM rsvps WHERE $1::text='registrations' AND admin_reference=$2::bigint
+UNION ALL
+SELECT id FROM tickets WHERE $1::text='tickets' AND admin_reference=$2::bigint
+`
+
+type AdminResolveReferenceIDParams struct {
+	Resource  string `json:"resource"`
+	Reference int64  `json:"reference"`
+}
+
+func (q *Queries) AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminResolveReferenceID, arg.Resource, arg.Reference)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const adminSpaceDetail = `-- name: AdminSpaceDetail :one
-SELECT s.id,s.organizer_id,o.user_id AS owner_user_id,o.display_name AS owner_name,s.name,s.slug,s.description,s.guidelines,s.website_url,
+SELECT s.id,s.admin_reference AS reference,s.organizer_id,o.user_id AS owner_user_id,(SELECT admin_reference FROM users WHERE id=o.user_id) AS owner_user_reference,o.display_name AS owner_name,s.name,s.slug,s.description,s.guidelines,s.website_url,
 s.status,s.revision,s.created_at,s.updated_at,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1
 `
 
 type AdminSpaceDetailRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	OrganizerID pgtype.UUID        `json:"organizer_id"`
-	OwnerUserID pgtype.UUID        `json:"owner_user_id"`
-	OwnerName   string             `json:"owner_name"`
-	Name        string             `json:"name"`
-	Slug        string             `json:"slug"`
-	Description string             `json:"description"`
-	Guidelines  string             `json:"guidelines"`
-	WebsiteUrl  string             `json:"website_url"`
-	Status      string             `json:"status"`
-	Revision    int64              `json:"revision"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	MemberCount int64              `json:"member_count"`
+	ID                 pgtype.UUID        `json:"id"`
+	Reference          int64              `json:"reference"`
+	OrganizerID        pgtype.UUID        `json:"organizer_id"`
+	OwnerUserID        pgtype.UUID        `json:"owner_user_id"`
+	OwnerUserReference int64              `json:"owner_user_reference"`
+	OwnerName          string             `json:"owner_name"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        string             `json:"description"`
+	Guidelines         string             `json:"guidelines"`
+	WebsiteUrl         string             `json:"website_url"`
+	Status             string             `json:"status"`
+	Revision           int64              `json:"revision"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	MemberCount        int64              `json:"member_count"`
 }
 
 func (q *Queries) AdminSpaceDetail(ctx context.Context, id pgtype.UUID) (AdminSpaceDetailRow, error) {
@@ -453,8 +505,10 @@ func (q *Queries) AdminSpaceDetail(ctx context.Context, id pgtype.UUID) (AdminSp
 	var i AdminSpaceDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.OrganizerID,
 		&i.OwnerUserID,
+		&i.OwnerUserReference,
 		&i.OwnerName,
 		&i.Name,
 		&i.Slug,
@@ -471,7 +525,7 @@ func (q *Queries) AdminSpaceDetail(ctx context.Context, id pgtype.UUID) (AdminSp
 }
 
 const adminSpaceEvents = `-- name: AdminSpaceEvents :many
-SELECT e.id::text AS id,e.title AS label,e.slug AS detail,'events'::text AS resource,e.status::text AS status,e.starts_at AS occurred_at
+SELECT e.id::text AS id,e.admin_reference::text AS reference,e.title AS label,e.slug AS detail,'events'::text AS resource,e.status::text AS status,e.starts_at AS occurred_at
 FROM events e WHERE e.space_id=$1 AND e.deleted_at IS NULL ORDER BY e.created_at DESC,e.id LIMIT $2 OFFSET $3
 `
 
@@ -483,6 +537,7 @@ type AdminSpaceEventsParams struct {
 
 type AdminSpaceEventsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -501,6 +556,7 @@ func (q *Queries) AdminSpaceEvents(ctx context.Context, arg AdminSpaceEventsPara
 		var i AdminSpaceEventsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -518,7 +574,7 @@ func (q *Queries) AdminSpaceEvents(ctx context.Context, arg AdminSpaceEventsPara
 }
 
 const adminSpaceMembers = `-- name: AdminSpaceMembers :many
-SELECT u.id::text AS id,u.display_name AS label,u.email AS detail,'people'::text AS resource,''::text AS status,m.joined_at AS occurred_at
+SELECT u.id::text AS id,u.admin_reference::text AS reference,u.display_name AS label,u.email AS detail,'people'::text AS resource,''::text AS status,m.joined_at AS occurred_at
 FROM space_memberships m JOIN users u ON u.id=m.user_id WHERE m.space_id=$1 AND u.deleted_at IS NULL ORDER BY m.joined_at DESC,u.id LIMIT $2 OFFSET $3
 `
 
@@ -530,6 +586,7 @@ type AdminSpaceMembersParams struct {
 
 type AdminSpaceMembersRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -548,6 +605,7 @@ func (q *Queries) AdminSpaceMembers(ctx context.Context, arg AdminSpaceMembersPa
 		var i AdminSpaceMembersRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -565,27 +623,32 @@ func (q *Queries) AdminSpaceMembers(ctx context.Context, arg AdminSpaceMembersPa
 }
 
 const adminTicketDetail = `-- name: AdminTicketDetail :one
-SELECT t.id,t.public_code,t.rsvp_id,r.event_id,e.title AS event_title,r.user_id,COALESCE(u.display_name,r.guest_name,'')::text AS name,
-COALESCE(u.email,r.guest_email,'')::text AS email,t.status,t.checked_in_at,t.checked_in_by,t.created_at,t.updated_at,
+SELECT t.id,t.admin_reference AS reference,t.public_code,t.rsvp_id,r.admin_reference AS rsvp_reference,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+COALESCE(u.email,r.guest_email,'')::text AS email,t.status,t.checked_in_at,t.checked_in_by,checked_actor.admin_reference AS checked_in_by_reference,t.created_at,t.updated_at,
 (e.status='published' AND r.status='confirmed' AND t.status='issued' AND clock_timestamp()>=e.starts_at-INTERVAL '24 hours' AND clock_timestamp()<=e.ends_at)::boolean AS can_check_in
-FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id WHERE t.id=$1
+FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id LEFT JOIN users checked_actor ON checked_actor.id=t.checked_in_by WHERE t.id=$1
 `
 
 type AdminTicketDetailRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	PublicCode  string             `json:"public_code"`
-	RsvpID      pgtype.UUID        `json:"rsvp_id"`
-	EventID     pgtype.UUID        `json:"event_id"`
-	EventTitle  string             `json:"event_title"`
-	UserID      pgtype.UUID        `json:"user_id"`
-	Name        string             `json:"name"`
-	Email       string             `json:"email"`
-	Status      string             `json:"status"`
-	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
-	CheckedInBy pgtype.UUID        `json:"checked_in_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	CanCheckIn  bool               `json:"can_check_in"`
+	ID                   pgtype.UUID        `json:"id"`
+	Reference            int64              `json:"reference"`
+	PublicCode           string             `json:"public_code"`
+	RsvpID               pgtype.UUID        `json:"rsvp_id"`
+	RsvpReference        int64              `json:"rsvp_reference"`
+	EventID              pgtype.UUID        `json:"event_id"`
+	EventReference       int64              `json:"event_reference"`
+	EventTitle           string             `json:"event_title"`
+	UserID               pgtype.UUID        `json:"user_id"`
+	UserReference        pgtype.Int8        `json:"user_reference"`
+	Name                 string             `json:"name"`
+	Email                string             `json:"email"`
+	Status               string             `json:"status"`
+	CheckedInAt          pgtype.Timestamptz `json:"checked_in_at"`
+	CheckedInBy          pgtype.UUID        `json:"checked_in_by"`
+	CheckedInByReference pgtype.Int8        `json:"checked_in_by_reference"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	CanCheckIn           bool               `json:"can_check_in"`
 }
 
 func (q *Queries) AdminTicketDetail(ctx context.Context, id pgtype.UUID) (AdminTicketDetailRow, error) {
@@ -593,16 +656,21 @@ func (q *Queries) AdminTicketDetail(ctx context.Context, id pgtype.UUID) (AdminT
 	var i AdminTicketDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.PublicCode,
 		&i.RsvpID,
+		&i.RsvpReference,
 		&i.EventID,
+		&i.EventReference,
 		&i.EventTitle,
 		&i.UserID,
+		&i.UserReference,
 		&i.Name,
 		&i.Email,
 		&i.Status,
 		&i.CheckedInAt,
 		&i.CheckedInBy,
+		&i.CheckedInByReference,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CanCheckIn,

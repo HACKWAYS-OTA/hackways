@@ -105,6 +105,18 @@ func TestAdminRecordActions(t *testing.T) {
 	if _, err = q.AdminPersonDetail(ctx, target.ID); err != nil {
 		t.Fatalf("person SQL contract: %v", err)
 	}
+	legacy := get(path)
+	if legacy.Code != 200 {
+		t.Fatal("legacy internal lookup failed")
+	}
+	targetRecord, err := q.AdminPersonDetail(ctx, target.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path = "/people/" + fmt.Sprint(targetRecord.Reference)
+	if get(path).Code != 200 {
+		t.Fatal("numeric account reference did not resolve")
+	}
 	for _, cookie := range []string{"", auth.DefaultSessionCookie} {
 		if got := request("GET", path, actionBody{}, "", "", "", cookie).Code; got != 401 {
 			t.Fatalf("detail bypass got %d", got)
@@ -190,13 +202,13 @@ func TestAdminRecordActions(t *testing.T) {
 	if got := post("/people/"+uuidText(actor.ID)+"/sessions/"+uuidText(ordinary.ID)+"/revoke", actionBody{UpdatedAt: version(actor.ID)}, "foreign-session-key-1").Code; got != 404 {
 		t.Fatalf("cross-account revoke got %d", got)
 	}
-	if rec := post(path+"/sessions/"+uuidText(ordinary.ID)+"/revoke", actionBody{UpdatedAt: version(target.ID)}, "revoke-session-key-01"); rec.Code != 200 {
+	if rec := post(path+"/sessions/"+fmt.Sprint(ordinary.AdminReference)+"/revoke", actionBody{UpdatedAt: version(target.ID)}, "revoke-session-key-01"); rec.Code != 200 {
 		t.Fatalf("session revoke got %d %s", rec.Code, rec.Body.String())
 	}
 	if _, err = pool.Exec(ctx, "UPDATE users SET avatar_url='https://cdn.hackways.in/media-uploads/ci.png?secret=private' WHERE id=$1", target.ID); err != nil {
 		t.Fatal(err)
 	}
-	assetPath := "/storage/" + uuidText(target.ID)
+	assetPath := "/storage/" + fmt.Sprint(targetRecord.Reference)
 	asset := get(assetPath + "?kind=avatar")
 	if asset.Code != 200 || strings.Contains(asset.Body.String(), "secret=private") {
 		t.Fatal("asset detail leaked URL credentials")
@@ -225,7 +237,7 @@ func TestAdminRecordActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	messagePath := "/messaging/" + uuidText(messageID)
+	messagePath := "/messaging/" + fmt.Sprint(msg.Reference)
 	retry := actionBody{UpdatedAt: msg.UpdatedAt.Time}
 	if rec := post(messagePath+"/retry", retry, "retry-message-key-01"); rec.Code != 200 {
 		t.Fatalf("retry got %d %s", rec.Code, rec.Body.String())

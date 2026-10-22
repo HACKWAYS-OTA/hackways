@@ -3,6 +3,7 @@ package admin
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/global-backend/db"
@@ -14,6 +15,7 @@ import (
 
 type relatedItem struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -39,8 +41,16 @@ func detailError(w http.ResponseWriter, err error) {
 		platform.RespondDatabaseError(w, err)
 	}
 }
-func detailID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+func (h *Handler) detailID(w http.ResponseWriter, r *http.Request, resource, kind string) (pgtype.UUID, bool) {
 	var id pgtype.UUID
+	if reference, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64); err == nil && reference > 0 {
+		resolved, resolveErr := h.queries.AdminResolveReferenceID(r.Context(), db.AdminResolveReferenceIDParams{Reference: reference, Resource: resource, Kind: kind})
+		if resolveErr != nil {
+			detailError(w, resolveErr)
+			return id, false
+		}
+		return resolved, true
+	}
 	if id.Scan(chi.URLParam(r, "id")) != nil || !id.Valid {
 		platform.RespondError(w, 400, "INVALID_ID", "Invalid record ID", nil)
 		return id, false
@@ -92,13 +102,13 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 		var rows []db.AdminPersonEventsRow
 		rows, err = h.queries.AdminPersonEvents(r.Context(), db.AdminPersonEventsParams{UserID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "registrations":
 		var rows []db.AdminPersonRegistrationsRow
 		rows, err = h.queries.AdminPersonRegistrations(r.Context(), db.AdminPersonRegistrationsParams{UserID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "sessions":
 		var rows []db.AdminPersonSessionsRow
@@ -109,19 +119,19 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 		}
 		rows, err = h.queries.AdminPersonSessions(r.Context(), db.AdminPersonSessionsParams{UserID: id, CurrentSessionID: user.SessionID, PageLimit: 21, PageOffset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "messages":
 		var rows []db.AdminPersonMessagesRow
 		rows, err = h.queries.AdminPersonMessages(r.Context(), db.AdminPersonMessagesParams{ID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	default:
 		var rows []db.AdminGlobalEntityHistoryRow
 		rows, err = h.queries.AdminGlobalEntityHistory(r.Context(), db.AdminGlobalEntityHistoryParams{EntityID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	}
 	if err != nil {
@@ -131,11 +141,11 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 	return page, true
 }
 func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
-	id, ok := detailID(w, r)
+	resource := chi.URLParam(r, "resource")
+	id, ok := h.detailID(w, r, resource, r.URL.Query().Get("kind"))
 	if !ok {
 		return
 	}
-	resource := chi.URLParam(r, "resource")
 	switch resource {
 	case "people":
 		row, err := h.queries.AdminPersonDetail(r.Context(), id)

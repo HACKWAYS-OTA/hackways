@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -74,10 +75,6 @@ func (h *Handler) action(action string) http.HandlerFunc {
 				return
 			}
 		}
-		id, ok := detailID(w, r)
-		if !ok {
-			return
-		}
 		user, ok := auth.UserFromContext(r.Context())
 		if !ok {
 			platform.RespondError(w, 401, "ADMIN_AUTH_REQUIRED", "Admin sign in required", nil)
@@ -100,6 +97,18 @@ func (h *Handler) action(action string) http.HandlerFunc {
 		}
 		if !valid {
 			platform.RespondError(w, 400, "INVALID_REQUEST", "Invalid action fields", nil)
+			return
+		}
+		resource, kind := "people", ""
+		if action == "message.retry" {
+			resource = "messaging"
+		}
+		if action == "asset.detach" {
+			resource = "storage"
+			kind = *body.Kind
+		}
+		id, ok := h.detailID(w, r, resource, kind)
+		if !ok {
 			return
 		}
 		canonical, _ := json.Marshal(struct {
@@ -220,7 +229,14 @@ func (h *Handler) action(action string) http.HandlerFunc {
 				}
 			case "session.revoke":
 				var sessionID pgtype.UUID
-				if sessionID.Scan(chi.URLParam(r, "sessionID")) != nil || !sessionID.Valid {
+				rawSession := chi.URLParam(r, "sessionID")
+				if reference, parseErr := strconv.ParseInt(rawSession, 10, 64); parseErr == nil && reference > 0 {
+					sessionID, err = q.AdminResolveReferenceID(r.Context(), db.AdminResolveReferenceIDParams{Reference: reference, Resource: "sessions"})
+					if err != nil {
+						detailError(w, err)
+						return
+					}
+				} else if sessionID.Scan(rawSession) != nil || !sessionID.Valid {
 					platform.RespondError(w, 400, "INVALID_SESSION", "Invalid session ID", nil)
 					return
 				}

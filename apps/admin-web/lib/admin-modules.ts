@@ -1,6 +1,6 @@
 export type AdminModule = 'events' | 'spaces' | 'people' | 'registrations' | 'tickets' | 'moderation' | 'messaging' | 'storage' | 'audit';
 export type AdminCell = string | number | boolean | null;
-export type AdminRecord = { id: string | number } & Record<string, AdminCell>;
+export type AdminRecord = { id: string | number; reference: number } & Record<string, AdminCell>;
 export type AdminColumn = { key: string; label: string; date?: boolean; booleanLabels?: readonly [string, string] };
 export type AdminModuleDefinition = { label: string; engine: 'core' | 'global'; description: string; columns: readonly AdminColumn[]; statuses: readonly string[] };
 export const adminModules: Record<AdminModule, AdminModuleDefinition> = {
@@ -11,7 +11,7 @@ export const adminModules: Record<AdminModule, AdminModuleDefinition> = {
   tickets: { label: 'Tickets', engine: 'core', description: 'Inspect issued tickets and recorded check-ins.', statuses: ['issued','scanned','revoked'], columns: [{key:'public_code',label:'Reference'},{key:'event_title',label:'Event'},{key:'name',label:'Name'},{key:'status',label:'Status'},{key:'checked_in_at',label:'Checked in',date:true}] },
   moderation: { label: 'Moderation', engine: 'core', description: 'Inspect draft and unpublished event records.', statuses: ['draft','unpublished'], columns: [{key:'title',label:'Event'},{key:'host_name',label:'Host'},{key:'host_verified',label:'Host verified',booleanLabels:['No','Yes']},{key:'status',label:'Publication'},{key:'updated_at',label:'Updated',date:true}] },
   messaging: { label: 'Messaging', engine: 'global', description: 'Inspect email delivery records and scheduled attempts.', statuses: ['pending','sent','failed'], columns: [{key:'recipient_email',label:'Recipient'},{key:'template_type',label:'Template'},{key:'status',label:'Delivery'},{key:'retry_count',label:'Retries'},{key:'scheduled_at',label:'Scheduled',date:true},{key:'sent_at',label:'Sent',date:true}] },
-  storage: { label: 'Storage', engine: 'global', description: 'Browse attached event banners and account images.', statuses: ['event_banner','avatar'], columns: [{key:'name',label:'Attached to'},{key:'kind',label:'Type'},{key:'url',label:'Public asset URL'},{key:'updated_at',label:'Updated',date:true}] },
-  audit: { label: 'Audit log', engine: 'core', description: 'Inspect recorded event and registration actions.', statuses: [], columns: [{key:'action',label:'Action'},{key:'actor_name',label:'By'},{key:'event_title',label:'Event'},{key:'entity_id',label:'Record'},{key:'created_at',label:'When',date:true}] },
+  storage: { label: 'Storage', engine: 'global', description: 'Browse attached event banners and account images.', statuses: ['event_banner','avatar'], columns: [{key:'name',label:'Attached to'},{key:'kind',label:'Type'},{key:'updated_at',label:'Updated',date:true}] },
+  audit: { label: 'Audit log', engine: 'core', description: 'Inspect recorded event and registration actions.', statuses: [], columns: [{key:'action',label:'Action'},{key:'actor_name',label:'By'},{key:'event_title',label:'Event'},{key:'created_at',label:'When',date:true}] },
 };
 export const adminModuleOrder: readonly AdminModule[] = ['events','spaces','people','registrations','tickets','moderation','messaging','storage','audit'];

@@ -49,7 +49,7 @@ func (h *Handler) withOwner(w http.ResponseWriter, r *http.Request, ownerID pgty
 }
 func (h *Handler) forEvent(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := detailID(w, r)
+		id, ok := h.detailID(w, r, "events")
 		if !ok {
 			return
 		}
@@ -58,12 +58,12 @@ func (h *Handler) forEvent(next http.HandlerFunc) http.HandlerFunc {
 			detailError(w, err)
 			return
 		}
-		h.withOwner(w, r, event.OrganizerID, next)
+		h.withOwner(w, routeParams(r, id, ""), event.OrganizerID, next)
 	}
 }
 func (h *Handler) forSpace(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := detailID(w, r)
+		id, ok := h.detailID(w, r, "spaces")
 		if !ok {
 			return
 		}
@@ -72,7 +72,7 @@ func (h *Handler) forSpace(next http.HandlerFunc) http.HandlerFunc {
 			detailError(w, err)
 			return
 		}
-		h.withOwner(w, r, space.OrganizerID, next)
+		h.withOwner(w, routeParams(r, id, ""), space.OrganizerID, next)
 	}
 }
 
@@ -89,7 +89,7 @@ func routeParams(r *http.Request, id pgtype.UUID, code string) *http.Request {
 
 func (h *Handler) registrationStatus(next *events.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := detailID(w, r)
+		id, ok := h.detailID(w, r, "registrations")
 		if !ok {
 			return
 		}
@@ -108,7 +108,7 @@ func (h *Handler) registrationStatus(next *events.Handler) http.HandlerFunc {
 }
 func (h *Handler) ticketCheckIn(next *events.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := detailID(w, r)
+		id, ok := h.detailID(w, r, "tickets")
 		if !ok {
 			return
 		}
@@ -147,7 +147,7 @@ func mutationError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) EditEvent(w http.ResponseWriter, r *http.Request) {
-	id, ok := detailID(w, r)
+	id, ok := h.detailID(w, r, "events")
 	if !ok {
 		return
 	}

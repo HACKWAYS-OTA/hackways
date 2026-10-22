@@ -36,7 +36,7 @@ INSERT INTO rsvps (
     NOW()
 )
 ON CONFLICT DO NOTHING
-RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code
+RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference
 `
 
 type CreateRSVPParams struct {
@@ -73,6 +73,7 @@ func (q *Queries) CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, 
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -101,7 +102,7 @@ INSERT INTO email_outbox (
     NOW(),
     NOW()
 )
-RETURNING id, rsvp_id, event_id, recipient_email, recipient_name, template_type, payload_json, status, retry_count, scheduled_at, sent_at, error_message, created_at, updated_at, lease_token, first_sent_at
+RETURNING id, rsvp_id, event_id, recipient_email, recipient_name, template_type, payload_json, status, retry_count, scheduled_at, sent_at, error_message, created_at, updated_at, lease_token, first_sent_at, admin_reference
 `
 
 type EnqueueEmailOutboxParams struct {
@@ -140,6 +141,7 @@ func (q *Queries) EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutbox
 		&i.UpdatedAt,
 		&i.LeaseToken,
 		&i.FirstSentAt,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -204,7 +206,7 @@ func (q *Queries) FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchP
 }
 
 const getRSVPByIDAndUser = `-- name: GetRSVPByIDAndUser :one
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps
 WHERE id = $1 AND user_id = $2
 `
 
@@ -233,6 +235,7 @@ func (q *Queries) GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUser
 		&i.TransferCount,
 		&i.TransferredFrom,
 		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -250,7 +253,7 @@ func (q *Queries) IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error 
 }
 
 const listRSVPsByEvent = `-- name: ListRSVPsByEvent :many
-SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code FROM rsvps
+SELECT id, event_id, user_id, guest_name, guest_email, status, notes, registered_at, cancelled_at, created_at, updated_at, offer_expires_at, approval_expires_at, transfer_count, transferred_from, public_code, admin_reference FROM rsvps
 WHERE event_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -288,6 +291,7 @@ func (q *Queries) ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventPara
 			&i.TransferCount,
 			&i.TransferredFrom,
 			&i.PublicCode,
+			&i.AdminReference,
 		); err != nil {
 			return nil, err
 		}

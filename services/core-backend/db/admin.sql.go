@@ -12,7 +12,7 @@ import (
 )
 
 const adminListAudit = `-- name: AdminListAudit :many
-SELECT a.id,a.action,COALESCE(u.display_name,'System')::text AS actor_name,COALESCE(e.title,'')::text AS event_title,a.entity_id,a.created_at
+SELECT a.id,a.id AS reference,a.action,COALESCE(u.display_name,'System')::text AS actor_name,COALESCE(e.title,'')::text AS event_title,a.entity_id,a.created_at
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id LEFT JOIN events e ON e.id=a.event_id
 WHERE ($1::text='' OR a.action ILIKE '%'||$1||'%' OR COALESCE(e.title,'') ILIKE '%'||$1||'%')
 AND ($2::text='' OR a.action=$2) ORDER BY a.id DESC
@@ -28,6 +28,7 @@ type AdminListAuditParams struct {
 
 type AdminListAuditRow struct {
 	ID         int64              `json:"id"`
+	Reference  int64              `json:"reference"`
 	Action     string             `json:"action"`
 	ActorName  string             `json:"actor_name"`
 	EventTitle string             `json:"event_title"`
@@ -51,6 +52,7 @@ func (q *Queries) AdminListAudit(ctx context.Context, arg AdminListAuditParams) 
 		var i AdminListAuditRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Action,
 			&i.ActorName,
 			&i.EventTitle,
@@ -68,7 +70,7 @@ func (q *Queries) AdminListAudit(ctx context.Context, arg AdminListAuditParams) 
 }
 
 const adminListEvents = `-- name: AdminListEvents :many
-SELECT e.id,e.title,e.slug,e.status::text AS status,o.display_name AS host_name,e.starts_at,e.current_rsvp_count,e.capacity
+SELECT e.id,e.admin_reference AS reference,e.title,e.slug,e.status::text AS status,o.display_name AS host_name,e.starts_at,e.current_rsvp_count,e.capacity
 FROM events e JOIN organizers o ON o.id=e.organizer_id
 WHERE e.deleted_at IS NULL AND ($1::text='' OR e.title ILIKE '%'||$1||'%' OR e.slug ILIKE '%'||$1||'%')
 AND ($2::text='' OR e.status::text=$2) ORDER BY e.created_at DESC,e.id
@@ -84,6 +86,7 @@ type AdminListEventsParams struct {
 
 type AdminListEventsRow struct {
 	ID               pgtype.UUID        `json:"id"`
+	Reference        int64              `json:"reference"`
 	Title            string             `json:"title"`
 	Slug             string             `json:"slug"`
 	Status           string             `json:"status"`
@@ -109,6 +112,7 @@ func (q *Queries) AdminListEvents(ctx context.Context, arg AdminListEventsParams
 		var i AdminListEventsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Title,
 			&i.Slug,
 			&i.Status,
@@ -128,7 +132,7 @@ func (q *Queries) AdminListEvents(ctx context.Context, arg AdminListEventsParams
 }
 
 const adminListModeration = `-- name: AdminListModeration :many
-SELECT e.id,e.title,e.slug,e.status::text AS status,o.display_name AS host_name,o.verified AS host_verified,e.updated_at
+SELECT e.id,e.admin_reference AS reference,e.title,e.slug,e.status::text AS status,o.display_name AS host_name,o.verified AS host_verified,e.updated_at
 FROM events e JOIN organizers o ON o.id=e.organizer_id
 WHERE e.deleted_at IS NULL AND e.status IN ('draft','unpublished')
 AND ($1::text='' OR e.title ILIKE '%'||$1||'%' OR e.slug ILIKE '%'||$1||'%')
@@ -145,6 +149,7 @@ type AdminListModerationParams struct {
 
 type AdminListModerationRow struct {
 	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
 	Title        string             `json:"title"`
 	Slug         string             `json:"slug"`
 	Status       string             `json:"status"`
@@ -169,6 +174,7 @@ func (q *Queries) AdminListModeration(ctx context.Context, arg AdminListModerati
 		var i AdminListModerationRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Title,
 			&i.Slug,
 			&i.Status,
@@ -187,7 +193,7 @@ func (q *Queries) AdminListModeration(ctx context.Context, arg AdminListModerati
 }
 
 const adminListRegistrations = `-- name: AdminListRegistrations :many
-SELECT r.id,r.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT r.id,r.admin_reference AS reference,r.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,r.status::text AS status,r.registered_at
 FROM rsvps r JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE ($1::text='' OR r.public_code ILIKE '%'||$1||'%' OR e.title ILIKE '%'||$1||'%' OR COALESCE(u.email,r.guest_email,'') ILIKE '%'||$1||'%')
@@ -204,6 +210,7 @@ type AdminListRegistrationsParams struct {
 
 type AdminListRegistrationsRow struct {
 	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
 	PublicCode   string             `json:"public_code"`
 	EventTitle   string             `json:"event_title"`
 	Name         string             `json:"name"`
@@ -228,6 +235,7 @@ func (q *Queries) AdminListRegistrations(ctx context.Context, arg AdminListRegis
 		var i AdminListRegistrationsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.PublicCode,
 			&i.EventTitle,
 			&i.Name,
@@ -246,7 +254,7 @@ func (q *Queries) AdminListRegistrations(ctx context.Context, arg AdminListRegis
 }
 
 const adminListSpaces = `-- name: AdminListSpaces :many
-SELECT s.id,s.name,s.slug,s.status,o.display_name AS owner_name,
+SELECT s.id,s.admin_reference AS reference,s.name,s.slug,s.status,o.display_name AS owner_name,
 (SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id) AS member_count,s.created_at
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id
 WHERE ($1::text='' OR s.name ILIKE '%'||$1||'%' OR s.slug ILIKE '%'||$1||'%')
@@ -263,6 +271,7 @@ type AdminListSpacesParams struct {
 
 type AdminListSpacesRow struct {
 	ID          pgtype.UUID        `json:"id"`
+	Reference   int64              `json:"reference"`
 	Name        string             `json:"name"`
 	Slug        string             `json:"slug"`
 	Status      string             `json:"status"`
@@ -287,6 +296,7 @@ func (q *Queries) AdminListSpaces(ctx context.Context, arg AdminListSpacesParams
 		var i AdminListSpacesRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Name,
 			&i.Slug,
 			&i.Status,
@@ -305,7 +315,7 @@ func (q *Queries) AdminListSpaces(ctx context.Context, arg AdminListSpacesParams
 }
 
 const adminListTickets = `-- name: AdminListTickets :many
-SELECT t.id,t.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
+SELECT t.id,t.admin_reference AS reference,t.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE ($1::text='' OR t.public_code ILIKE '%'||$1||'%' OR e.title ILIKE '%'||$1||'%')
 AND ($2::text='' OR t.status=$2) ORDER BY t.created_at DESC,t.id
@@ -321,6 +331,7 @@ type AdminListTicketsParams struct {
 
 type AdminListTicketsRow struct {
 	ID          pgtype.UUID        `json:"id"`
+	Reference   int64              `json:"reference"`
 	PublicCode  string             `json:"public_code"`
 	EventTitle  string             `json:"event_title"`
 	Name        string             `json:"name"`
@@ -345,6 +356,7 @@ func (q *Queries) AdminListTickets(ctx context.Context, arg AdminListTicketsPara
 		var i AdminListTicketsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.PublicCode,
 			&i.EventTitle,
 			&i.Name,

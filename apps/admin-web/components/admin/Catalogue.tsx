@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { Select } from '@hackways/ui/select';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { Icon } from '@/components/ui/Icon';
 import { useCatalogue } from '@/lib/catalogue';
 import { PAGE_SIZE, cataloguePath } from '@/lib/catalogue-paths';
 import { adminModules, type AdminModule, type AdminCell, type AdminColumn } from '@/lib/admin-modules';
@@ -22,18 +20,15 @@ function cell(value: AdminCell | undefined, column: AdminColumn) {
 export function Catalogue({ resource, query, page, status }: { resource: AdminModule; query: string; page: number; status: string }) {
   const definition = adminModules[resource];
   const { rows, loading, error, refresh } = useCatalogue(resource, query, page, status);
-  const [filter, setFilter] = useState(status || 'all');
   return <>
-    <div className="admin-page-heading"><h1>{definition.label}</h1><Button variant="outline" onClick={refresh} disabled={loading}><Icon name="reload" size={17} />Refresh</Button></div>
-    {definition.statuses.length > 0 && <form action={`/${resource}`} method="get" className="admin-filters">
-      {query && <input type="hidden" name="q" value={query} />}
-      <Select label={resource === 'storage' ? 'Asset type' : 'Filter records'} name="status" value={filter} onValueChange={setFilter} options={[{value:'all',label:'All'}, ...definition.statuses.map(value=>({value,label:value.replaceAll('_',' ')}))]} />
-      <Button type="submit" variant="outline" size="sm">Apply</Button>
-      {(status || query) && <a href={`/${resource}`} className="quiet-link">Clear filters</a>}
-    </form>}
-    {loading ? <div className="admin-result-state" role="status">Loading records...</div> : error ? <div className="admin-result-state" role="alert"><p>{error}</p><Button onClick={refresh} variant="outline">Try again</Button></div> : <>
+    <div className="admin-page-heading"><h1>{definition.label}</h1></div>
+    {definition.statuses.length > 0 && <nav className="admin-filters" aria-label={resource === 'storage' ? 'Asset type' : 'Filter records'}>
+      {['', ...definition.statuses].map(value => <Link key={value} href={cataloguePath(resource,query,1,value)} scroll={false} prefetch={false} aria-current={status === value ? 'page' : undefined}>{value ? value.replaceAll('_',' ') : 'All'}</Link>)}
+      {query && <a href={`/${resource}`} className="quiet-link">Clear search</a>}
+    </nav>}
+    {loading ? <div className="admin-result-state admin-loading" role="status" aria-label="Loading records"><span className="wordmark admin-loading-wordmark" aria-hidden="true">hackways.</span><span className="admin-loading-line" aria-hidden="true" /><span className="sr-only">Loading records</span></div> : error ? <div className="admin-result-state" role="alert"><p>{error}</p><Button onClick={refresh} variant="outline">Try again</Button></div> : <>
       {rows.length === 0 ? <div className="admin-result-state" role="status">No records found.</div> : <div className="admin-table-scroll" tabIndex={0} role="region" aria-label={`${definition.label} table`}><table className="admin-table"><caption className="sr-only">{definition.label}</caption><thead><tr>{definition.columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr></thead><tbody>
-        {rows.map(row => <tr key={`${row.id}-${row.kind || ''}`}>{definition.columns.map((column,index) => index===0 ? <th key={column.key} scope="row"><a className="admin-record-link" href={detailPath(resource,row.id,typeof row.kind === 'string' ? row.kind : undefined)}><span>{cell(row[column.key],column)}</span></a></th> : <td key={column.key}>{cell(row[column.key],column)}</td>)}</tr>)}
+        {rows.map(row => <tr key={`${row.reference}-${row.kind || ''}`}>{definition.columns.map((column,index) => index===0 ? <th key={column.key} scope="row"><a className="admin-record-link" href={detailPath(resource,row.reference,typeof row.kind === 'string' ? row.kind : undefined)}><span>{cell(row[column.key],column)}</span></a></th> : <td key={column.key}>{cell(row[column.key],column)}</td>)}</tr>)}
       </tbody></table></div>}
       <nav className="admin-pagination" aria-label="Pagination">
         {page > 1 && <a className="app-button app-button-outline app-button-sm" href={cataloguePath(resource,query,page-1,status)}>Previous</a>}

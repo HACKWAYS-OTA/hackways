@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -110,7 +111,7 @@ func TestAdminDetailActions(t *testing.T) {
 			t.Fatalf("expected %d got %d: %s", status, w.Code, w.Body.String())
 		}
 	}
-	eventPath := "/events/" + uuidString(event.ID)
+	eventPath := "/events/" + strconv.FormatInt(event.AdminReference, 10)
 	edit := fmt.Sprintf(`{"title":"Reviewed event","description":"Reviewed description","capacity":2,"visibility":"private","revision":%d}`, event.Revision)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "https://attacker.invalid", "reason", auth.AdminSessionCookie), 403)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "http://localhost:3003", "", auth.AdminSessionCookie), 422)
@@ -129,7 +130,7 @@ func TestAdminDetailActions(t *testing.T) {
 	if err = pool.QueryRow(ctx, "SELECT count(*) FROM email_outbox WHERE event_id=$1 AND template_type='event_updated'", event.ID).Scan(&queuedUpdates); err != nil || queuedUpdates != 1 {
 		t.Fatalf("retry duplicated published update notification: %d %v", queuedUpdates, err)
 	}
-	for _, path := range []string{eventPath + "?section=activity", "/moderation/" + uuidString(event.ID), "/spaces/" + uuidString(space.ID), "/registrations/" + uuidString(reg.Data.ID)} {
+	for _, path := range []string{eventPath + "?section=activity", "/moderation/" + strconv.FormatInt(event.AdminReference, 10), "/spaces/" + strconv.FormatInt(space.AdminReference, 10), "/registrations/" + strconv.FormatInt(reg.Data.AdminReference, 10)} {
 		detail := call("GET", path, "", "")
 		check(detail, 200)
 		for _, forbidden := range []string{"password_hash", "creation_key", "creation_hash", "token_hash", "payload_json"} {
@@ -142,6 +143,52 @@ func TestAdminDetailActions(t *testing.T) {
 	check(call("PUT", eventPath, strings.Replace(edit, "Reviewed event", "Changed payload", 1), "admin-event-edit-key"), 409)
 	check(call("PUT", eventPath, edit, "different-edit-request"), 409)
 	check(call("GET", eventPath+"?section=activity", "", ""), 200)
+	check(call("GET", "/events/"+uuidString(event.ID), "", ""), 200) // existing API callers remain compatible
+	check(call("GET", "/events/0", "", ""), 400)
+	check(call("GET", "/events/9223372036854775807", "", ""), 404)
+	var detailEnvelope struct {
+		Data struct {
+			Reference         int64 `json:"reference"`
+			HostUserReference int64 `json:"host_user_reference"`
+		}
+		Related struct {
+			Rows []struct {
+				Reference string `json:"reference"`
+			}
+		}
+	}
+	eventDetail := call("GET", eventPath, "", "")
+	check(eventDetail, 200)
+	if err = json.Unmarshal(eventDetail.Body.Bytes(), &detailEnvelope); err != nil || detailEnvelope.Data.Reference != event.AdminReference || detailEnvelope.Data.HostUserReference < 1 {
+		t.Fatalf("numeric detail references missing: %v", err)
+	}
+	if len(detailEnvelope.Related.Rows) != 1 {
+		t.Fatal("expected related registration")
+	}
+	if n, e := strconv.ParseInt(detailEnvelope.Related.Rows[0].Reference, 10, 64); e != nil || n < 1 {
+		t.Fatal("related registration must expose numeric reference")
+	}
+	var listEnvelope struct {
+		Data []struct {
+			ID        string `json:"id"`
+			Reference int64  `json:"reference"`
+		}
+	}
+	eventList := call("GET", "/events?q=Reviewed%20event", "", "")
+	check(eventList, 200)
+	if err = json.Unmarshal(eventList.Body.Bytes(), &listEnvelope); err != nil {
+		t.Fatal(err)
+	}
+	foundReference := false
+	for _, row := range listEnvelope.Data {
+		if row.ID == uuidString(event.ID) && row.Reference == event.AdminReference {
+			foundReference = true
+		}
+	}
+	if !foundReference {
+		t.Fatal("numeric list reference missing for persisted fixture")
+	}
+
 	var auditID int64
 	if err = pool.QueryRow(ctx, "SELECT max(id) FROM audit_log WHERE actor_user_id=$1", actor.ID).Scan(&auditID); err != nil {
 		t.Fatal(err)
@@ -166,9 +213,9 @@ func TestAdminDetailActions(t *testing.T) {
 	reserved := fmt.Sprintf(`{"title":"Reviewed event","description":"Reviewed description","capacity":1,"visibility":"private","revision":%d}`, current.Revision)
 	check(call("PUT", eventPath, reserved, "reserved-capacity-request"), 409)
 	secondCancel := fmt.Sprintf(`{"status":"cancelled","updated_at":%q,"notify_guest":false,"message":""}`, second.Data.UpdatedAt.Time.Format(time.RFC3339Nano))
-	check(call("POST", "/registrations/"+uuidString(second.Data.ID)+"/status", secondCancel, "second-cancel-admin-ci"), 200)
+	check(call("POST", "/registrations/"+strconv.FormatInt(second.Data.AdminReference, 10)+"/status", secondCancel, "second-cancel-admin-ci"), 200)
 
-	regPath := "/registrations/" + uuidString(reg.Data.ID) + "/status"
+	regPath := "/registrations/" + strconv.FormatInt(reg.Data.AdminReference, 10) + "/status"
 	cancel := fmt.Sprintf(`{"status":"cancelled","updated_at":%q,"notify_guest":false,"message":""}`, reg.Data.UpdatedAt.Time.Format(time.RFC3339Nano))
 	check(call("POST", regPath, cancel, "admin-reg-cancel-key"), 200)
 	w = call("POST", regPath, cancel, "admin-reg-cancel-key")
@@ -190,15 +237,15 @@ func TestAdminDetailActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check(call("GET", "/tickets/"+uuidString(ticket.ID), "", ""), 200)
-	ticketPath := "/tickets/" + uuidString(ticket.ID) + "/check-in"
+	check(call("GET", "/tickets/"+strconv.FormatInt(ticket.AdminReference, 10), "", ""), 200)
+	ticketPath := "/tickets/" + strconv.FormatInt(ticket.AdminReference, 10) + "/check-in"
 	check(call("POST", ticketPath, `{}`, "admin-ticket-scan-key"), 200)
 	check(call("POST", ticketPath, `{}`, "admin-ticket-scan-key"), 200)
 	scannedTicket, scanErr := q.GetWorkflowTicket(ctx, ticket.ID)
 	if scanErr != nil || scannedTicket.CheckedInBy != actor.ID {
 		t.Fatal("check-in must record real administrator")
 	}
-	spacePath := "/spaces/" + uuidString(space.ID)
+	spacePath := "/spaces/" + strconv.FormatInt(space.AdminReference, 10)
 	spaceEdit := fmt.Sprintf(`{"name":"Reviewed Space","description":"Updated description","guidelines":"Keep it kind","website_url":"https://example.invalid","revision":%d}`, space.Revision)
 	check(call("PUT", spacePath, spaceEdit, "admin-space-edit-key"), 200)
 	check(call("PUT", spacePath, spaceEdit, "admin-space-edit-key"), 200)

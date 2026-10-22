@@ -180,7 +180,7 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	valid = valid && body.EndsAt.After(body.StartsAt) && (format == db.EventFormatOnline || format == db.EventFormatInPerson || format == db.EventFormatHybrid) && (body.Capacity == nil || *body.Capacity > 0)
 	_, zoneErr := time.LoadLocation(body.Timezone)
 	valid = valid && body.Timezone != "" && zoneErr == nil && (body.Mode == "instant" || body.Mode == "approval") && body.OfferMinutes >= 5 && body.OfferMinutes <= 60
-	if format != db.EventFormatInPerson {
+	if body.OnlineURL != "" {
 		valid = valid && validHTTPSURL(body.OnlineURL)
 	}
 	if body.Opens != nil && body.Closes != nil {
@@ -345,7 +345,7 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "INVALID_TRANSITION", "This event status transition is not allowed", nil)
 		return
 	}
-	if body.Status == db.EventStatusPublished && (!event.StartsAt.Time.After(event.DatabaseNow.Time) || event.Title == "" || event.Description == "" || event.Format != db.EventFormatOnline && !event.LocationName.Valid || event.Format != db.EventFormatInPerson && !validHTTPSURL(event.OnlineUrl.String)) {
+	if body.Status == db.EventStatusPublished && !publishable(event) {
 		platform.RespondError(w, 422, "NOT_PUBLISHABLE", "Complete event details and use a future schedule before publishing", nil)
 		return
 	}
@@ -565,4 +565,17 @@ func validManualReason(r *http.Request, reason string) bool {
 		limit = 4000
 	}
 	return len(strings.TrimSpace(reason)) >= 3 && len(reason) <= limit
+}
+
+// Location details may be supplied after publishing in every supported format.
+// Supplied links still require HTTPS; core event and schedule checks stay strict.
+func publishable(event db.LockWorkflowEventRow) bool {
+	title, description := strings.TrimSpace(event.Title), strings.TrimSpace(event.Description)
+	link := strings.TrimSpace(event.OnlineUrl.String)
+	_, zoneErr := time.LoadLocation(event.Timezone)
+	validFormat := event.Format == db.EventFormatInPerson || event.Format == db.EventFormatOnline || event.Format == db.EventFormatHybrid
+	return len([]rune(title)) >= 1 && len([]rune(title)) <= 200 && len([]rune(description)) >= 1 && len([]rune(description)) <= 20000 &&
+		validFormat && event.StartsAt.Valid && event.EndsAt.Valid && event.StartsAt.Time.After(event.DatabaseNow.Time) && event.EndsAt.Time.After(event.StartsAt.Time) &&
+		event.Timezone != "" && zoneErr == nil && len(event.LocationName.String) <= 1000 && len(event.LocationAddress.String) <= 2000 && len(link) <= 2048 &&
+		(link == "" || validHTTPSURL(link)) && (!event.Capacity.Valid || event.Capacity.Int32 > 0)
 }

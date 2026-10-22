@@ -8,7 +8,7 @@ import { eventStatus, hostViews, queryPath } from '@/lib/dashboard';
 import { EventArtwork } from '@/components/management/EventArtwork';
 import { Icon } from '@/components/ui/Icon';
 export default async function ManageEvents({ searchParams }: { searchParams: { offset?: string; view?: string; q?: string } }) {
-  const dashboardPath = '/manage/';
+  const dashboardPath = '/';
   await requireUser(dashboardPath);
   const offset = pageOffset(searchParams.offset);
   const view = hostViews.find(([key]) => key === searchParams.view)?.[0] || 'all';

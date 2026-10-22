@@ -18,7 +18,7 @@ INSERT INTO sessions (
     $5,
     NOW()
 )
-RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen;
+RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen, admin_reference;
 
 -- name: GetSessionByTokenHash :one
 SELECT s.id, s.user_id, s.token_hash, s.user_agent, s.ip_address, s.created_at, s.expires_at, s.last_seen,

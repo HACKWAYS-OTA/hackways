@@ -29,7 +29,7 @@ export function useCatalogue(resource: AdminModule, query: string, page: number,
         }
         if (!response.ok) throw new Error('Request failed');
         const body = await response.json() as { data?: AdminRecord[] };
-        if (!Array.isArray(body.data)) throw new Error('Missing collection');
+        if (!Array.isArray(body.data) || body.data.some(row => !Number.isSafeInteger(row.reference) || row.reference < 1)) throw new Error('Missing collection references');
         if (active) setState({ rows: body.data, loading: false, error: null });
       } catch {
         if (active) setState({ rows: [], loading: false, error: 'These records could not be loaded.' });

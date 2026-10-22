@@ -27,6 +27,7 @@ type Querier interface {
 	AdminListTickets(ctx context.Context, arg AdminListTicketsParams) ([]AdminListTicketsRow, error)
 	AdminOrganizerByID(ctx context.Context, id pgtype.UUID) (Organizers, error)
 	AdminRegistrationDetail(ctx context.Context, id pgtype.UUID) (AdminRegistrationDetailRow, error)
+	AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error)
 	AdminSpaceDetail(ctx context.Context, id pgtype.UUID) (AdminSpaceDetailRow, error)
 	AdminSpaceEvents(ctx context.Context, arg AdminSpaceEventsParams) ([]AdminSpaceEventsRow, error)
 	AdminSpaceMembers(ctx context.Context, arg AdminSpaceMembersParams) ([]AdminSpaceMembersRow, error)

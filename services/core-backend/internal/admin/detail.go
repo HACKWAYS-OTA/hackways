@@ -14,6 +14,7 @@ import (
 
 type relatedItem struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -39,10 +40,30 @@ func detailError(w http.ResponseWriter, err error) {
 		platform.RespondDatabaseError(w, err)
 	}
 }
-func detailID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+
+// detailID resolves a presentation reference before any authoritative workflow.
+// UUID input remains available only for existing API callers.
+func (h *Handler) detailID(w http.ResponseWriter, r *http.Request, resourceOverride ...string) (pgtype.UUID, bool) {
+	raw := chi.URLParam(r, "id")
+	if reference, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		if reference < 1 {
+			platform.RespondError(w, 400, "INVALID_REFERENCE", "Invalid record reference", nil)
+			return pgtype.UUID{}, false
+		}
+		resource := chi.URLParam(r, "resource")
+		if len(resourceOverride) > 0 {
+			resource = resourceOverride[0]
+		}
+		id, err := h.queries.AdminResolveReferenceID(r.Context(), db.AdminResolveReferenceIDParams{Resource: resource, Reference: reference})
+		if err != nil {
+			detailError(w, err)
+			return id, false
+		}
+		return id, true
+	}
 	var id pgtype.UUID
-	if id.Scan(chi.URLParam(r, "id")) != nil || !id.Valid {
-		platform.RespondError(w, 400, "INVALID_ID", "Invalid record ID", nil)
+	if id.Scan(raw) != nil || !id.Valid {
+		platform.RespondError(w, 400, "INVALID_REFERENCE", "Invalid record reference", nil)
 		return id, false
 	}
 	return id, true
@@ -95,38 +116,38 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 		var rows []db.AdminEventRegistrationsRow
 		rows, err = h.queries.AdminEventRegistrations(r.Context(), db.AdminEventRegistrationsParams{EventID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "tickets":
 		var rows []db.AdminEventTicketsRow
 		rows, err = h.queries.AdminEventTickets(r.Context(), db.AdminEventTicketsParams{EventID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "events":
 		var rows []db.AdminSpaceEventsRow
 		rows, err = h.queries.AdminSpaceEvents(r.Context(), db.AdminSpaceEventsParams{SpaceID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	case "members":
 		var rows []db.AdminSpaceMembersRow
 		rows, err = h.queries.AdminSpaceMembers(r.Context(), db.AdminSpaceMembersParams{SpaceID: id, Limit: 21, Offset: offset})
 		for _, v := range rows {
-			page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 		}
 	default:
 		if resource == "events" || resource == "moderation" {
 			var rows []db.AdminEventHistoryRow
 			rows, err = h.queries.AdminEventHistory(r.Context(), db.AdminEventHistoryParams{EventID: id, Limit: 21, Offset: offset})
 			for _, v := range rows {
-				page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+				page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 			}
 		} else {
 			var rows []db.AdminEntityHistoryRow
 			rows, err = h.queries.AdminEntityHistory(r.Context(), db.AdminEntityHistoryParams{EntityID: id, Limit: 21, Offset: offset})
 			for _, v := range rows {
-				page.Rows = append(page.Rows, relatedItem{v.ID, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+				page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
 			}
 		}
 	}
@@ -153,7 +174,7 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		sendDetail(w, row, detailPage{})
 		return
 	}
-	id, ok := detailID(w, r)
+	id, ok := h.detailID(w, r)
 	if !ok {
 		return
 	}

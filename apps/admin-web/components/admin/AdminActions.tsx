@@ -1,8 +1,8 @@
 'use client';
 
-import { useId, useRef, useState, type ReactNode, type FormEvent } from 'react';
+import { useRef, useState, type ReactNode, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Select } from '@hackways/ui/select';
+import { RadioGroup } from '@hackways/ui/radio-group';
 import { Checkbox } from '@hackways/ui/checkbox';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -74,9 +74,8 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
 }
 
 function Choice({ name, label, value: initialValue, options }: { name: string; label: string; value: string; options: {value: string; label: string}[] }) {
-  const id = useId();
   const [value, setValue] = useState(initialValue);
-  return <div className="field"><label htmlFor={id}>{label}</label><Select id={id} name={name} label={label} required value={value} onValueChange={setValue} options={options} /></div>;
+  return <div className="field admin-action-choice"><p>{label}</p><RadioGroup name={name} label={label} required value={value} onValueChange={setValue} options={options} layout="stack" /></div>;
 }
 
 function TextArea({ name, label, value = '', maxLength = 10000 }: { name: string; label: string; value?: string; maxLength?: number }) {
@@ -88,14 +87,14 @@ function Confirmation({ name, children }: { name: string; children: ReactNode })
 }
 
 export function SessionRevoke({ person, sessionID }: { person: AdminRecord; sessionID: string }) {
-  return <details className="admin-session-action"><summary>Revoke session</summary><ActionForm title="Revoke this session" path={`global/people/${person.id}/sessions/${sessionID}/revoke`} payload={{ updated_at: text(person, 'updated_at') }} submitLabel="Revoke session" success="Session revoked." /></details>;
+  return <details className="admin-session-action"><summary>Revoke session</summary><ActionForm title="Revoke this session" path={`global/people/${person.reference}/sessions/${sessionID}/revoke`} payload={{ updated_at: text(person, 'updated_at') }} submitLabel="Revoke session" success="Session revoked." /></details>;
 }
 
 export function AdminActions({ resource, record }: { resource: AdminModule; record: AdminRecord }) {
   const version = text(record, 'updated_at');
   const revision = number(record, 'revision');
   const status = text(record, 'status');
-  const id = record.id;
+  const id = record.reference;
   if (resource === 'audit') return null;
   if (resource === 'people') return <div className="admin-actions" key={version}>
     <ActionForm title="Edit profile" path={`global/people/${id}/edit`} payload={{ updated_at: version }} fields={data => ({ display_name: String(data.get('display_name') || '') })} submitLabel="Save profile">

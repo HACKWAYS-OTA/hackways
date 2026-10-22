@@ -13,13 +13,13 @@ import (
 
 const adminListAssets = `-- name: AdminListAssets :many
 WITH assets AS (
-SELECT e.id,e.title AS name,'event_banner'::text AS kind,split_part(split_part(e.banner_url,'?',1),'#',1)::text AS url,e.updated_at
+SELECT e.id,e.admin_reference AS reference,e.title AS name,'event_banner'::text AS kind,split_part(split_part(e.banner_url,'?',1),'#',1)::text AS url,e.updated_at
 FROM events e WHERE e.deleted_at IS NULL AND e.banner_url IS NOT NULL AND e.banner_url<>''
 UNION ALL
-SELECT u.id,u.display_name AS name,'avatar'::text AS kind,split_part(split_part(u.avatar_url,'?',1),'#',1)::text AS url,u.updated_at
+SELECT u.id,u.admin_reference AS reference,u.display_name AS name,'avatar'::text AS kind,split_part(split_part(u.avatar_url,'?',1),'#',1)::text AS url,u.updated_at
 FROM users u WHERE u.deleted_at IS NULL AND u.avatar_url IS NOT NULL AND u.avatar_url<>''
 )
-SELECT id,name,kind,url,updated_at FROM assets
+SELECT id,reference,name,kind,url,updated_at FROM assets
 WHERE ($1::text='' OR name ILIKE '%'||$1||'%')
 AND ($2::text='' OR kind=$2) ORDER BY updated_at DESC,id,kind
 LIMIT $4::int OFFSET $3::int
@@ -34,6 +34,7 @@ type AdminListAssetsParams struct {
 
 type AdminListAssetsRow struct {
 	ID        pgtype.UUID        `json:"id"`
+	Reference int64              `json:"reference"`
 	Name      string             `json:"name"`
 	Kind      string             `json:"kind"`
 	Url       string             `json:"url"`
@@ -56,6 +57,7 @@ func (q *Queries) AdminListAssets(ctx context.Context, arg AdminListAssetsParams
 		var i AdminListAssetsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Name,
 			&i.Kind,
 			&i.Url,
@@ -72,7 +74,7 @@ func (q *Queries) AdminListAssets(ctx context.Context, arg AdminListAssetsParams
 }
 
 const adminListMessages = `-- name: AdminListMessages :many
-SELECT id,recipient_email,template_type,status::text AS status,retry_count,scheduled_at,sent_at,created_at
+SELECT id,admin_reference AS reference,recipient_email,template_type,status::text AS status,retry_count,scheduled_at,sent_at,created_at
 FROM email_outbox WHERE ($1::text='' OR recipient_email ILIKE '%'||$1||'%' OR template_type ILIKE '%'||$1||'%')
 AND ($2::text='' OR status::text=$2) ORDER BY created_at DESC,id
 LIMIT $4::int OFFSET $3::int
@@ -87,6 +89,7 @@ type AdminListMessagesParams struct {
 
 type AdminListMessagesRow struct {
 	ID             pgtype.UUID        `json:"id"`
+	Reference      int64              `json:"reference"`
 	RecipientEmail string             `json:"recipient_email"`
 	TemplateType   string             `json:"template_type"`
 	Status         string             `json:"status"`
@@ -112,6 +115,7 @@ func (q *Queries) AdminListMessages(ctx context.Context, arg AdminListMessagesPa
 		var i AdminListMessagesRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.RecipientEmail,
 			&i.TemplateType,
 			&i.Status,
@@ -131,7 +135,7 @@ func (q *Queries) AdminListMessages(ctx context.Context, arg AdminListMessagesPa
 }
 
 const adminListPeople = `-- name: AdminListPeople :many
-SELECT u.id,u.display_name,u.email,u.email_verified,
+SELECT u.id,u.admin_reference AS reference,u.display_name,u.email,u.email_verified,
 CASE WHEN a.user_id IS NOT NULL AND a.revoked_at IS NULL THEN 'admin' ELSE 'member' END::text AS access,u.created_at
 FROM users u LEFT JOIN platform_administrators a ON a.user_id=u.id
 WHERE u.deleted_at IS NULL AND ($1::text='' OR u.email ILIKE '%'||$1||'%' OR u.display_name ILIKE '%'||$1||'%')
@@ -148,6 +152,7 @@ type AdminListPeopleParams struct {
 
 type AdminListPeopleRow struct {
 	ID            pgtype.UUID        `json:"id"`
+	Reference     int64              `json:"reference"`
 	DisplayName   string             `json:"display_name"`
 	Email         string             `json:"email"`
 	EmailVerified bool               `json:"email_verified"`
@@ -171,6 +176,7 @@ func (q *Queries) AdminListPeople(ctx context.Context, arg AdminListPeopleParams
 		var i AdminListPeopleRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.DisplayName,
 			&i.Email,
 			&i.EmailVerified,

@@ -5,7 +5,7 @@ import { redirect, notFound } from 'next/navigation';
 import { adminModules, type AdminModule, type AdminRecord } from './admin-modules';
 import { relatedPath } from './admin-detail-paths';
 
-export type RelatedRecord = { id: string; label: string; detail: string; resource: string; status: string; occurred_at: string | null };
+export type RelatedRecord = { id: string; reference: string; label: string; detail: string; resource: string; status: string; occurred_at: string | null };
 export type AdminDetail = { data: AdminRecord; related: { tabs: { key: string; label: string }[]; section: string; rows: RelatedRecord[]; offset: number; has_next: boolean } };
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -15,12 +15,14 @@ function object(value: unknown): value is Record<string, unknown> {
 function isDetail(value: unknown): value is AdminDetail {
   if (!object(value) || !object(value.data) || !object(value.related)) return false;
   if (!['string', 'number'].includes(typeof value.data.id)) return false;
+  if (typeof value.data.reference !== 'number' || !Number.isSafeInteger(value.data.reference) || value.data.reference < 1) return false;
   if (!Object.values(value.data).every(cell => cell === null || ['string', 'number', 'boolean'].includes(typeof cell))) return false;
   const related = value.related;
   return Array.isArray(related.tabs) && related.tabs.every(tab => object(tab) && typeof tab.key === 'string' && typeof tab.label === 'string')
     && typeof related.section === 'string' && typeof related.offset === 'number' && typeof related.has_next === 'boolean'
     && Array.isArray(related.rows) && related.rows.every(row => object(row)
-      && ['id', 'label', 'detail', 'resource', 'status'].every(key => typeof row[key] === 'string')
+      && ['id', 'reference', 'label', 'detail', 'resource', 'status'].every(key => typeof row[key] === 'string')
+      && /^[1-9][0-9]*$/.test(String(row.reference))
       && (row.occurred_at === null || typeof row.occurred_at === 'string'));
 }
 

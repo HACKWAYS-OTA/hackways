@@ -67,10 +67,10 @@ func (q *Queries) AdminActiveCount(ctx context.Context) (int64, error) {
 }
 
 const adminAssetDetail = `-- name: AdminAssetDetail :one
-SELECT e.id,e.title AS name,'event_banner'::text AS kind,split_part(split_part(e.banner_url,'?',1),'#',1)::text AS url,e.updated_at,e.revision,'events'::text AS parent_resource
+SELECT e.id,e.admin_reference AS reference,e.title AS name,'event_banner'::text AS kind,split_part(split_part(e.banner_url,'?',1),'#',1)::text AS url,e.updated_at,e.revision,'events'::text AS parent_resource
 FROM events e WHERE e.id=$1 AND e.deleted_at IS NULL AND $2::text='event_banner' AND e.banner_url IS NOT NULL AND e.banner_url<>''
 UNION ALL
-SELECT u.id,u.display_name AS name,'avatar'::text AS kind,split_part(split_part(u.avatar_url,'?',1),'#',1)::text AS url,u.updated_at,0::bigint AS revision,'people'::text AS parent_resource
+SELECT u.id,u.admin_reference AS reference,u.display_name AS name,'avatar'::text AS kind,split_part(split_part(u.avatar_url,'?',1),'#',1)::text AS url,u.updated_at,0::bigint AS revision,'people'::text AS parent_resource
 FROM users u WHERE u.id=$1 AND u.deleted_at IS NULL AND $2::text='avatar' AND u.avatar_url IS NOT NULL AND u.avatar_url<>''
 `
 
@@ -81,6 +81,7 @@ type AdminAssetDetailParams struct {
 
 type AdminAssetDetailRow struct {
 	ID             pgtype.UUID        `json:"id"`
+	Reference      int64              `json:"reference"`
 	Name           string             `json:"name"`
 	Kind           string             `json:"kind"`
 	Url            string             `json:"url"`
@@ -94,6 +95,7 @@ func (q *Queries) AdminAssetDetail(ctx context.Context, arg AdminAssetDetailPara
 	var i AdminAssetDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.Name,
 		&i.Kind,
 		&i.Url,
@@ -138,7 +140,7 @@ func (q *Queries) AdminDetachEventBanner(ctx context.Context, arg AdminDetachEve
 }
 
 const adminGlobalEntityHistory = `-- name: AdminGlobalEntityHistory :many
-SELECT a.id::text AS id,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
+SELECT a.id::text AS id,a.id::text AS reference,a.action AS label,COALESCE(u.display_name,'System')::text AS detail,'audit'::text AS resource,''::text AS status,a.created_at AS occurred_at
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id WHERE a.entity_id=$1 OR a.actor_user_id=$1 ORDER BY a.id DESC LIMIT $2 OFFSET $3
 `
 
@@ -150,6 +152,7 @@ type AdminGlobalEntityHistoryParams struct {
 
 type AdminGlobalEntityHistoryRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -168,6 +171,7 @@ func (q *Queries) AdminGlobalEntityHistory(ctx context.Context, arg AdminGlobalE
 		var i AdminGlobalEntityHistoryRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -209,7 +213,7 @@ func (q *Queries) AdminLockRoleChanges(ctx context.Context) error {
 }
 
 const adminMessageDetail = `-- name: AdminMessageDetail :one
-SELECT m.id,m.recipient_email,m.recipient_name,m.template_type,m.status::text AS status,m.retry_count,m.scheduled_at,m.sent_at,m.first_sent_at,
+SELECT m.id,m.admin_reference AS reference,e.admin_reference AS event_reference,r.admin_reference AS rsvp_reference,m.recipient_email,m.recipient_name,m.template_type,m.status::text AS status,m.retry_count,m.scheduled_at,m.sent_at,m.first_sent_at,
 m.created_at,m.updated_at,m.event_id,e.title AS event_title,m.rsvp_id,r.public_code AS registration_code,
 (m.status='failed' AND m.first_sent_at IS NULL)::boolean AS can_retry,
 CASE WHEN m.status='sent' THEN 'Sent' WHEN m.first_sent_at IS NOT NULL THEN 'Provider attempt recorded' ELSE 'No provider attempt recorded' END::text AS delivery_state
@@ -218,6 +222,9 @@ FROM email_outbox m LEFT JOIN events e ON e.id=m.event_id LEFT JOIN rsvps r ON r
 
 type AdminMessageDetailRow struct {
 	ID               pgtype.UUID        `json:"id"`
+	Reference        int64              `json:"reference"`
+	EventReference   pgtype.Int8        `json:"event_reference"`
+	RsvpReference    pgtype.Int8        `json:"rsvp_reference"`
 	RecipientEmail   string             `json:"recipient_email"`
 	RecipientName    pgtype.Text        `json:"recipient_name"`
 	TemplateType     string             `json:"template_type"`
@@ -241,6 +248,9 @@ func (q *Queries) AdminMessageDetail(ctx context.Context, id pgtype.UUID) (Admin
 	var i AdminMessageDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
+		&i.EventReference,
+		&i.RsvpReference,
 		&i.RecipientEmail,
 		&i.RecipientName,
 		&i.TemplateType,
@@ -262,7 +272,7 @@ func (q *Queries) AdminMessageDetail(ctx context.Context, id pgtype.UUID) (Admin
 }
 
 const adminPersonDetail = `-- name: AdminPersonDetail :one
-SELECT u.id,u.display_name,u.email,u.email_verified,COALESCE(split_part(split_part(u.avatar_url,'?',1),'#',1),'')::text AS avatar_url,u.created_at,u.updated_at,
+SELECT u.id,u.admin_reference AS reference,u.display_name,u.email,u.email_verified,COALESCE(split_part(split_part(u.avatar_url,'?',1),'#',1),'')::text AS avatar_url,u.created_at,u.updated_at,
 CASE WHEN a.user_id IS NOT NULL AND a.revoked_at IS NULL THEN 'admin' ELSE 'member' END::text AS access,
 (SELECT count(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>clock_timestamp())::bigint AS active_sessions,
 o.id AS host_profile_id,o.display_name AS host_name,o.slug AS host_slug,o.verified AS host_verified
@@ -271,6 +281,7 @@ FROM users u LEFT JOIN platform_administrators a ON a.user_id=u.id LEFT JOIN org
 
 type AdminPersonDetailRow struct {
 	ID             pgtype.UUID        `json:"id"`
+	Reference      int64              `json:"reference"`
 	DisplayName    string             `json:"display_name"`
 	Email          string             `json:"email"`
 	EmailVerified  bool               `json:"email_verified"`
@@ -290,6 +301,7 @@ func (q *Queries) AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminP
 	var i AdminPersonDetailRow
 	err := row.Scan(
 		&i.ID,
+		&i.Reference,
 		&i.DisplayName,
 		&i.Email,
 		&i.EmailVerified,
@@ -307,7 +319,7 @@ func (q *Queries) AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminP
 }
 
 const adminPersonEvents = `-- name: AdminPersonEvents :many
-SELECT e.id::text AS id,e.title AS label,e.slug AS detail,'events'::text AS resource,e.status::text AS status,e.starts_at AS occurred_at
+SELECT e.id::text AS id,e.admin_reference::text AS reference,e.title AS label,e.slug AS detail,'events'::text AS resource,e.status::text AS status,e.starts_at AS occurred_at
 FROM events e JOIN organizers o ON o.id=e.organizer_id WHERE o.user_id=$1 AND e.deleted_at IS NULL ORDER BY e.created_at DESC,e.id LIMIT $2 OFFSET $3
 `
 
@@ -319,6 +331,7 @@ type AdminPersonEventsParams struct {
 
 type AdminPersonEventsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -337,6 +350,7 @@ func (q *Queries) AdminPersonEvents(ctx context.Context, arg AdminPersonEventsPa
 		var i AdminPersonEventsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -354,7 +368,7 @@ func (q *Queries) AdminPersonEvents(ctx context.Context, arg AdminPersonEventsPa
 }
 
 const adminPersonMessages = `-- name: AdminPersonMessages :many
-SELECT m.id::text AS id,m.template_type AS label,m.recipient_email AS detail,'messaging'::text AS resource,m.status::text AS status,m.created_at AS occurred_at
+SELECT m.id::text AS id,m.admin_reference::text AS reference,m.template_type AS label,m.recipient_email AS detail,'messaging'::text AS resource,m.status::text AS status,m.created_at AS occurred_at
 FROM email_outbox m JOIN users u ON lower(m.recipient_email)=lower(u.email) WHERE u.id=$1 ORDER BY m.created_at DESC,m.id LIMIT $2 OFFSET $3
 `
 
@@ -366,6 +380,7 @@ type AdminPersonMessagesParams struct {
 
 type AdminPersonMessagesRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -384,6 +399,7 @@ func (q *Queries) AdminPersonMessages(ctx context.Context, arg AdminPersonMessag
 		var i AdminPersonMessagesRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -401,7 +417,7 @@ func (q *Queries) AdminPersonMessages(ctx context.Context, arg AdminPersonMessag
 }
 
 const adminPersonRegistrations = `-- name: AdminPersonRegistrations :many
-SELECT r.id::text AS id,r.public_code AS label,e.title AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
+SELECT r.id::text AS id,r.admin_reference::text AS reference,r.public_code AS label,e.title AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
 FROM rsvps r JOIN events e ON e.id=r.event_id WHERE r.user_id=$1 ORDER BY r.registered_at DESC,r.id LIMIT $2 OFFSET $3
 `
 
@@ -413,6 +429,7 @@ type AdminPersonRegistrationsParams struct {
 
 type AdminPersonRegistrationsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -431,6 +448,7 @@ func (q *Queries) AdminPersonRegistrations(ctx context.Context, arg AdminPersonR
 		var i AdminPersonRegistrationsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -448,7 +466,7 @@ func (q *Queries) AdminPersonRegistrations(ctx context.Context, arg AdminPersonR
 }
 
 const adminPersonSessions = `-- name: AdminPersonSessions :many
-SELECT id::text AS id,'Session'::text AS label,COALESCE(left(user_agent,200),'')::text AS detail,'sessions'::text AS resource,
+SELECT id::text AS id,admin_reference::text AS reference,'Session'::text AS label,COALESCE(left(user_agent,200),'')::text AS detail,'sessions'::text AS resource,
 CASE WHEN id=$1::uuid THEN 'current' WHEN expires_at>clock_timestamp() THEN 'active' ELSE 'expired' END::text AS status,last_seen AS occurred_at,created_at,expires_at
 FROM sessions WHERE user_id=$2 AND expires_at>clock_timestamp() ORDER BY last_seen DESC,id LIMIT $4::int OFFSET $3::int
 `
@@ -462,6 +480,7 @@ type AdminPersonSessionsParams struct {
 
 type AdminPersonSessionsRow struct {
 	ID         string             `json:"id"`
+	Reference  string             `json:"reference"`
 	Label      string             `json:"label"`
 	Detail     string             `json:"detail"`
 	Resource   string             `json:"resource"`
@@ -487,6 +506,7 @@ func (q *Queries) AdminPersonSessions(ctx context.Context, arg AdminPersonSessio
 		var i AdminPersonSessionsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Reference,
 			&i.Label,
 			&i.Detail,
 			&i.Resource,
@@ -503,6 +523,30 @@ func (q *Queries) AdminPersonSessions(ctx context.Context, arg AdminPersonSessio
 		return nil, err
 	}
 	return items, nil
+}
+
+const adminResolveReferenceID = `-- name: AdminResolveReferenceID :one
+SELECT id FROM users WHERE admin_reference=$1::bigint AND deleted_at IS NULL
+ AND ($2::text='people' OR ($2::text='storage' AND $3::text='avatar'))
+UNION ALL
+SELECT id FROM email_outbox WHERE admin_reference=$1::bigint AND $2::text='messaging'
+UNION ALL
+SELECT id FROM events WHERE admin_reference=$1::bigint AND deleted_at IS NULL AND $2::text='storage' AND $3::text='event_banner'
+UNION ALL
+SELECT id FROM sessions WHERE admin_reference=$1::bigint AND $2::text='sessions'
+`
+
+type AdminResolveReferenceIDParams struct {
+	Reference int64  `json:"reference"`
+	Resource  string `json:"resource"`
+	Kind      string `json:"kind"`
+}
+
+func (q *Queries) AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminResolveReferenceID, arg.Reference, arg.Resource, arg.Kind)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const adminRetryMessage = `-- name: AdminRetryMessage :one
