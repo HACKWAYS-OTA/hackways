@@ -873,3 +873,13 @@ All completed work is logged here with verified commands and output.
 - Started local admin on port 3103 with the isolated review Go service and schema 15 copy. Auth gates redirect anonymous campaign/list/import/detail visits to login. Main management port 3102 and original previews remain. Email remains paused in the copied-data preview. Candidate ingress validation, frontend checks and final CI outcomes are recorded below when completed.
 
 - Final local checks passed: full isolated PostgreSQL 18 suites for both engines, Go vet/build/sqlc, TypeScript/lint for shared UI/core/organizer/admin, staged source security/whitespace checks, and candidate Nginx syntax without activation. Anonymous campaign routes redirect to sign-in and unsubscribe sends no-referrer. Interactive browser review remains unavailable. A draft PR will run the mandatory Linux PostgreSQL 16/race pipeline; no RC/deployment tag is being created.
+
+
+### 2026-10-22 - Production availability restored at user request
+- User requested the app back online. Removed only the marked temporary maintenance block after comparing the complete remaining ingress against the original backup. Nginx syntax/reload passed; all existing production images and schema 13 were retained. No unreviewed application release was deployed.
+- Verified the canonical Host for `/`, `/discover`, and `/manage/login` returns origin HTTP 200, and public HTTPS `hackways.in/` returns HTTP 200 through Cloudflare. The first origin probe used an apex name outside the existing origin certificate's wildcard coverage; verification succeeded using its covered www TLS name with canonical Host, without disabling certificate validation. The initial Python public probe received a bot-facing 403; the ordinary public HTTPS curl request returned 200.
+- Maintenance rollback source remains `/opt/hackways/release-backups/maintenance-20261022T111740Z/hackways.in.conf`. The site is now online; local management/auth/campaign review is still available. India ACS resource reports `dataLocation=India`, provisioning succeeded.
+
+### 2026-10-22 - Review candidate CI passed
+- Draft PR #37 source commit `dbd9aa033329e38de0cf08c5c5a89d2a91512945` passed CI run 39779987414: core 61 and global 92 PostgreSQL 16/race test results passed, zero failures/skips. Frontend type/lint, source hygiene, sqlc/vet and deployment ordering/race checks passed. No RC tag, merge or application deployment was performed.
+- Management/auth/campaign changes remain available for the user's local review. Production availability was restored to the existing release as requested. Outstanding: connected-browser interactive review and Cloudflare city headers/exact trusted proxy configuration at eventual rollout.
