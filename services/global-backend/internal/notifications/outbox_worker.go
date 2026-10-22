@@ -434,7 +434,16 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 var errSuperseded = errors.New("notification superseded; no provider send was attempted")
 
 func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) error {
- if e.TemplateType=="admin_service_message" { active,err:=w.queries.AdminMessageRecipientActive(ctx,e.ID);if err!=nil { return err };if !active { return errSuperseded };return nil }
+	if e.TemplateType == "admin_service_message" {
+		active, err := w.queries.AdminMessageRecipientActive(ctx, e.ID)
+		if err != nil {
+			return err
+		}
+		if !active {
+			return errSuperseded
+		}
+		return nil
+	}
 
 	if e.TemplateType == "admin_promotion" {
 		active, err := w.queries.CampaignMessageActive(ctx, e.ID)
@@ -515,8 +524,10 @@ func RenderCampaignPreview(subject, body, label, actionURL string, design ...Cam
 	return render(db.ClaimEmailOutboxRow{TemplateType: "admin_promotion", PayloadJson: payload})
 }
 
-func RenderAdminMessagePreview(subject, body, label, actionURL string, design CampaignDesign) (EmailMessage,error) {
- payload,err:=json.Marshal(templatePayload{PromotionSubject:subject,PromotionBody:body,ActionLabel:label,ActionURL:actionURL,CampaignDesign:&design})
- if err!=nil { return EmailMessage{},err }
- return render(db.ClaimEmailOutboxRow{TemplateType:"admin_service_message",PayloadJson:payload})
+func RenderAdminMessagePreview(subject, body, label, actionURL string, design CampaignDesign) (EmailMessage, error) {
+	payload, err := json.Marshal(templatePayload{PromotionSubject: subject, PromotionBody: body, ActionLabel: label, ActionURL: actionURL, CampaignDesign: &design})
+	if err != nil {
+		return EmailMessage{}, err
+	}
+	return render(db.ClaimEmailOutboxRow{TemplateType: "admin_service_message", PayloadJson: payload})
 }
