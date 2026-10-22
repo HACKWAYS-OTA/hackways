@@ -56,6 +56,8 @@
 .host-tabs a { min-height: 52px; display: inline-flex; align-items: center; flex-shrink: 0; padding-block: 10px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 14px; }
 .host-tabs a[aria-current] { color: #35243f; border-color: #6d4f82; }
 .host-tabs a:hover { color: #3b244b; }
+.host-tabs { scrollbar-width: none; }
+.host-tabs::-webkit-scrollbar { display: none; }
 .host-workspace-content { padding-top: 28px; }
 .host-overview { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); align-items: start; gap: 64px; }
 .host-overview-main { min-width: 0; }
@@ -350,7 +352,10 @@
 .host-drawer-header > div { display: flex; gap: 5px; }
 .host-drawer-header button { display: grid; place-items: center; width: 44px; height: 44px; background: #f5f0f8; color: #654c73; border: 0; border-radius: 8px; }
 .host-drawer-header button:hover:enabled { background: #e9dff1; }
-.host-drawer-content { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 28px; scrollbar-width: thin; scrollbar-color: #c5b3d0 #faf7fc; }
+.host-drawer-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 28px; scrollbar-width: none; }
+.host-guest-drawer { overflow: hidden; }
+.host-drawer-content::-webkit-scrollbar { display: none; }
+.host-guest-notification { margin-top: 24px; }
 .host-drawer-content > .journey-notice, .host-drawer-content > .journey-error { margin-bottom: 24px; }
 .host-drawer-person { display: flex; align-items: flex-start; gap: 16px; }
 .host-drawer-person > div { min-width: 0; }

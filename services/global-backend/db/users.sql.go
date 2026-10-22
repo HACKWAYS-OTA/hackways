@@ -248,3 +248,35 @@ func (q *Queries) MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) err
 	_, err := q.db.Exec(ctx, markUserEmailVerified, id)
 	return err
 }
+
+const updateOwnDisplayName = `-- name: UpdateOwnDisplayName :one
+UPDATE users SET display_name = $2, updated_at = clock_timestamp()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, email, display_name, avatar_url, email_verified
+`
+
+type UpdateOwnDisplayNameParams struct {
+	ID          pgtype.UUID `json:"id"`
+	DisplayName string      `json:"display_name"`
+}
+
+type UpdateOwnDisplayNameRow struct {
+	ID            pgtype.UUID `json:"id"`
+	Email         string      `json:"email"`
+	DisplayName   string      `json:"display_name"`
+	AvatarUrl     pgtype.Text `json:"avatar_url"`
+	EmailVerified bool        `json:"email_verified"`
+}
+
+func (q *Queries) UpdateOwnDisplayName(ctx context.Context, arg UpdateOwnDisplayNameParams) (UpdateOwnDisplayNameRow, error) {
+	row := q.db.QueryRow(ctx, updateOwnDisplayName, arg.ID, arg.DisplayName)
+	var i UpdateOwnDisplayNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.EmailVerified,
+	)
+	return i, err
+}

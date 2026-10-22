@@ -5,6 +5,9 @@
 .guest-status-trigger:not(.status-confirmed):hover:not(:disabled) { background: #e3d8ec; }
 .guest-status-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 24px; border: 0; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px #21162e40; }
 .guest-status-dialog::backdrop { background: #21162e50; }
+.guest-status-dialog { overscroll-behavior: contain; scrollbar-width: none; }
+.guest-status-dialog::-webkit-scrollbar, .guest-status-dialog .hw-select-list::-webkit-scrollbar { display: none; }
+.guest-status-dialog .hw-select-list { scrollbar-width: none; }
 .guest-status-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
 .guest-status-dialog h2 { font-family: "Google Sans Flex"; font-size: 20px; font-weight: 400; -webkit-text-stroke: 0; }
 .guest-status-person { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }

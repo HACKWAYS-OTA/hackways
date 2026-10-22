@@ -37,6 +37,8 @@ type Querier interface {
 	CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflowTicketParams) (Tickets, error)
 	ClaimGuestEventRegistration(ctx context.Context, arg ClaimGuestEventRegistrationParams) (Rsvps, error)
 	CleanupWorkflowKeys(ctx context.Context) error
+	CountEventInvitations(ctx context.Context, eventID pgtype.UUID) (int64, error)
+	CountNewEventInvitationRecipients(ctx context.Context, arg CountNewEventInvitationRecipientsParams) (int64, error)
 	CreateEventRecord(ctx context.Context, arg CreateEventRecordParams) (Events, error)
 	CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error)
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
@@ -50,6 +52,7 @@ type Querier interface {
 	DeleteSessionsByUserID(ctx context.Context, userID pgtype.UUID) error
 	EditRegistrationNotes(ctx context.Context, arg EditRegistrationNotesParams) (Rsvps, error)
 	EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutboxParams) (EmailOutbox, error)
+	EnqueueEventInvitation(ctx context.Context, arg EnqueueEventInvitationParams) (int64, error)
 	EnqueueEventNotification(ctx context.Context, arg EnqueueEventNotificationParams) error
 	EnqueueRegistrationNotification(ctx context.Context, arg EnqueueRegistrationNotificationParams) (int64, error)
 	EnsureTicket(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error)
@@ -92,6 +95,7 @@ type Querier interface {
 	LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.UUID) (LatestRegistrationAnswersRow, error)
 	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error
 	ListAccountRegistrations(ctx context.Context, arg ListAccountRegistrationsParams) ([]ListAccountRegistrationsRow, error)
+	ListEventInvitations(ctx context.Context, arg ListEventInvitationsParams) ([]ListEventInvitationsRow, error)
 	ListManagedEvents(ctx context.Context, arg ListManagedEventsParams) ([]Events, error)
 	ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]ListMySpacesRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]Events, error)

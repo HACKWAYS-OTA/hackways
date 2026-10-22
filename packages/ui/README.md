@@ -38,6 +38,8 @@ Toggle preserves Base UI's `pressed`, `defaultPressed`, `onPressedChange`, `valu
 
 ## Accessibility, navigation, and visual defaults
 
+Account links in core and management use `Avatar` from `@hackways/ui/avatar`. It displays an HTTPS account photo directly, falls back to initials on failure, and uses a Hugeicons account outline for anonymous visitors. The containing link supplies the accessible name. Root layouts resolve the session on the server; React request caching deduplicates that identity read within each render.
+
 Authentication surfaces share `AuthLayout`, `AuthGoogleButton`, `AuthDivider`, `AuthPasswordInput` and `AuthSubmit` through `@hackways/ui/auth`. Import the components from that subpath and import `@hackways/ui/auth.css` once in the consuming app root. Core, management and admin consume this presentation; password reveal uses the shared Toggle and Hugeicons. Keep field labels, autocomplete, pending/error states and actual API submissions in the consuming form. Authentication, session validation and authorization remain in Go; do not add general auth business logic to this TypeScript package. See the [authentication surface guide](../../docs/design/AUTHENTICATION.md) for layout, accessibility and verification scope.
 
 For in-page navigation, import `SectionJumpButton` or `scrollToSection` from `@hackways/ui/section-jump`. They move focus and scroll without changing the URL or browser history. Pass a `targetId`; section IDs do not require fragment links. Use clean routes for cross-page destinations. The button respects reduced motion and does not submit forms.

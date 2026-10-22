@@ -1,6 +1,6 @@
 import type { RegistrationStatus } from '@/types/api';
 export const registrationLabels: Record<RegistrationStatus, string> = {
-  confirmed: 'Going', cancelled: 'Cancelled', waitlisted: 'On the waiting list', pending_approval: 'Awaiting approval', offered: 'A place is available', rejected: 'Not approved', expired: 'Expired', transferred: 'Transferred',
+  confirmed: 'Going', cancelled: 'Cancelled', waitlisted: 'Waiting list', pending_approval: 'Awaiting approval', offered: 'A place is available', rejected: 'Declined', expired: 'Expired', transferred: 'Transferred',
 };
 export interface MyRegistration {
   id: string; event_id: string; status: RegistrationStatus; offer_expires_at: string | null;

@@ -65,6 +65,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Group(func(protected chi.Router) {
 		protected.Use(RequireAuth(h.sm))
 		protected.Get("/me", h.Me)
+		protected.Patch("/me", h.UpdateProfile)
 		protected.Get("/sessions", h.Sessions)
 		protected.Delete("/sessions", h.RevokeAllSessions)
 		protected.Delete("/sessions/{sessionID}", h.RevokeSession)
