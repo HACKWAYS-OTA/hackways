@@ -2,13 +2,15 @@
 
 ## Sender routing
 
-| Mail purpose | Sender |
-|---|---|
-| Account verification, recovery, security and account welcome | `noreply@mail.hackways.in` |
-| Event updates, invitations, registration and ticket messages | `notify@mail.hackways.in` |
-| Admin promotional campaigns | `updates@mail.hackways.in` |
+| Mail purpose | Sender | Reply-To |
+|---|---|---|
+| Account verification, recovery, security and account welcome | `noreply@mail.hackways.in` | Omitted |
+| Event updates, invitations, registration and ticket messages | `notify@mail.hackways.in` | `hello@hackways.in` |
+| Admin promotional campaigns | `updates@mail.hackways.in` | `hello@hackways.in` |
 
 The existing verified `mail.hackways.in` domain in the India email service retains noreply and notify; updates was created in Azure on 2026-10-22. All messages use the existing ACS endpoint, transactional PostgreSQL outbox and bounded two-send worker. No SMTP or external queue was added. Sender selection is assigned by the Go template catalog, never by a browser-supplied From field. `ACS_SENDER_ADDRESS`, `ACS_TRANSACTIONAL_SENDER_ADDRESS` and `ACS_PROMOTIONAL_SENDER_ADDRESS` configure these identities. An unconfigured promotional sender fails rather than falling back to another address.
+
+Go applies the reply policy when serializing the [ACS send request](https://learn.microsoft.com/en-us/rest/api/communication/email/email/send?view=rest-communication-email-2023-03-31): account/security messages omit `replyTo` entirely; event, promotional and legacy event messages set exactly one address, `hello@hackways.in`. It is not an editable campaign field. Omitting Reply-To does not disable a mail client's Reply button; clients can still address the From mailbox. Reconciled messages already accepted by ACS retain their original headers.
 
 ## Admin workflow
 

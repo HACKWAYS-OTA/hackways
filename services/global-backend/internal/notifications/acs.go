@@ -150,12 +150,19 @@ func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
 		type recipients struct {
 			To []address `json:"to"`
 		}
+		// Account/security messages omit Reply-To. All event and promotional
+		// senders direct replies to the shared support mailbox.
+		var replyTo []address
+		if msg.SenderClass != "account" {
+			replyTo = []address{{"hello@hackways.in"}}
+		}
 		payload, marshalErr := json.Marshal(struct {
 			Sender          string     `json:"senderAddress"`
 			Content         content    `json:"content"`
 			Recipients      recipients `json:"recipients"`
+			ReplyTo         []address  `json:"replyTo,omitempty"`
 			DisableTracking bool       `json:"userEngagementTrackingDisabled"`
-		}{from, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, true})
+		}{from, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, replyTo, true})
 		if marshalErr != nil {
 			return marshalErr
 		}
