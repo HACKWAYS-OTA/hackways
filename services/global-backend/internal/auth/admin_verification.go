@@ -37,6 +37,12 @@ func (h *Handler) RequestAdminVerification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	user, _ := UserFromContext(r.Context())
+	// Bcrypt must not hold a database transaction open on constrained hosts.
+	code, hash, err := newEmailCode()
+	if err != nil {
+		platform.RespondError(w, 503, "CODE_UNAVAILABLE", "A verification code could not be created. Try again.", nil)
+		return
+	}
 	tx, err := h.pool.Begin(r.Context())
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
@@ -80,11 +86,6 @@ func (h *Handler) RequestAdminVerification(w http.ResponseWriter, r *http.Reques
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	code, hash, err := newEmailCode()
-	if err != nil {
-		platform.RespondError(w, 503, "CODE_UNAVAILABLE", "A verification code could not be created. Try again.", nil)
-		return
-	}
 	if err = q.CreateAdminSessionChallenge(r.Context(), db.CreateAdminSessionChallengeParams{SessionID: user.SessionID, CodeHash: hash}); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -116,6 +117,13 @@ func (h *Handler) ConfirmAdminVerification(w http.ResponseWriter, r *http.Reques
 	}
 	body.Code = strings.TrimSpace(body.Code)
 	user, _ := UserFromContext(r.Context())
+	// Compare before acquiring row locks. Recheck the exact persisted challenge below.
+	candidate, candidateErr := h.queries.ReadAdminSessionChallenge(r.Context(), user.SessionID)
+	if candidateErr != nil && !errors.Is(candidateErr, pgx.ErrNoRows) {
+		platform.RespondDatabaseError(w, candidateErr)
+		return
+	}
+	candidateMatches := candidateErr == nil && matchesEmailCode(body.Code, candidate.CodeHash)
 	tx, err := h.pool.Begin(r.Context())
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
@@ -154,7 +162,7 @@ func (h *Handler) ConfirmAdminVerification(w http.ResponseWriter, r *http.Reques
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	valid := err == nil && !challenge.ConsumedAt.Valid && challenge.ExpiresAt.Time.After(session.DatabaseNow.Time) && matchesEmailCode(body.Code, challenge.CodeHash) && challenge.ExpiresAt.Time.After(time.Now())
+	valid := err == nil && !challenge.ConsumedAt.Valid && challenge.ExpiresAt.Time.After(session.DatabaseNow.Time) && candidateMatches && candidate.CodeHash == challenge.CodeHash && challenge.ExpiresAt.Time.After(time.Now())
 	action := "admin.session.verified"
 	if valid {
 		if err = q.ConsumeAdminSessionChallenge(r.Context(), user.SessionID); err == nil {
