@@ -80,7 +80,7 @@ services:
       GOGC: 100
       APP_ENV: production
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be configured}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in,https://hackways.in}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://hackways.in}
       TICKET_SIGNING_SEED: ${TICKET_SIGNING_SEED:-}
     networks:
       - hackways-internal
@@ -117,7 +117,7 @@ services:
       GOGC: 100
       APP_ENV: production
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be configured}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in,https://hackways.in}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://hackways.in}
       AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT}
       AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
       AZURE_ACS_CONNECTION_STRING: ${AZURE_ACS_CONNECTION_STRING}
@@ -128,7 +128,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
-      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in}
+      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://app.hackways.in}
     networks:
       - hackways-internal
     deploy:
@@ -210,7 +210,9 @@ services:
     environment:
       PORT: 3002
       NODE_OPTIONS: "--max-old-space-size=180"
-      NEXT_PUBLIC_API_URL: https://organizer.hackways.in/api/v1
+      NEXT_PUBLIC_API_URL: https://app.hackways.in/api/v1
+      NEXT_PUBLIC_APP_URL: https://app.hackways.in
+      NEXT_PUBLIC_ORGANIZER_URL: https://app.hackways.in/manage
       CORE_API_URL: http://core-backend:8081/api/v1
       GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
