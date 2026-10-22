@@ -15,6 +15,7 @@ import (
 	"github.com/hackways/core-backend/internal/auth"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/skip2/go-qrcode"
 )
 
 type TicketClaims struct {
@@ -63,13 +64,20 @@ func (h *Handler) Ticket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := base64.RawURLEncoding.EncodeToString(body) + "." + base64.RawURLEncoding.EncodeToString(ed25519.Sign(key, body))
+	png, err := qrcode.Encode(code, qrcode.Medium, 384)
+	if err != nil {
+		platform.RespondError(w, 500, "PASS_RENDER_FAILED", "Your pass could not be displayed. Please try again", nil)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
 	platform.RespondJSON(w, 200, struct {
+		QRImage   string                 `json:"qr_image"`
 		Data      db.GetAccountTicketRow `json:"data"`
 		Code      string                 `json:"code"`
 		PublicKey string                 `json:"public_key"`
 		Algorithm string                 `json:"algorithm"`
 		ShortCode string                 `json:"short_code"`
-	}{ticket, code, base64.StdEncoding.EncodeToString(key.Public().(ed25519.PublicKey)), "Ed25519", ticket.PublicCode})
+	}{"data:image/png;base64," + base64.StdEncoding.EncodeToString(png), ticket, code, base64.StdEncoding.EncodeToString(key.Public().(ed25519.PublicKey)), "Ed25519", ticket.PublicCode})
 }
 
 // VerifyTicketCode checks the signed payload; one-use admission is still a DB transaction.

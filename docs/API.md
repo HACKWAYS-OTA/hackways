@@ -144,3 +144,11 @@ Migration `000011_admin_record_references` adds `admin_reference BIGINT GENERATE
 ### Isolated real-data preview runtime
 
 With `ADMIN_PREVIEW_ONLY=true`, configuration rejects production mode, non-loopback listeners/database hosts, and any database name other than `hackways_admin_preview`. Core exposes its admin collection/detail/action routes and health/service metadata; Global exposes its admin routes, `/auth/admin/{login,logout,me}` and health/service metadata. Approved admin actions persist only in this restored local copy. Ordinary application mutation routes are absent and all background maintenance/email workers remain disabled, so an outbox retry queues without sending. Production backends remain unchanged; the dedicated local admin cookie and explicit local grant are still required.
+
+## QR passes and notification retries
+
+The authenticated RSVP ticket endpoint adds `qr_image`, a PNG data URL containing the signed admission code. It retains existing machine contracts (`code`, `short_code`, public key and algorithm); the UI displays the QR and human pass reference. Confirmed registration pages fetch the pass on the server. A persistent 32-byte base64 `TICKET_SIGNING_SEED` must be injected into core-backend. QR images and responses are private and not cached. Existing event/owner/one-use checks remain authoritative at check-in.
+
+The owner registration-status endpoint accepts optional `resend_notification: true` with current `status`, `updated_at`, `notify_guest: true`, optional message and an Idempotency-Key. This queues one fresh current-status notification without altering registration, ticket or capacity. Resends use a separate idempotency scope and audit action `registration.notification_requested`; cross-owner, stale and closed-event requests fail. The response reports queued state, not inbox delivery.
+
+Registration notifications include the actual event banner, host/Space context and a canonical registration action URL. `APP_PUBLIC_URL` can override the canonical origin for an approved environment.

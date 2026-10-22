@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -89,14 +91,29 @@ func Notify(ctx context.Context, q *db.Queries, event db.LockWorkflowEventRow, r
 	return err
 }
 func NotifyWithMessage(ctx context.Context, q *db.Queries, event db.LockWorkflowEventRow, rsvp db.Rsvps, kind, message string) (bool, error) {
+	context, err := q.ReadEventNotificationContext(ctx, event.ID)
+	if err != nil {
+		return false, err
+	}
+	origin := strings.TrimRight(strings.TrimSpace(os.Getenv("APP_PUBLIC_URL")), "/")
+	if origin == "" {
+		origin = "https://hackways.in"
+	}
+	eventURL := origin + "/events/" + url.PathEscape(context.Slug)
+	actionURL := origin + "/my-events/" + url.PathEscape(rsvp.PublicCode)
 	payload, err := json.Marshal(struct {
-		EventID        pgtype.UUID        `json:"event_id"`
-		RSVPId         pgtype.UUID        `json:"rsvp_id"`
 		Title          string             `json:"event_title"`
 		StartsAt       time.Time          `json:"starts_at"`
+		EndsAt         time.Time          `json:"ends_at"`
 		OfferExpiresAt pgtype.Timestamptz `json:"offer_expires_at"`
 		CustomMessage  string             `json:"custom_message,omitempty"`
-	}{event.ID, rsvp.ID, event.Title, event.StartsAt.Time, rsvp.OfferExpiresAt, message})
+		OrganizerName  string             `json:"organizer_name"`
+		SpaceName      string             `json:"space_name,omitempty"`
+		EventBannerURL string             `json:"event_banner_url,omitempty"`
+		EventURL       string             `json:"event_url"`
+		ActionURL      string             `json:"action_url"`
+		Location       string             `json:"location,omitempty"`
+	}{event.Title, event.StartsAt.Time, event.EndsAt.Time, rsvp.OfferExpiresAt, message, context.OrganizerName, context.SpaceName.String, context.BannerUrl.String, eventURL, actionURL, context.LocationName.String})
 	if err != nil {
 		return false, err
 	}

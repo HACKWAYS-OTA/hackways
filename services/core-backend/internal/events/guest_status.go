@@ -19,10 +19,11 @@ func (h *Handler) ChangeGuestStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Status    db.RegistrationStatus `json:"status"`
-		UpdatedAt time.Time             `json:"updated_at"`
-		Notify    *bool                 `json:"notify_guest"`
-		Message   string                `json:"message"`
+		Status             db.RegistrationStatus `json:"status"`
+		UpdatedAt          time.Time             `json:"updated_at"`
+		Notify             *bool                 `json:"notify_guest"`
+		Message            string                `json:"message"`
+		ResendNotification bool                  `json:"resend_notification"`
 	}
 	if err := platform.DecodeJSON(r, &body); err != nil || body.UpdatedAt.IsZero() || body.Notify == nil {
 		platform.RespondError(w, 422, "INVALID_STATUS_CHANGE", "Provide a status, the current guest version and a notification choice", nil)
@@ -51,7 +52,7 @@ func (h *Handler) ChangeGuestStatus(w http.ResponseWriter, r *http.Request) {
 	owner, _ := auth.OrganizerFromContext(r.Context())
 	result, replayed, err := workflows.New(h.pool).ChangeOwnerStatus(r.Context(), workflows.OwnerStatusRequest{
 		EventID: event.ID, RegistrationID: guest.ID, ActorID: actor.UserID, OrganizerID: owner.ID,
-		Status: body.Status, ExpectedUpdatedAt: body.UpdatedAt, Notify: *body.Notify, Message: body.Message, Key: key, RequestID: platform.GetRequestID(r.Context()),
+		ResendNotification: body.ResendNotification, Status: body.Status, ExpectedUpdatedAt: body.UpdatedAt, Notify: *body.Notify, Message: body.Message, Key: key, RequestID: platform.GetRequestID(r.Context()),
 	})
 	if err != nil {
 		lifecycleError(w, err)
