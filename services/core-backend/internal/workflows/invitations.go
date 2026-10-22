@@ -89,7 +89,7 @@ func (e *Engine) Invite(ctx context.Context, req InvitationRequest) (InvitationR
 		EventURL      string    `json:"event_url"`
 		ActionURL     string    `json:"action_url"`
 		Message       string    `json:"custom_message,omitempty"`
-	}{event.Title, event.StartsAt.Time, event.EndsAt.Time, info.OrganizerName, info.SpaceName.String, info.BannerUrl.String, info.LocationName.String, eventURL, eventURL + "/register", req.Message})
+	}{event.Title, event.StartsAt.Time, event.EndsAt.Time, info.OrganizerName, info.SpaceName.String, info.BannerUrl.String, info.LocationName.String, eventURL, eventURL + "/register?invitation=1", req.Message})
 	if err != nil {
 		return result, false, err
 	}

@@ -3,7 +3,7 @@ import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { ApiClientError, fetchApi } from './api';
-import { privateApi } from './account';
+import { privateApi,currentUser } from './account';
 import type { EventDetails, RegistrationFormConfig } from '@/types/api';
 
 export type EventManagementAccess = 'allowed' | 'denied' | 'unavailable';
@@ -43,4 +43,9 @@ export const readRegistrationForm = cache(async (slug: string): Promise<Registra
     if (error instanceof ApiClientError && ['NOT_FOUND', 'HTTP_404', 'INVALID_SLUG'].includes(error.code)) notFound();
     throw error;
   }
+});
+
+export const readInvitationState = cache(async (slug:string):Promise<{invited:boolean;registration_code:string|null}> => {
+ const user=await currentUser();if(!user)return {invited:false,registration_code:null};
+ return privateApi<{invited:boolean;registration_code:string|null}>(`/events/by-slug/${encodeURIComponent(slug)}/invitation`);
 });

@@ -1,0 +1,183 @@
+.registration-step-nav {
+  border-bottom: 1px solid var(--line);
+  margin-block: 28px 32px;
+}
+.registration-step-nav ol {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0 0 18px;
+}
+.registration-step-nav button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+.registration-step-nav button span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.registration-step-nav button[aria-current] {
+  color: var(--ink);
+}
+.registration-step-nav button[aria-current] span {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.registration-step-nav button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.registration-step-count {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.registration-step > h2 {
+  font-size: 26px;
+  margin-bottom: 26px;
+  overflow-wrap: anywhere;
+}
+.registration-step {
+  scroll-margin-top: 32px;
+}
+.registration-section-description {
+  margin-bottom: 28px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.registration-custom-questions,
+.registration-identity-step {
+  display: grid;
+  gap: 28px;
+}
+.registration-custom-questions .field-help {
+  margin-block: 0 10px;
+}
+.registration-custom-questions .registration-answer-choice {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.registration-answer-choice legend {
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+.registration-multiple-choices {
+  display: grid;
+  gap: 12px;
+}
+.registration-multiple-choices label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+.registration-field-error {
+  color: #943d50;
+  font-size: 13px;
+  margin-top: 9px;
+}
+.registration-custom-questions [aria-invalid="true"].app-input {
+  border-color: #ad5263;
+}
+.required-mark {
+  color: #943d50;
+}
+.registration-review > p {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.registration-review dl,
+.registration-review-identity {
+  margin: 0;
+}
+.registration-review dl > div,
+.registration-review-identity > div {
+  padding-block: 15px;
+  border-bottom: 1px solid var(--line);
+}
+.registration-review dt,
+.registration-review-identity dt {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.registration-review dd,
+.registration-review-identity dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 15px;
+}
+.registration-review section {
+  margin-block: 28px;
+}
+.registration-review section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.registration-review h3 {
+  font-size: 19px;
+}
+.registration-review section header button {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.registration-invited-note {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #2d6346;
+  font-size: 14px;
+}
+.section-registration-form .registration-actions {
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  margin-top: 32px;
+}
+.registration-identity-step > .field-help {
+  font-size: 12px;
+  color: var(--muted);
+}
+.registration-identity-step > .field-help a {
+  text-decoration: underline;
+}
+@media (max-width: 540px) {
+  .registration-step-nav ol {
+    gap: 6px 14px;
+  }
+  .registration-step-nav button {
+    font-size: 11px;
+  }
+  .registration-step > h2 {
+    font-size: 24px;
+  }
+  .registration-step .app-input {
+    font-size: 16px;
+  }
+}

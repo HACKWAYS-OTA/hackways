@@ -899,7 +899,7 @@ func (q *Queries) ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditPa
 }
 
 const lockWorkflowEvent = `-- name: LockWorkflowEvent :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
 `
 
 type LockWorkflowEventRow struct {
@@ -948,6 +948,7 @@ type LockWorkflowEventRow struct {
 	RegistrationFormRevision int64              `json:"registration_form_revision"`
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
+	RegistrationFormSettings []byte             `json:"registration_form_settings"`
 	DatabaseNow              pgtype.Timestamptz `json:"database_now"`
 }
 
@@ -1000,6 +1001,7 @@ func (q *Queries) LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWo
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
+		&i.RegistrationFormSettings,
 		&i.DatabaseNow,
 	)
 	return i, err
@@ -1206,7 +1208,7 @@ const transitionWorkflowEvent = `-- name: TransitionWorkflowEvent :one
 UPDATE events SET status=$1::event_status, revision=revision+1, updated_at=clock_timestamp(),
 published_at=CASE WHEN $1::event_status='published' THEN clock_timestamp() ELSE published_at END,
 cancelled_at=CASE WHEN $1::event_status='cancelled' THEN clock_timestamp() ELSE cancelled_at END
-WHERE id=$2 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference
+WHERE id=$2 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
 `
 
 type TransitionWorkflowEventParams struct {
@@ -1263,6 +1265,7 @@ func (q *Queries) TransitionWorkflowEvent(ctx context.Context, arg TransitionWor
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
+		&i.RegistrationFormSettings,
 	)
 	return i, err
 }
@@ -1272,7 +1275,7 @@ UPDATE events SET title=$2, description=$3, format=$4, starts_at=$5, ends_at=$6,
 capacity=$8, location_name=$9, location_address=$10, online_url=$11, registration_opens_at=$12,
 registration_closes_at=$13, registration_mode=$14, allow_guest=$15, waitlist_enabled=$16,
 offer_minutes=$17, revision=revision+1, updated_at=clock_timestamp()
-WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference
+WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
 `
 
 type UpdateWorkflowEventParams struct {
@@ -1362,6 +1365,7 @@ func (q *Queries) UpdateWorkflowEvent(ctx context.Context, arg UpdateWorkflowEve
 		&i.RegistrationFormRevision,
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
+		&i.RegistrationFormSettings,
 	)
 	return i, err
 }

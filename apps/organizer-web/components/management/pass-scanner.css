@@ -1,0 +1,113 @@
+.host-entry.scanner-entry {
+  background: transparent;
+  padding: 0;
+}
+.scanner-entry > div:first-child {
+  padding: 0;
+}
+.scanner-entry > div:first-child > svg {
+  position: static;
+}
+.scanner-entry-heading {
+  margin-bottom: 24px;
+}
+.scanner-entry-heading h2 {
+  font-size: 26px;
+}
+.pass-scanner {
+  max-width: 760px;
+}
+.pass-scanner-view {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16/9;
+  max-height: 400px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--soft);
+}
+.pass-scanner-view.is-active {
+  background: #17141a;
+}
+.pass-scanner-view video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pass-scanner-placeholder {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+}
+.pass-scanner-placeholder > svg {
+  color: var(--ink);
+  margin-inline: auto;
+}
+.pass-scanner-placeholder p {
+  font-size: 20px;
+  color: var(--ink);
+  margin-top: 16px;
+}
+.pass-scanner-placeholder span {
+  display: block;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.pass-scanner-frame {
+  position: absolute;
+  inset: 12% 28%;
+  border: 2px solid #ffffffd9;
+  border-radius: 12px;
+  pointer-events: none;
+  display: none;
+}
+.is-active .pass-scanner-frame {
+  display: block;
+}
+.pass-scanner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+.pass-scanner .pass-scanner-help {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 16px;
+}
+.host-entry .checkin-result {
+  margin-top: 24px;
+  max-width: 760px;
+}
+.manual-pass-entry {
+  max-width: 760px;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+.manual-pass-entry summary {
+  cursor: pointer;
+  color: var(--ink);
+  min-height: 44px;
+}
+.host-entry-closed {
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  max-width: 760px;
+  margin-bottom: 20px;
+}
+@media (max-width: 540px) {
+  .pass-scanner-view {
+    aspect-ratio: 1/1;
+  }
+  .pass-scanner-frame {
+    inset: 20%;
+  }
+  .pass-scanner-actions > button {
+    flex: 1 1 auto;
+  }
+}

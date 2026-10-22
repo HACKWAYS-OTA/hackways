@@ -24,3 +24,23 @@
 .invitation-history td small { display: block; color: var(--muted); margin-top: 6px; }
 .invitation-history .field-help, .invite-empty { color: var(--muted); margin-top: 20px; font-size: 13px; }
 @media (max-width: 800px) { .invite-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; } .invite-note { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--line); } .invitation-history td, .invitation-history th { padding-inline: 8px; min-width: 130px; } }
+
+.invitation-list-tools {display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;align-items:center;margin-block:28px 12px;}
+.invitation-list-tools nav {display:flex;gap:18px;flex-wrap:wrap;}
+.invitation-list-tools nav a {display:inline-flex;gap:8px;align-items:center;color:var(--muted);padding-block:12px;border-bottom:2px solid transparent;font-size:13px;}
+.invitation-list-tools nav a[aria-current] {color:var(--ink);border-color:var(--ink);}
+.invitation-list-tools nav span {font-size:11px;color:var(--muted);}
+.invitation-history-first {margin-top:0;padding-top:0;border-top:0;}
+.invited-person {display:flex;align-items:center;gap:12px;min-width:210px;}
+.invited-person strong {display:block;font-weight:400;color:var(--ink);margin-bottom:4px;}
+.invited-person div>span {font-size:13px;color:var(--muted);}
+.invitation-awaiting {font-size:12px;color:var(--muted);}
+.invitation-row-actions {display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:12px;}
+.invitation-row-actions .app-button {min-height:36px;padding:7px 14px;font-size:12px;}
+.invitation-empty {display:flex;align-items:flex-start;flex-direction:column;gap:15px;padding:44px 0;max-width:540px;}
+.invitation-empty h3 {font-size:22px;}
+.invitation-empty p {font-size:14px;color:var(--muted);}
+.invite-composer {border-top:1px solid var(--line);margin-top:44px;padding-top:32px;scroll-margin-top:80px;}
+.invite-composer>header {margin-bottom:26px;}
+.invite-composer h2 {font-size:25px;}
+.invite-composer>header p {color:var(--muted);font-size:14px;margin-top:10px;}

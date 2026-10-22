@@ -116,3 +116,17 @@ See [failure/recovery scenarios](scenarios.md). Local verification and exact com
 ## Owner status controls
 
 The existing core engine now supports owner-scoped guest status edits with server-provided choices, expected guest timestamps and exact idempotent retries. It preserves capacity/held-inventory locks, ticket replacement/revocation, FIFO promotion and audit. Custom optional status messages use the same PostgreSQL outbox and escaped global-worker templates. Checked-in/transferred and closed-event registrations remain protected. See [API.md](../API.md) for targets and the request/response contract. No new service, SQL framework or migration was introduced.
+
+## Sectioned registration and invitation response
+
+Migration 13 extends the existing registration-question records with section breaks, input hints and typed validation JSON, plus event-level page title/introduction/button/confirmation settings. Existing questions remain valid. Up to 40 input questions and 10 section breaks are accepted; submissions store at most 40 answer snapshots, retaining the section label and multiple-choice selections. Form revisions, ownership, the event lock and historical answer retention remain authoritative in Go.
+
+Supported inputs: short/long text, email, HTTPS URL, phone, number, date, time, single choice, multiple choice and confirmation. Go validates required answers, supported choices, numeric ranges/whole numbers, text lengths and valid formats. No custom executable regular expressions or scripts are accepted. The attendee /events/[slug]/register page has identity, organizer-defined sections and review steps; unsectioned legacy questions are split into groups of four. Back/Next preserves entries and final submission validates every section on the backend.
+
+GET /events/by-slug/{slug}/invitation requires an account session. Invitation recognition requires a verified matching email; it never grants an attendee an organizer role or reserves capacity. The response can return the account's existing registration reference. Email invitation actions open registration with an invitation hint; that query string is not authorization. Invited registrations follow the event's approval rules. Owner invitation lists support q and status filters (all, awaiting, responded, queued, sent, failed) and return real registration/check-in state with matching summary counts.
+
+QR check-in uses a lazy-loaded, pinned jsqr 1.4.0 browser decoder, camera permission requested only after Start scanner, and local image selection as a fallback. No camera frames/images are uploaded. Scanning pauses after a result; tracks stop on cancellation, unmount or a hidden tab. The existing signed-pass check-in endpoint remains the authority for event, expiry, ticket state and one-use checks. Manual check-in still requires identity verification and a recorded reason.
+
+Migration 13's down migration preserves columns/history and refuses an incompatible downgrade when expanded questions/answers exist. Review that data before downgrading; do not delete it to make a rollback pass. The UI and Go runtime must support the expanded question kinds once hosts use them.
+
+Decoder reference: [jsQR](https://github.com/cozmo/jsQR); camera lifecycle reference: [MediaDevices.getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
