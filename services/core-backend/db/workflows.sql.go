@@ -1112,9 +1112,10 @@ func (q *Queries) RevokeWorkflowTicket(ctx context.Context, rsvpID pgtype.UUID) 
 
 const setWorkflowRSVPState = `-- name: SetWorkflowRSVPState :one
 UPDATE rsvps SET status = $1::registration_status, offer_expires_at = $2::timestamptz,
+    approval_expires_at = $3::timestamptz,
     cancelled_at = CASE WHEN $1::registration_status = 'cancelled' THEN clock_timestamp() ELSE cancelled_at END,
     updated_at = clock_timestamp()
-WHERE id = $3
+WHERE id = $4
 AND ($1::registration_status <> 'confirmed'
     OR status NOT IN ('offered','pending_approval')
     OR (status='offered' AND offer_expires_at>clock_timestamp())
@@ -1123,13 +1124,19 @@ RETURNING id, event_id, user_id, guest_name, guest_email, status, notes, registe
 `
 
 type SetWorkflowRSVPStateParams struct {
-	Status         RegistrationStatus `json:"status"`
-	OfferExpiresAt pgtype.Timestamptz `json:"offer_expires_at"`
-	ID             pgtype.UUID        `json:"id"`
+	Status            RegistrationStatus `json:"status"`
+	OfferExpiresAt    pgtype.Timestamptz `json:"offer_expires_at"`
+	ApprovalExpiresAt pgtype.Timestamptz `json:"approval_expires_at"`
+	ID                pgtype.UUID        `json:"id"`
 }
 
 func (q *Queries) SetWorkflowRSVPState(ctx context.Context, arg SetWorkflowRSVPStateParams) (Rsvps, error) {
-	row := q.db.QueryRow(ctx, setWorkflowRSVPState, arg.Status, arg.OfferExpiresAt, arg.ID)
+	row := q.db.QueryRow(ctx, setWorkflowRSVPState,
+		arg.Status,
+		arg.OfferExpiresAt,
+		arg.ApprovalExpiresAt,
+		arg.ID,
+	)
 	var i Rsvps
 	err := row.Scan(
 		&i.ID,

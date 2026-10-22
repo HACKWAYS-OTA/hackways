@@ -21,8 +21,8 @@ export function GuestStatusDialog({ eventId, guest, options, initialStatus, rese
       const body = JSON.stringify({ status, updated_at: guest.updated_at, notify_guest: notify, message: notify ? message.trim() : '', ...(resend ? { resend_notification: true } : {}) });
       if (!attempt.current || attempt.current.body !== body) attempt.current = { body, key: crypto.randomUUID() };
       const result = await fetchApi<{ data: { id: string; status: string }; notification_queued: boolean }>(`/events/${eventId}/registrations/by-code/${encodeURIComponent(guest.public_code)}/status`, { method: 'POST', headers: { 'Idempotency-Key': attempt.current.key }, body });
-      if (result.data.id !== guest.id || result.data.status !== status) throw new Error('The status response could not be confirmed. Retry without changing the form.');
-      onUpdated(resend ? 'A new guest notification is queued.' : result.notification_queued ? 'Guest status updated. A notification is queued.' : 'Guest status updated without notifying the guest.');
+      if (result.data.id !== guest.id || result.data.status !== status && !(status === 'waitlisted' && result.data.status === 'offered')) throw new Error('The status response could not be confirmed. Retry without changing the form.');
+      onUpdated(status === 'waitlisted' && result.data.status === 'offered' ? 'A place was available, so the guest has been offered it. A notification is queued.' : resend ? 'A new guest notification is queued.' : result.notification_queued ? 'Guest status updated. A notification is queued.' : 'Guest status updated without notifying the guest.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The status could not be updated. Your entries are still here.');
       setConflict(err instanceof ApiClientError && ['REGISTRATION_CHANGED', 'REGISTRATION_EXPIRED', 'STATUS_CHANGE_UNAVAILABLE'].includes(err.code));

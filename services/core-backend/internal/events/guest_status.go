@@ -29,7 +29,7 @@ func (h *Handler) ChangeGuestStatus(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 422, "INVALID_STATUS_CHANGE", "Provide a status, the current guest version and a notification choice", nil)
 		return
 	}
-	if body.Status != db.RegistrationStatusConfirmed && body.Status != db.RegistrationStatusCancelled && body.Status != db.RegistrationStatusRejected {
+	if body.Status != db.RegistrationStatusConfirmed && body.Status != db.RegistrationStatusCancelled && body.Status != db.RegistrationStatusRejected && body.Status != db.RegistrationStatusPendingApproval && body.Status != db.RegistrationStatusWaitlisted && !(body.ResendNotification && body.Status == db.RegistrationStatusOffered) {
 		platform.RespondError(w, 422, "INVALID_STATUS", "Choose an available guest status", nil)
 		return
 	}

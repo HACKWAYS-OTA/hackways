@@ -420,6 +420,36 @@ func TestOwnerLifecycle_RegistrationQuestionsAndPrivateAnswers(t *testing.T) {
 	if readErr != nil || storedRSVP.Status != "confirmed" || !storedRSVP.UpdatedAt.Time.Equal(change.Data.UpdatedAt.Time) || afterReplay != afterResend {
 		t.Fatal("notification resend changed status or duplicated email")
 	}
+	// All five manual states must persist their actual inventory and admission effects.
+	version := storedRSVP.UpdatedAt.Time
+	for step, target := range []string{"pending_approval", "waitlisted", "rejected", "cancelled", "confirmed"} {
+		response := statusRequest(target, version, true, "Manual status check", fmt.Sprintf("%s-manual-%d", key, step), f.cookie)
+		if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || string(change.Data.Status) != target {
+			t.Fatalf("manual %s: %d %s", target, response.Code, response.Body.String())
+		}
+		version = change.Data.UpdatedAt.Time
+		row, readErr := f.q.GetWorkflowRSVP(context.Background(), result.Data.ID)
+		eventState, eventErr := f.q.GetEventByID(context.Background(), f.event.ID)
+		expectedCount := int32(0)
+		if target == "confirmed" {
+			expectedCount = 1
+		}
+		if readErr != nil || eventErr != nil || eventState.CurrentRsvpCount != expectedCount || (target == "pending_approval" && (!row.ApprovalExpiresAt.Valid || !row.ApprovalExpiresAt.Time.After(time.Now()))) {
+			t.Fatal("manual status did not preserve expiry/capacity")
+		}
+	}
+	// Existing automatic waiting-list behavior must report its actual offered state.
+	if _, err = f.pool.Exec(context.Background(), "UPDATE events SET waitlist_enabled=true WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	response := statusRequest("waitlisted", version, true, "Waiting list check", key+"-auto-list", f.cookie)
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || change.Data.Status != db.RegistrationStatusOffered || !change.NotificationQueued {
+		t.Fatalf("automatic offer response was stale: %d %s", response.Code, response.Body.String())
+	}
+	response = statusRequest("confirmed", change.Data.UpdatedAt.Time, true, "Confirm offered place", key+"-auto-confirm", f.cookie)
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || change.Data.Status != db.RegistrationStatusConfirmed {
+		t.Fatal("manual confirmation did not consume held place")
+	}
 	ticket, ticketErr = f.q.GetTicketByRSVP(context.Background(), result.Data.ID)
 	stored, err = f.q.GetEventByID(context.Background(), f.event.ID)
 	if err != nil || ticketErr != nil || stored.CurrentRsvpCount != 1 || ticket.Status != "issued" {

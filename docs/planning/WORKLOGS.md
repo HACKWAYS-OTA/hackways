@@ -795,3 +795,8 @@ All completed work is logged here with verified commands and output.
 - Found production ticket signing seed missing and sender domain mismatched to the verified ACS domain. Backed up protected configuration; generated a persistent seed only when absent and set the provisioned sender notify@mail.hackways.in. Both backends became healthy. Email remains in India as requested.
 - Corrected sender validation email reached ACS Succeeded on the existing India resource. Initial absent-operation GET probes returned gateway 504, but valid submission/status worked with the corrected sender. This confirms provider acceptance, not inbox placement.
 - Core regression suite, build, vet, SQL compile and frontend type/lint checks passed locally. Added QR PNG/signature and notification context, retry/idempotency/ownership regression coverage. Revised candidate and frontend runtime verification pending.
+
+### 2026-10-22 - Five manual guest statuses
+- User selected Going, Awaiting approval, Waiting list, Declined and Cancelled, without a manual timed-offer action. Expanded owner/backend/admin options to those states and retained current-state, ownership, checked-in, transferred and closed-event guards.
+- Added authoritative review expiry handling to the existing sqlc state query; non-confirmed transitions release/revoke admission correctly. Existing automatic waiting-list offers report the actual final status to avoid a stale response. Added registration/inventory/expiry/offer-result regressions against the isolated database.
+- Full local core suite, build, vet and SQL compile passed. Revised image candidate pending; the previous QR/mail candidate passed its complete CI and all image jobs but was not activated before this steering.
