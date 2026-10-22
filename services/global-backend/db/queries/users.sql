@@ -48,3 +48,8 @@ WHERE id = $1 AND deleted_at IS NULL;
 SELECT id, user_id, display_name, slug, bio, website_url, avatar_url, verified, created_at, updated_at
 FROM organizers
 WHERE user_id = $1;
+
+-- name: UpdateOwnDisplayName :one
+UPDATE users SET display_name = $2, updated_at = clock_timestamp()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, email, display_name, avatar_url, email_verified;

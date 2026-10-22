@@ -29,6 +29,8 @@ func (h *Handler) mountManagement(r chi.Router) {
 		owner.Delete("/{id}", h.DeleteDraft)
 		owner.Post("/{id}/status", h.TransitionEvent)
 		owner.Get("/{id}/registrations", h.Roster)
+		owner.Get("/{id}/invitations", h.Invitations)
+		owner.Post("/{id}/invitations", h.InviteAttendees)
 		owner.Get("/{id}/registrations/by-code/{code}", h.GuestDetail)
 		owner.Post("/{id}/registrations/by-code/{code}/status", h.ChangeGuestStatus)
 		owner.Get("/{id}/registration-form", h.OwnerRegistrationForm)

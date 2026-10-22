@@ -2,7 +2,8 @@
 .app-nav { gap: 28px; }
 .app-nav > a[aria-current] { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 10px; }
 .header-actions { display: flex; align-items: center; justify-self: end; gap: 28px; }
-.header-account { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-size: 13px; }
+.header-account { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--muted); }
+.header-account:hover, .header-account[aria-current] { outline: 1px solid var(--line); outline-offset: 3px; }
 .event-space-link { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; margin-block: -12px 24px; color: var(--violet); font-size: 13px; }
 .desk-page, .create-page, .manage-page { width: min(1120px, calc(100% - 80px)); margin-inline: auto; padding-block: 64px 88px; }
 .desk-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 36px; }

@@ -67,6 +67,9 @@ All paths below are relative to `/api/v1`; existing public catalog and auth rout
 | POST | `/rsvps/claim` | Verified account; bounded linking of guest registrations with its verified email. Repeat for batches over 50. |
 | GET | `/rsvps/{id}/ticket` | Account owner; ticket and signed code; 503 if signing seed is absent. |
 | GET | `/auth/sessions` | Account; owned session metadata, never token hashes. |
+| PATCH | `/auth/me` | Account; saves its own `display_name` (1–100 characters, no control characters). Email, verification and roles are not writable here. |
+| GET | `/events/{id}/invitations` | Event owner; paginated recipients and persisted outbox delivery state. |
+| POST | `/events/{id}/invitations` | Verified event owner; 1–50 emails, optional 2,000-character message, required `Idempotency-Key`. Upcoming published event only; 1,000 invitations per event. Duplicate invitations and active registrants skipped. Does not reserve capacity or bypass approval. |
 | DELETE | `/auth/sessions/{sessionID}` | Account owning the session. |
 | DELETE | `/auth/sessions` | Account; revoke all owned sessions and clear current cookie. |
 | POST | `/auth/email-verification/request` | Account; queues code only when ACS configured; response does not claim delivery. |

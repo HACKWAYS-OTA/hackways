@@ -92,6 +92,7 @@ type Querier interface {
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
 	SetStorageWriteTimeout(ctx context.Context) error
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
+	UpdateOwnDisplayName(ctx context.Context, arg UpdateOwnDisplayNameParams) (UpdateOwnDisplayNameRow, error)
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
 	VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error)
 	VerifyAccountEmail(ctx context.Context, arg VerifyAccountEmailParams) (int64, error)

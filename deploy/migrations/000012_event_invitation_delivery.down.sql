@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS email_outbox_event_invitation_timeline_idx;
+DROP INDEX IF EXISTS email_outbox_event_invitation_recipient_idx;

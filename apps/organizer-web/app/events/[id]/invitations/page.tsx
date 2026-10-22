@@ -1,0 +1,18 @@
+import Link from 'next/link';
+import { managedEvent } from '@/lib/management';
+import { pageOffset, privateApi, requireUser } from '@/lib/account';
+import { dateLabel } from '@/lib/journeys';
+import { site } from '@/lib/site';
+import { InviteAttendeesForm } from '@/components/management/InviteAttendeesForm';
+import './invitations.css';
+
+type Invitation = { recipient_email: string; status: string; created_at: string; sent_at: string | null; retry_count: number };
+export const metadata = { title: 'Invite attendees' };
+export default async function Invitations({ params, searchParams }: { params: { id: string }; searchParams: { offset?: string } }) {
+  const [event, user] = await Promise.all([managedEvent(params.id), requireUser(`/events/${params.id}/invitations`)]);
+  const offset = pageOffset(searchParams.offset), path = `/events/${event.slug}/invitations`;
+  const result = await privateApi<{ data: Invitation[] }>(`/events/${event.id}/invitations?limit=26&offset=${offset}`);
+  const available = event.status === 'published' && Date.parse(event.starts_at) > Date.now() && (!event.registration_closes_at || Date.parse(event.registration_closes_at) > Date.now()) && user.email_verified;
+  const labels: Record<string, string> = { pending: 'Queued', processing: 'Sending', sent: 'Sent', failed: 'Failed' };
+  return <><div className="host-section-heading"><h2>Invite attendees</h2></div><div className="invite-layout"><section><p className="invite-intro">Send a personal invitation with a link to your event. Guests register themselves; an invitation does not reserve a place.</p>{!available && <p className="journey-notice">{!user.email_verified ? <>Verify your email in <a href={`${site.app}/account`}>your account</a> before sending invitations.</> : <>Publish an upcoming event with registration open before sending invitations. <Link href={`/events/${event.slug}/settings`}>Event settings</Link></>}</p>}<InviteAttendeesForm eventId={event.id} available={available} /></section><aside className="invite-note"><h3>Before you send</h3><p>Already invited or registered guests are skipped automatically.</p><p>Each event supports up to 1,000 invitations. Registration approval and capacity settings still apply.</p><Link className="quiet-link" href={`/events/${event.slug}/guests`}>View guest list</Link></aside></div><section className="invitation-history"><h2>Invitations</h2>{result.data.length ? <><div className="invitation-table-wrap"><table><caption className="visually-hidden">Invitation email delivery history</caption><thead><tr><th scope="col">Recipient</th><th scope="col">Email delivery</th><th scope="col">Invited</th></tr></thead><tbody>{result.data.slice(0, 25).map(invitation => <tr key={invitation.recipient_email}><td>{invitation.recipient_email}</td><td>{labels[invitation.status] || invitation.status}{invitation.status === 'sent' && invitation.sent_at && <small>{dateLabel(invitation.sent_at, event.timezone)}</small>}</td><td>{dateLabel(invitation.created_at, event.timezone)}</td></tr>)}</tbody></table></div><p className="field-help">Sent means accepted by the email provider. It does not confirm attendance or inbox delivery.</p></> : <p className="invite-empty">No invitations yet. Add email addresses above to invite your first guests.</p>}{(offset > 0 || result.data.length > 25) && <nav className="journey-pagination" aria-label="Invitation pages">{offset > 0 && <Link className="app-button app-button-outline" href={`${path}?offset=${Math.max(0, offset - 25)}`}>Previous</Link>}{result.data.length > 25 && <Link className="app-button app-button-outline" href={`${path}?offset=${offset + 25}`}>Next</Link>}</nav>}</section></>;
+}

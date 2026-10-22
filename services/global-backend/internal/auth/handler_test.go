@@ -160,6 +160,36 @@ func TestAuthHandler_LivePostgres(t *testing.T) {
 	})
 
 	t.Run("Logout revokes session", func(t *testing.T) {
+		// Profile mutations must require a session and preserve account identity.
+		profile := func(payload string, signedIn bool) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodPatch, "/me", bytes.NewBufferString(payload))
+			req.Header.Set("Content-Type", "application/json")
+			if signedIn {
+				req.AddCookie(&http.Cookie{Name: DefaultSessionCookie, Value: sessionToken})
+			}
+			rr := httptest.NewRecorder()
+			handler.Routes().ServeHTTP(rr, req)
+			return rr
+		}
+		if rr := profile(`{"display_name":"Someone else"}`, false); rr.Code != 401 {
+			t.Fatalf("anonymous profile mutation: %d", rr.Code)
+		}
+		if rr := profile(`{"display_name":"  "}`, true); rr.Code != 422 {
+			t.Fatalf("empty display name: %d", rr.Code)
+		}
+		if rr := profile(`{"display_name":"Updated profile"}`, true); rr.Code != 200 {
+			t.Fatalf("profile mutation: %d %s", rr.Code, rr.Body.String())
+		}
+		me := httptest.NewRequest(http.MethodGet, "/me", nil)
+		me.AddCookie(&http.Cookie{Name: DefaultSessionCookie, Value: sessionToken})
+		result := httptest.NewRecorder()
+		handler.Routes().ServeHTTP(result, me)
+		var updated struct {
+			User UserResponse `json:"user"`
+		}
+		if err := json.Unmarshal(result.Body.Bytes(), &updated); err != nil || updated.User.DisplayName != "Updated profile" || updated.User.Email != uniqueEmail {
+			t.Fatal("profile did not persist with identity preserved")
+		}
 		req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 		req.AddCookie(&http.Cookie{
 			Name:  DefaultSessionCookie,

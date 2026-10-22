@@ -246,11 +246,13 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 		body = "The organizer updated details for " + title + ". Review the current event page before attending."
 	case "event_cancelled":
 		body = title + " was cancelled. Your registration is no longer valid."
+	case "event_invitation":
+		body = "You are invited to " + title + ". View the event and register if you would like to attend. This invitation does not reserve a place."
 	}
 	if title != "your event" && !isOTPTemplate(e.TemplateType) && !strings.Contains(body, title) {
 		body = "For " + title + ":\n\n" + body
 	}
-	if isRegistrationStateTemplate(e.TemplateType) {
+	if isRegistrationStateTemplate(e.TemplateType) || e.TemplateType == "event_invitation" {
 		body = appendTemplateContext(body, payload)
 	} else {
 		body = appendTemplateContext(body, templatePayload{StartsAt: payload.StartsAt, Location: payload.Location, OrganizerName: payload.OrganizerName, SpaceName: payload.SpaceName, TicketCode: payload.TicketCode})

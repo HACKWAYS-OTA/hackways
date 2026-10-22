@@ -1,7 +1,7 @@
 'use client';
 
 import { Checkbox } from '@hackways/ui/checkbox';
-import { RadioGroup } from '@hackways/ui/radio-group';
+import { Select } from '@hackways/ui/select';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiClientError, fetchApi } from '@/lib/api';
 import type { EditableGuest, GuestStatusOption } from '@/lib/guests';
@@ -13,7 +13,11 @@ export function GuestStatusDialog({ eventId, guest, options, initialStatus, rese
   const dialog = useRef<HTMLDialogElement>(null), lock = useRef(false), attempt = useRef<{ body: string; key: string } | null>(null);
   const [status, setStatus] = useState(resend ? guest.status : options.some(option => option.value === initialStatus) ? initialStatus : ''), [notify, setNotify] = useState(!!guest.guest_email), [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [conflict, setConflict] = useState(false);
-  useEffect(() => { dialog.current?.showModal(); }, []);
+  useEffect(() => {
+    const element = dialog.current;
+    if (element && !element.open) element.showModal();
+    return () => { if (element?.open) element.close(); };
+  }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (lock.current || (!resend && !options.some(option => option.value === status))) return;
     lock.current = true; setBusy(true); onBusy(true); setError(''); setConflict(false);
@@ -29,11 +33,11 @@ export function GuestStatusDialog({ eventId, guest, options, initialStatus, rese
     } finally { lock.current = false; setBusy(false); onBusy(false); }
   }
   const name = guest.guest_name || guest.guest_email || 'Guest registration';
-  return <dialog ref={dialog} className="guest-status-dialog" aria-labelledby="guest-status-title" onCancel={event => { event.preventDefault(); event.stopPropagation(); if (!lock.current) onClose(); }} onClick={event => { event.stopPropagation(); if (event.target === event.currentTarget && !lock.current) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose(); } }}>
+  return <dialog ref={dialog} className="guest-status-dialog" aria-labelledby="guest-status-title" onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented && !event.currentTarget.querySelector('[role="combobox"][aria-expanded="true"]')) { event.preventDefault(); event.stopPropagation(); if (!lock.current) onClose(); } }} onCancel={event => { event.preventDefault(); event.stopPropagation(); if (!lock.current) onClose(); }} onClick={event => { event.stopPropagation(); if (event.target === event.currentTarget && !lock.current) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose(); } }}>
     <header><h2 id="guest-status-title">{resend ? 'Send guest notification' : 'Change guest status'}</h2><button type="button" className="icon-button" aria-label="Close status editor" disabled={busy} onClick={onClose}><Icon name="close" size={20} /></button></header>
     <div className="guest-status-person"><span className="host-guest-avatar" aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span><div><h3>{name}</h3>{guest.guest_email && <p>{guest.guest_email}</p>}</div><span className={`guest-status-label status-${guest.status}`}>{registrationLabels[guest.status]}</span></div>
     <form onSubmit={submit} aria-busy={busy}><fieldset disabled={busy}><legend className="visually-hidden">Guest status and notification</legend>
-      {!resend && <div className="guest-status-field"><span>Change status to</span><RadioGroup label="Change status to" name="guest-status" layout="stack" options={options} value={status} onValueChange={setStatus} required disabled={busy} /></div>}
+      {!resend && <div className="guest-status-field"><span>Change status to</span><Select label="Change status to" name="guest-status" options={options} value={status} onValueChange={setStatus} placeholder="Choose new status" required disabled={busy} autoFocus />{options.find(option => option.value === status)?.description && <small>{options.find(option => option.value === status)?.description}</small>}</div>}
       {!resend && <label className="guest-status-notify"><Checkbox checked={notify} onCheckedChange={setNotify} disabled={!guest.guest_email || busy} /><span>Notify guest</span></label>}
       {notify && <label className="guest-status-field"><span className="visually-hidden">Message to the guest (optional)</span><textarea rows={3} value={message} onChange={event => setMessage(event.target.value)} maxLength={2000} placeholder="Add an optional message…" /><small>Included in the status notification email.</small></label>}
     </fieldset>

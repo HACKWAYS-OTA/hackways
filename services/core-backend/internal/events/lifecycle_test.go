@@ -36,6 +36,79 @@ type ownerFixture struct {
 	cookie    *http.Cookie
 }
 
+func TestEventInvitations_OwnershipIdempotencyAndInventory(t *testing.T) {
+	f, other := ownerSetup(t), ownerSetup(t)
+	ctx := context.Background()
+	if _, err := f.pool.Exec(ctx, "UPDATE users SET email_verified=TRUE WHERE id=$1", f.owner.ID); err != nil {
+		t.Fatal(err)
+	}
+	api := NewHandler(f.pool).Routes()
+	path := "/" + idString(f.event.ID) + "/invitations"
+	request := func(method, body, key string, cookie *http.Cookie) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Idempotency-Key", key)
+		if cookie != nil {
+			r.AddCookie(cookie)
+		}
+		w := httptest.NewRecorder()
+		api.ServeHTTP(w, r)
+		return w
+	}
+	body := `{"emails":["invitee@example.invalid","INVITEE@example.invalid"],"message":"Welcome aboard"}`
+	key := "invitation-integration-test-key"
+	if w := request("POST", body, key, nil); w.Code != 401 {
+		t.Fatalf("anonymous invitation: %d", w.Code)
+	}
+	if w := request("POST", body, key, other.cookie); w.Code != 404 {
+		t.Fatalf("cross-owner invitation: %d", w.Code)
+	}
+	w := request("POST", body, key, f.cookie)
+	if w.Code != 200 {
+		t.Fatalf("invite: %d %s", w.Code, w.Body.String())
+	}
+	var result workflows.InvitationResult
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil || result.Queued != 1 || result.Skipped != 0 {
+		t.Fatal("unexpected invitation result")
+	}
+	w = request("POST", body, key, f.cookie)
+	if w.Code != 200 || w.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("invitation retry did not replay")
+	}
+	if w = request("POST", `{"emails":["different@example.invalid"]}`, key, f.cookie); w.Code != 409 {
+		t.Fatal("changed retry body accepted")
+	}
+	w = request("POST", body, key+"-new", f.cookie)
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil || result.Queued != 0 || result.Skipped != 1 {
+		t.Fatal("duplicate invitation queued")
+	}
+	w = request("GET", "", "", f.cookie)
+	var listed struct {
+		Data []db.ListEventInvitationsRow `json:"data"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &listed) != nil || len(listed.Data) != 1 || listed.Data[0].RecipientEmail != "invitee@example.invalid" || listed.Data[0].Status != db.NotificationStatusPending {
+		t.Fatal("invitation history missing persisted outbox state")
+	}
+	var count int
+	var payload string
+	if err := f.pool.QueryRow(ctx, "SELECT count(*),min(payload_json::text) FROM email_outbox WHERE event_id=$1 AND template_type='event_invitation'", f.event.ID).Scan(&count, &payload); err != nil || count != 1 || !strings.Contains(payload, "Welcome aboard") || !strings.Contains(payload, "/register") {
+		t.Fatal("invitation context not persisted")
+	}
+	after, err := f.q.GetEventByID(ctx, f.event.ID)
+	if err != nil || after.CurrentRsvpCount != f.event.CurrentRsvpCount || after.HeldRsvpCount != f.event.HeldRsvpCount {
+		t.Fatal("invitation changed inventory")
+	}
+	if _, err = f.pool.Exec(ctx, "UPDATE events SET status='draft' WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if w = request("POST", `{"emails":["closed@example.invalid"]}`, key+"-closed", f.cookie); w.Code != 409 {
+		t.Fatal("draft invitation accepted")
+	}
+}
+
 func ownerSetup(t *testing.T) ownerFixture {
 	t.Helper()
 	raw := os.Getenv("DATABASE_URL")
