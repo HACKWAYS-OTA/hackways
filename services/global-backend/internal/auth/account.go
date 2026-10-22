@@ -1,12 +1,13 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/hackways/global-backend/internal/notifications"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/global-backend/db"
@@ -117,15 +118,10 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if !notifications.EmailConfigured() {
-		platform.RespondError(w, 503, "EMAIL_UNAVAILABLE", "Email verification is unavailable until ACS is configured", nil)
+		platform.RespondError(w, 503, "EMAIL_UNAVAILABLE", "Verification email is temporarily unavailable. Please try again later.", nil)
 		return
 	}
 	if !h.allowIdentityAttempt(w, r, user.Email) {
-		return
-	}
-	token, err := GenerateToken()
-	if err != nil {
-		platform.RespondError(w, 503, "TOKEN_UNAVAILABLE", "Verification is temporarily unavailable", nil)
 		return
 	}
 	tx, err := h.pool.Begin(r.Context())
@@ -135,15 +131,36 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 	}
 	defer tx.Rollback(r.Context())
 	q := h.queries.WithTx(tx)
-	if err = q.CreateEmailVerification(r.Context(), db.CreateEmailVerificationParams{UserID: user.UserID, Email: user.Email, TokenHash: HashToken(token)}); err != nil {
+	if err = q.SetStorageWriteTimeout(r.Context()); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	payload, _ := json.Marshal(struct {
-		Code string `json:"verification_code"`
-	}{token})
-	_, err = q.EnqueueEmailOutbox(r.Context(), db.EnqueueEmailOutboxParams{RecipientEmail: user.Email, RecipientName: pgtype.Text{String: user.DisplayName, Valid: true}, TemplateType: "email_verification", PayloadJson: payload})
+	locked, err := q.LockAuthenticationUser(r.Context(), user.UserID)
 	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	if locked.EmailVerified {
+		platform.RespondJSON(w, 200, struct {
+			Message string `json:"message"`
+		}{"Email already verified"})
+		return
+	}
+	previous, err := q.ReadEmailVerification(r.Context(), user.UserID)
+	if err == nil && time.Since(previous.CreatedAt.Time) < time.Minute {
+		wait := int(math.Ceil(time.Until(previous.CreatedAt.Time.Add(time.Minute)).Seconds()))
+		if wait < 1 {
+			wait = 1
+		}
+		w.Header().Set("Retry-After", strconv.Itoa(wait))
+		platform.RespondError(w, 429, "CODE_RECENT", "Wait a minute before requesting another code", nil)
+		return
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	if err = queueEmailVerification(r.Context(), q, user.UserID, locked.Email, locked.DisplayName); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
@@ -153,14 +170,20 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 	}
 	platform.RespondJSON(w, 202, struct {
 		Message string `json:"message"`
-	}{"Verification email queued; the code expires in 15 minutes"})
+	}{"Verification email queued. The six-digit code expires in 15 minutes."})
 }
+
 func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Code string `json:"code"`
 	}
-	if err := platform.DecodeJSON(r, &body); err != nil || len(body.Code) != 64 {
-		platform.RespondError(w, 400, "INVALID_CODE", "Provide the verification code from your email", nil)
+	if err := platform.DecodeJSON(r, &body); err != nil {
+		platform.RespondError(w, 400, "INVALID_CODE", "Enter the code from your email", nil)
+		return
+	}
+	body.Code = strings.TrimSpace(body.Code)
+	if !validEmailCode(body.Code) && len(body.Code) != 64 {
+		platform.RespondError(w, 400, "INVALID_CODE", "Enter the six-digit code from your email", nil)
 		return
 	}
 	user, _ := UserFromContext(r.Context())
@@ -174,23 +197,47 @@ func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Reques
 	}
 	defer tx.Rollback(r.Context())
 	q := h.queries.WithTx(tx)
-	verification, err := q.ConsumeEmailVerification(r.Context(), HashToken(body.Code))
+	if err = q.SetStorageWriteTimeout(r.Context()); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	locked, err := q.LockAuthenticationUser(r.Context(), user.UserID)
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	challenge, err := q.ReadEmailVerification(r.Context(), user.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		platform.RespondError(w, 409, "CODE_EXPIRED", "The code expired or was used; request a new one", nil)
+		platform.RespondError(w, 409, "CODE_EXPIRED", "Request a new verification code", nil)
 		return
 	}
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	if verification.UserID != user.UserID || !strings.EqualFold(verification.Email, user.Email) {
-		platform.RespondError(w, 409, "CODE_MISMATCH", "The code does not belong to this signed-in account", nil)
+	if challenge.ConsumedAt.Valid || challenge.Attempts >= 5 || !challenge.ExpiresAt.Time.After(time.Now()) || !strings.EqualFold(challenge.Email, locked.Email) {
+		platform.RespondError(w, 409, "CODE_EXPIRED", "The code expired or was used. Request a new one.", nil)
 		return
 	}
-	affected, err := q.VerifyAccountEmail(r.Context(), db.VerifyAccountEmailParams{ID: user.UserID, Lower: user.Email})
+	if !matchesEmailCode(body.Code, challenge.TokenHash) {
+		if err = q.FailEmailVerificationAttempt(r.Context(), user.UserID); err == nil {
+			err = tx.Commit(r.Context())
+		}
+		if err != nil {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
+		platform.RespondError(w, 400, "INVALID_CODE", "The code is incorrect. Check your email and try again.", nil)
+		return
+	}
+	if _, err = q.ConsumeEmailVerification(r.Context(), challenge.TokenHash); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	affected, err := q.VerifyAccountEmail(r.Context(), db.VerifyAccountEmailParams{ID: user.UserID, Lower: locked.Email})
 	if err != nil || affected != 1 {
 		if err == nil {
-			err = errors.New("account email changed")
+			err = errors.New("account changed during verification")
 		}
 		platform.RespondDatabaseError(w, err)
 		return

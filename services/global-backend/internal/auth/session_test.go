@@ -5,6 +5,7 @@ import (
 	"github.com/hackways/global-backend/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 
 	"testing"
 	"time"
@@ -152,5 +153,32 @@ func TestSessionManager_LivePostgres(t *testing.T) {
 	_, err = sm.GetSession(ctx, token)
 	if err != ErrSessionNotFound {
 		t.Errorf("expected ErrSessionNotFound after revocation, got %v", err)
+	}
+}
+
+func TestSignInDeviceAndLocationMetadata(t *testing.T) {
+	details := describeDevice("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.2849.46")
+	if details.device != "Windows PC" || details.browser != "Microsoft Edge 130.0.2849.46" {
+		t.Fatal("device/browser not identified")
+	}
+	r := httptest.NewRequest("POST", "/login", nil)
+	r.RemoteAddr = "192.0.2.8:1234"
+	r.Header.Set("X-Hackways-City", "Bengaluru")
+	r.Header.Set("X-Hackways-Region", "Karnataka")
+	r.Header.Set("X-Hackways-Country", "IN")
+	if approximateLocation(r, nil) != "Unavailable" {
+		t.Fatal("untrusted location accepted")
+	}
+	proxies := []netip.Prefix{netip.MustParsePrefix("192.0.2.8/32")}
+	if approximateLocation(r, proxies) != "Bengaluru, Karnataka, IN" {
+		t.Fatal("trusted location missing")
+	}
+	r.Header.Set("X-Hackways-City", "<script>")
+	if approximateLocation(r, proxies) != "Karnataka, IN" {
+		t.Fatal("unsafe city accepted")
+	}
+	r.Header.Set("X-Hackways-Country", "XX")
+	if approximateLocation(r, proxies) != "Unavailable" {
+		t.Fatal("unknown geography invented")
 	}
 }

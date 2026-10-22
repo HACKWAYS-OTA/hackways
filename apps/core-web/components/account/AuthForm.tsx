@@ -15,8 +15,8 @@ export function AuthForm({ next }: { next: string }) {
     e.preventDefault(); setBusy(true); setError('');
     const form = new FormData(e.currentTarget);
     try {
-      await fetchApi(register ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify({ email: String(form.get('email')).trim(), password: form.get('password'), ...(register ? { display_name: String(form.get('name')).trim() } : {}) }) });
-      router.replace(next); router.refresh();
+      const result=await fetchApi<{user:{email_verified:boolean};email_delivery_available?:boolean}>(register ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify({ email: String(form.get('email')).trim(), password: form.get('password'), ...(register ? { display_name: String(form.get('name')).trim() } : {}) }) });
+      if(!result.user.email_verified) router.replace(`/auth/verify-email?next=${encodeURIComponent(next)}${register ? '&queued=1' : ''}${register && result.email_delivery_available===false ? '&delivery=unavailable' : ''}`); else router.replace(next); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -33,6 +33,7 @@ export function AuthForm({ next }: { next: string }) {
       {register && <Input label="Your name" name="name" autoComplete="name" maxLength={100} disabled={busy} required />}
       <Input label="Email address" name="email" type="email" autoComplete={register ? 'email' : 'username'} maxLength={254} disabled={busy} required />
       <AuthPasswordInput name="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 8 : undefined} maxLength={128} disabled={busy} required helperText={register ? 'Use at least 8 characters.' : undefined} />
+      {!register && <a className="hw-auth-forgot" href={`/auth/forgot-password?next=${encodeURIComponent(next)}`}>Forgot password?</a>}
       {error && <p className="hw-auth-error" role="alert">{error}</p>}
       <AuthSubmit disabled={busy}>{busy ? 'Please wait...' : register ? 'Create account' : 'Sign in'}</AuthSubmit>
     </form>

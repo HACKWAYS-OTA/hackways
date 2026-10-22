@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SkipToContent } from '@/components/ui/SkipToContent';
 import { AppNavigation } from '@/components/ui/AppNavigation';
@@ -12,6 +12,24 @@ import { Avatar as ProfileAvatar } from '@hackways/ui/avatar';
 
 export function AppChrome({ children, user }: { children: ReactNode; user: User | null }) {
   const pathname = usePathname();
+  const previousPath = useRef(pathname);
+  const historyPath = useRef<string | null>(null);
+  useEffect(() => {
+    const rememberHistoryNavigation = () => { historyPath.current = window.location.pathname; };
+    window.addEventListener('popstate', rememberHistoryNavigation);
+    return () => window.removeEventListener('popstate', rememberHistoryNavigation);
+  }, []);
+  useLayoutEffect(() => {
+    const changed = previousPath.current !== pathname;
+    const restoringHistory = historyPath.current === pathname;
+    previousPath.current = pathname;
+    historyPath.current = null;
+    // Event scenes can remain visible during Next's scroll heuristic. New visits
+    // start at the top before paint; history, query updates and refreshes retain position.
+    if (changed && !restoringHistory && /^\/events\/[^/]+(?:\/register)?\/?$/.test(pathname)) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [pathname]);
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
   return <>
     <SkipToContent />

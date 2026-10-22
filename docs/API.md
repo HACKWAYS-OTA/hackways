@@ -154,3 +154,20 @@ The owner registration-status endpoint accepts optional `resend_notification: tr
 Registration notifications include the actual event banner, host/Space context and a canonical registration action URL. `APP_PUBLIC_URL` can override the canonical origin for an approved environment.
 
 Owner and admin registration controls support the five manual states: `confirmed` (Going), `pending_approval` (Awaiting approval), `waitlisted` (Waiting list), `rejected` (Declined), and `cancelled` (Cancelled). The current state is omitted from change choices. Checked-in/transferred and closed-event restrictions remain. Pending review receives an expiry bounded by seven days, event start and any future registration closing time. Moving out of confirmed/offered releases confirmed/held capacity and revokes admission; confirming issues admission under the existing lock and capacity checks. Existing automatic waiting-list offers remain; if that policy immediately promotes a manual waitlist entry, the response returns the actual `offered` state and the UI explains it. No manual timed-offer status was added.
+
+
+## Account verification and recovery (schema 14)
+
+| Endpoint | Body / access | Result |
+|---|---|---|
+| `POST /auth/email-verification/request` | Session | Queues a six-digit email code; 60-second cooldown; 503 if email unavailable |
+| `POST /auth/email-verification/confirm` | Session, `{code}` | Confirms owned unexpired challenge; five wrong attempts lock it; one use |
+| `POST /auth/password-reset/request` | `{email}` | Generic 202 for known/unknown accounts; queues a 15-minute secure reset link for an existing account; cooldown and identity limits |
+| `POST /auth/password-reset/confirm` | `{token,password}` | Consumes a single-use random link secret and replaces password; revokes all sessions, pending OAuth exchanges and device recognition; queues change notice |
+
+These paths are under `/api/v1`. Signup additionally reports `verification_required` and `email_delivery_available`. Login/signup/Google/admin flows record browser recognition atomically with session creation; new verified browsers queue one sign-in alert. UI reset links use `key` in the URL; the API's secret field is internal transport, never displayed. Missing email configuration returns explicit unavailability. See [account recovery](auth/account-recovery.md) for trust boundaries and rollout settings.
+
+
+## Promotional campaigns (schema 15)
+
+Platform admin campaign, contact import, test/send/cancel, account opt-in and public unsubscribe endpoints are documented in [Admin campaigns](admin-campaigns.md). Go owns audience validation, consent suppression, revisions, idempotency and outbox transactions. All URLs use numeric campaign references; delivery records link to numeric messaging references.

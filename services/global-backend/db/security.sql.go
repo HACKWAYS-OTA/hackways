@@ -170,7 +170,7 @@ func (q *Queries) CleanupAuthAttempts(ctx context.Context) error {
 
 const consumeEmailVerification = `-- name: ConsumeEmailVerification :one
 UPDATE email_verifications SET consumed_at=clock_timestamp()
-WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() RETURNING user_id,email
+WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp() RETURNING user_id,email
 `
 
 type ConsumeEmailVerificationRow struct {
@@ -202,7 +202,7 @@ func (q *Queries) CountAuthAttempt(ctx context.Context, scopeHash string) (int32
 const createEmailVerification = `-- name: CreateEmailVerification :exec
 INSERT INTO email_verifications(user_id,email,token_hash,expires_at)
 VALUES ($1,$2,$3,NOW()+INTERVAL '15 minutes') ON CONFLICT(user_id)
-DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,created_at=NOW()
+DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,attempts=0,created_at=NOW()
 `
 
 type CreateEmailVerificationParams struct {
@@ -431,7 +431,7 @@ func (q *Queries) SetStorageWriteTimeout(ctx context.Context) error {
 }
 
 const verificationCodeActive = `-- name: VerificationCodeActive :one
-SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp())
+SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp())
 `
 
 func (q *Queries) VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error) {

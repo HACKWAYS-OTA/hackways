@@ -2,7 +2,10 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Checkbox } from "@hackways/ui/checkbox";
 import type { EditableGuest } from "@/lib/guests";
-import { ApiClientError, fetchApi } from "@/lib/api";
+import { ApiClientError } from "@/lib/api";
+
+import { decisionBody, saveGuestDecision, type GuestDecision } from '@/lib/guest-decisions';
+import { Icon } from '@/components/ui/Icon';
 
 export function GuestDecisionForm({
   eventId,
@@ -36,12 +39,7 @@ export function GuestDecisionForm({
       (status === "confirmed" && !canApprove)
     )
       return;
-    const body = JSON.stringify({
-      status,
-      updated_at: guest.updated_at,
-      notify_guest: notify,
-      message: notify ? message.trim() : "",
-    });
+    const body = decisionBody(guest, status as GuestDecision, notify, message);
     if (attempt.current?.body !== body)
       attempt.current = { body, key: crypto.randomUUID() };
     lock.current = true;
@@ -50,22 +48,7 @@ export function GuestDecisionForm({
     setError("");
     setConflict(false);
     try {
-      const result = await fetchApi<{
-        data: { id: string; status: string };
-        notification_queued: boolean;
-      }>(
-        `/events/${eventId}/registrations/by-code/${encodeURIComponent(guest.public_code)}/status`,
-        {
-          method: "POST",
-          body,
-          headers: { "Idempotency-Key": attempt.current.key },
-        },
-      );
-      if (result.data.id !== guest.id || result.data.status !== status)
-        throw new Error("The decision could not be confirmed. Please retry.");
-      onUpdated(
-        `${status === "confirmed" ? "Guest approved." : "Application declined."}${result.notification_queued ? " A notification is queued." : ""}`,
-      );
+      onUpdated(await saveGuestDecision(eventId, guest, status as GuestDecision, attempt.current));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "The decision could not be saved.",
@@ -131,6 +114,7 @@ export function GuestDecisionForm({
             value="confirmed"
             disabled={!!busy || conflict || !canApprove}
           >
+            <Icon name="check" size={18} />
             {busy === "confirmed" ? "Approving…" : "Approve"}
           </button>
           <button
@@ -140,6 +124,7 @@ export function GuestDecisionForm({
             value="rejected"
             disabled={!!busy || conflict}
           >
+            <Icon name="close" size={18} />
             {busy === "rejected" ? "Declining…" : "Decline"}
           </button>
         </div>

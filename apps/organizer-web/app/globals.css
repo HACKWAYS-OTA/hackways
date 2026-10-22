@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face { font-family: "FG Futurist"; src: url("/fonts/fg-futurist-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "Google Sans Flex"; src: url("/fonts/google-sans-flex-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "FG Futurist"; src: url("/manage/fonts/fg-futurist-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Google Sans Flex"; src: url("/manage/fonts/google-sans-flex-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 :root { color-scheme: light; --paper: #fff; --ink: #1f1f23; --muted: #655d70; --line: #e6e0ec; --soft: #f8f5fc; --violet: #72548e; --accent: #1f1f23; --header-height: 64px; }
 * { box-sizing: border-box; }
 html { scroll-padding-top: calc(var(--header-height) + 24px); }

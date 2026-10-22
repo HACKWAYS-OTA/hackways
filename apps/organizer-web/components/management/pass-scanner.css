@@ -10,11 +10,13 @@
 }
 .scanner-entry-heading {
   margin-bottom: 24px;
+  text-align: center;
 }
 .scanner-entry-heading h2 {
   font-size: 26px;
 }
 .pass-scanner {
+  margin-inline: auto;
   max-width: 760px;
 }
 .pass-scanner-view {
@@ -69,6 +71,7 @@
 }
 .pass-scanner-actions {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 18px;

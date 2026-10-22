@@ -64,11 +64,11 @@ DELETE FROM sessions WHERE id=$1 AND user_id=$2;
 -- name: CreateEmailVerification :exec
 INSERT INTO email_verifications(user_id,email,token_hash,expires_at)
 VALUES ($1,$2,$3,NOW()+INTERVAL '15 minutes') ON CONFLICT(user_id)
-DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,created_at=NOW();
+DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,attempts=0,created_at=NOW();
 
 -- name: ConsumeEmailVerification :one
 UPDATE email_verifications SET consumed_at=clock_timestamp()
-WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() RETURNING user_id,email;
+WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp() RETURNING user_id,email;
 
 -- name: VerifyAccountEmail :execrows
 UPDATE users SET email_verified=TRUE,updated_at=clock_timestamp() WHERE id=$1 AND lower(email)=lower($2) AND deleted_at IS NULL;
@@ -78,4 +78,4 @@ SELECT r.status AS registration_status,r.offer_expires_at,e.status AS event_stat
 FROM email_outbox o LEFT JOIN rsvps r ON r.id=o.rsvp_id LEFT JOIN events e ON e.id=o.event_id WHERE o.id=$1;
 
 -- name: VerificationCodeActive :one
-SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp());
+SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp());

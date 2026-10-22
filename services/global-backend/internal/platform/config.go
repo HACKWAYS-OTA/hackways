@@ -3,6 +3,7 @@ package platform
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"strconv"
@@ -12,25 +13,26 @@ import (
 
 // Config holds runtime configuration loaded from environment variables.
 type Config struct {
-	AdminPreviewOnly    bool
-	BindHost            string
-	AppEnv              string
-	Port                int
-	DatabaseURL         string
-	SessionSecret       string
-	CORSAllowedOrigins  []string
-	DBMaxConns          int
-	DBMinConns          int
-	DBMaxConnLifetime   time.Duration
-	DBMaxConnIdleTime   time.Duration
-	ReadTimeout         time.Duration
-	WriteTimeout        time.Duration
-	IdleTimeout         time.Duration
-	ShutdownTimeout     time.Duration
-	GoogleClientID      string
-	GoogleClientSecret  string
-	GoogleRedirectURL   string
-	GoogleReturnOrigins []string
+	AuthLocationProxyCIDRs []netip.Prefix
+	AdminPreviewOnly       bool
+	BindHost               string
+	AppEnv                 string
+	Port                   int
+	DatabaseURL            string
+	SessionSecret          string
+	CORSAllowedOrigins     []string
+	DBMaxConns             int
+	DBMinConns             int
+	DBMaxConnLifetime      time.Duration
+	DBMaxConnIdleTime      time.Duration
+	ReadTimeout            time.Duration
+	WriteTimeout           time.Duration
+	IdleTimeout            time.Duration
+	ShutdownTimeout        time.Duration
+	GoogleClientID         string
+	GoogleClientSecret     string
+	GoogleRedirectURL      string
+	GoogleReturnOrigins    []string
 }
 
 // LoadConfig populates Config from environment variables with sensible defaults.
@@ -95,25 +97,40 @@ func LoadConfig() (*Config, error) {
 	if net.ParseIP(bindHost) == nil {
 		return nil, fmt.Errorf("BIND_HOST must be an IP address")
 	}
+	locationProxies := []netip.Prefix{}
+	for _, raw := range strings.Split(os.Getenv("AUTH_LOCATION_PROXY_CIDRS"), ",") {
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(strings.TrimSpace(raw))
+		if err != nil || prefix.Bits() == 0 {
+			return nil, fmt.Errorf("AUTH_LOCATION_PROXY_CIDRS must contain explicit trusted proxy CIDRs")
+		}
+		locationProxies = append(locationProxies, prefix)
+		if len(locationProxies) > 16 {
+			return nil, fmt.Errorf("AUTH_LOCATION_PROXY_CIDRS accepts at most 16 trusted ranges")
+		}
+	}
 	cfg := &Config{
-		BindHost:            bindHost,
-		AppEnv:              appEnv,
-		Port:                port,
-		DatabaseURL:         os.Getenv("DATABASE_URL"),
-		SessionSecret:       sessionSecret,
-		CORSAllowedOrigins:  corsOrigins,
-		DBMaxConns:          dbMaxConns,
-		DBMinConns:          dbMinConns,
-		DBMaxConnLifetime:   15 * time.Minute,
-		DBMaxConnIdleTime:   5 * time.Minute,
-		ReadTimeout:         10 * time.Second,
-		WriteTimeout:        30 * time.Second,
-		IdleTimeout:         60 * time.Second,
-		ShutdownTimeout:     15 * time.Second,
-		GoogleClientID:      googleClientID,
-		GoogleClientSecret:  googleClientSecret,
-		GoogleRedirectURL:   googleRedirectURL,
-		GoogleReturnOrigins: googleReturnOrigins,
+		AuthLocationProxyCIDRs: locationProxies,
+		BindHost:               bindHost,
+		AppEnv:                 appEnv,
+		Port:                   port,
+		DatabaseURL:            os.Getenv("DATABASE_URL"),
+		SessionSecret:          sessionSecret,
+		CORSAllowedOrigins:     corsOrigins,
+		DBMaxConns:             dbMaxConns,
+		DBMinConns:             dbMinConns,
+		DBMaxConnLifetime:      15 * time.Minute,
+		DBMaxConnIdleTime:      5 * time.Minute,
+		ReadTimeout:            10 * time.Second,
+		WriteTimeout:           30 * time.Second,
+		IdleTimeout:            60 * time.Second,
+		ShutdownTimeout:        15 * time.Second,
+		GoogleClientID:         googleClientID,
+		GoogleClientSecret:     googleClientSecret,
+		GoogleRedirectURL:      googleRedirectURL,
+		GoogleReturnOrigins:    googleReturnOrigins,
 	}
 
 	cfg.AdminPreviewOnly, err = adminPreviewMode(cfg.AppEnv, cfg.BindHost, cfg.DatabaseURL, os.Getenv("ADMIN_PREVIEW_ONLY"))

@@ -184,11 +184,7 @@ export function QuestionBuilder({
     >
       <div className="host-section-heading">
         <div>
-          <h2>Build your registration</h2>
-          <p className="host-muted">
-            Group questions into sections. Guests complete one section at a
-            time.
-          </p>
+          <h2>Registration questions</h2>
         </div>
         <span className="host-question-limit">
           {questionCount} / 40 questions · {sectionCount} / 10 sections
@@ -216,7 +212,6 @@ export function QuestionBuilder({
         >
           <header>
             <h3>Sections & questions</h3>
-            <p>Move section breaks to organize the steps.</p>
           </header>
           <ol>
             {questions.map((q, index) => (

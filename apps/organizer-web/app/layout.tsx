@@ -15,5 +15,5 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 
 export default async function Layout({ children }: { children: ReactNode }) {
   const user = await currentUser();
-  return <html lang="en"><head><link rel="preload" href="/fonts/google-sans-flex-regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /><link rel="preload" href="/fonts/fg-futurist-regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head><body><UIProvider><AppChrome user={user}>{children}</AppChrome></UIProvider></body></html>;
+  return <html lang="en"><head><link rel="preload" href="/manage/fonts/google-sans-flex-regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /><link rel="preload" href="/manage/fonts/fg-futurist-regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head><body><UIProvider><AppChrome user={user}>{children}</AppChrome></UIProvider></body></html>;
 }

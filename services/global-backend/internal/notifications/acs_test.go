@@ -275,3 +275,39 @@ func TestACSMissingIdentityDoesNotContactProvider(t *testing.T) {
 		t.Fatal("missing persisted first attempt was accepted")
 	}
 }
+
+func TestACSSenderCategories(t *testing.T) {
+	for _, test := range []struct{ class, address string }{{"account", "noreply@mail.hackways.in"}, {"event", "notify@mail.hackways.in"}, {"promotion", "updates@mail.hackways.in"}} {
+		t.Run(test.class, func(t *testing.T) {
+			sender, err := NewACSEmailSender("https://unit.communication.azure.com", base64.StdEncoding.EncodeToString(make([]byte, 32)), "notify@mail.hackways.in", "noreply@mail.hackways.in", "updates@mail.hackways.in")
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			sender.client.Transport = acsTransport(func(request *http.Request) (*http.Response, error) {
+				calls++
+				var payload struct {
+					Sender string `json:"senderAddress"`
+				}
+				if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Sender != test.address {
+					t.Fatal("wrong category sender")
+				}
+				return acsResponse(202, `{"status":"Succeeded"}`)
+			})
+			message := testACSMessage()
+			message.SenderClass = test.class
+			if err = sender.Send(context.Background(), message); err != nil || calls != 1 {
+				t.Fatal("category send did not succeed")
+			}
+		})
+	}
+	sender := testACSSender(t, func(*http.Request) (*http.Response, error) {
+		t.Fatal("unconfigured promotions reached provider")
+		return nil, nil
+	})
+	message := testACSMessage()
+	message.SenderClass = "promotion"
+	if err := sender.Send(context.Background(), message); err == nil {
+		t.Fatal("missing promotional sender silently fell back")
+	}
+}

@@ -96,7 +96,7 @@ func main() {
 	emailConfigured := false
 	acsEndpoint, acsKey, acsSender := notifications.EmailConfiguration()
 	if acsEndpoint != "" || acsKey != "" || acsSender != "" {
-		configuredSender, senderErr := notifications.NewACSEmailSender(acsEndpoint, acsKey, acsSender)
+		configuredSender, senderErr := notifications.NewACSEmailSender(acsEndpoint, acsKey, acsSender, os.Getenv("ACS_TRANSACTIONAL_SENDER_ADDRESS"), os.Getenv("ACS_PROMOTIONAL_SENDER_ADDRESS"))
 		if senderErr != nil {
 			logger.Error("invalid ACS email configuration", "error", senderErr)
 			os.Exit(1)
@@ -138,6 +138,7 @@ func main() {
 		RedirectURL: cfg.GoogleRedirectURL, ReturnOrigins: cfg.GoogleReturnOrigins,
 		IsProduction: cfg.AppEnv == "production",
 	})
+	authHandler.SetLocationProxies(cfg.AuthLocationProxyCIDRs)
 	storageHandler := storage.NewHandler(sasSigner, pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {

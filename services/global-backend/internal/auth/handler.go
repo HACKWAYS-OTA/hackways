@@ -6,11 +6,13 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/global-backend/db"
+	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -20,11 +22,12 @@ import (
 
 // Handler serves HTTP endpoints for authentication and session management.
 type Handler struct {
-	pool         *pgxpool.Pool
-	queries      *db.Queries
-	sm           *SessionManager
-	isProduction bool
-	google       GoogleOAuthConfig
+	pool            *pgxpool.Pool
+	queries         *db.Queries
+	sm              *SessionManager
+	isProduction    bool
+	google          GoogleOAuthConfig
+	locationProxies []netip.Prefix
 }
 
 // NewHandler constructs an Auth Handler.
@@ -51,9 +54,18 @@ func (h *Handler) SessionManager() *SessionManager {
 // Routes mounts authentication endpoints.
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "private, no-store")
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
+	r.Post("/password-reset/request", h.RequestPasswordReset)
+	r.Post("/password-reset/confirm", h.ConfirmPasswordReset)
+	r.Post("/promotions/unsubscribe", h.UnsubscribePromotion)
 	r.Mount("/admin", h.AdminRoutes())
 	r.Post("/logout", h.Logout)
 	r.Post("/verify", h.Verify)
@@ -73,6 +85,8 @@ func (h *Handler) Routes() chi.Router {
 		protected.Post("/notifications/{notificationID}/retry", h.RetryNotification)
 		protected.Post("/email-verification/request", h.RequestEmailVerification)
 		protected.Post("/email-verification/confirm", h.ConfirmEmailVerification)
+		protected.Get("/promotions/preference", h.PromotionPreference)
+		protected.Post("/promotions/preference", h.SetPromotionPreference)
 	})
 
 	return r
@@ -134,7 +148,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.queries.CreateUser(r.Context(), db.CreateUserParams{
+	tx, err := h.pool.Begin(r.Context())
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	defer tx.Rollback(r.Context())
+	q := h.queries.WithTx(tx)
+	user, err := q.CreateUser(r.Context(), db.CreateUserParams{
 		Email:        req.Email,
 		PasswordHash: hash,
 		DisplayName:  req.DisplayName,
@@ -149,14 +170,31 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create session
-	token, _, err := h.sm.CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
-	if err != nil {
-		platform.RespondError(w, http.StatusInternalServerError, "SESSION_ERROR", "Failed to establish session", nil)
+	if err = queueEmailVerification(r.Context(), q, user.ID, user.Email, user.DisplayName); err != nil {
+		platform.RespondDatabaseError(w, err)
 		return
 	}
-
+	token, _, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	locked, err := q.LockAuthenticationUser(r.Context(), user.ID)
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	device, err := rememberDevice(r.Context(), q, locked, r, false, h.locationProxies)
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	if err = tx.Commit(r.Context()); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
 	SetSessionCookie(w, DefaultSessionCookie, token, 7*24*time.Hour, h.isProduction)
+	setDeviceCookie(w, device, false)
 
 	userIDStr := formatUUID(user.ID)
 	createdAt := user.CreatedAt.Time
@@ -166,6 +204,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	platform.RespondJSON(w, http.StatusCreated, map[string]interface{}{
+		"verification_required":    true,
+		"email_delivery_available": notifications.EmailConfigured(),
 		"user": UserResponse{
 			ID:            userIDStr,
 			Email:         user.Email,
@@ -218,13 +258,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, _, err := h.sm.CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
-	if err != nil {
-		platform.RespondError(w, http.StatusInternalServerError, "SESSION_ERROR", "Failed to create session", nil)
+	if err = h.establishSession(w, r, user.ID, user.PasswordHash, false); err != nil {
+		if errors.Is(err, errCredentialsChanged) {
+			platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in again with your current password", nil)
+		} else {
+			platform.RespondDatabaseError(w, err)
+		}
 		return
 	}
-
-	SetSessionCookie(w, DefaultSessionCookie, token, 7*24*time.Hour, h.isProduction)
 
 	userIDStr := formatUUID(user.ID)
 	createdAt := user.CreatedAt.Time

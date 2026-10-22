@@ -15,8 +15,8 @@ export function AuthForm({ next }: { next: string }) {
     e.preventDefault(); setBusy(true); setError('');
     const form = new FormData(e.currentTarget);
     try {
-      await fetchApi('/auth/login', { method: 'POST', body: JSON.stringify({ email: String(form.get('email')).trim(), password: form.get('password') }) });
-      router.replace(next); router.refresh();
+      const result=await fetchApi<{user:{email_verified:boolean}}>('/auth/login', { method: 'POST', body: JSON.stringify({ email: String(form.get('email')).trim(), password: form.get('password') }) });
+      router.replace(result.user.email_verified ? next : `/auth/verify-email?next=${encodeURIComponent(next)}`); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -32,6 +32,7 @@ export function AuthForm({ next }: { next: string }) {
     <form className="hw-auth-form" onSubmit={submit} aria-busy={busy}>
       <Input label="Email address" name="email" type="email" autoComplete="username" maxLength={254} disabled={busy} required />
       <AuthPasswordInput name="password" autoComplete="current-password" maxLength={128} disabled={busy} required />
+      <a className="hw-auth-forgot" href={`/manage/auth/forgot-password?next=${encodeURIComponent(next)}`}>Forgot password?</a>
       {error && <p className="hw-auth-error" role="alert">{error}</p>}
       <AuthSubmit disabled={busy}>{busy ? 'Please wait...' : 'Sign in'}</AuthSubmit>
     </form>

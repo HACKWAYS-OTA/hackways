@@ -29,6 +29,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/people", h.AdminListPeople)
 	r.Get("/messaging", h.AdminListMessages)
 	r.Get("/storage", h.AdminListAssets)
+	h.mountCampaigns(r)
 	r.Get("/{resource}/{id}", h.Detail)
 	h.mountActions(r)
 	return r

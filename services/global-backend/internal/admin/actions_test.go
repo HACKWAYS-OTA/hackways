@@ -266,3 +266,210 @@ func uuidText(id pgtype.UUID) string {
 	b := id.Bytes
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
+
+// Campaign regressions extend the existing mandatory isolated PostgreSQL suite.
+func TestAdminCampaignLifecycle(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("ACS_ENDPOINT", "https://ci.example.invalid")
+	t.Setenv("ACS_ACCESS_KEY", "not-a-provider-key")
+	t.Setenv("ACS_SENDER_ADDRESS", "notify@mail.hackways.in")
+	t.Setenv("ACS_PROMOTIONAL_SENDER_ADDRESS", "updates@mail.hackways.in")
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, testsupport.DatabaseURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	q := db.New(pool)
+	nonce, _ := auth.GenerateToken()
+	email := "campaign-admin-" + nonce + "@example.invalid"
+	actor, err := q.CreateUser(ctx, db.CreateUserParams{Email: email, PasswordHash: "isolated-mandatory-ci", DisplayName: "Campaign CI"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, "WITH removed AS (DELETE FROM email_campaign_deliveries d USING email_campaigns c WHERE d.campaign_id=c.id AND c.created_by=$1 RETURNING d.outbox_id) DELETE FROM email_outbox WHERE id IN(SELECT outbox_id FROM removed)", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM audit_log WHERE actor_user_id=$1", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM email_campaigns WHERE created_by=$1", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM promotion_contacts WHERE email LIKE '%'||$1||'@example.invalid'", nonce)
+		_, _ = pool.Exec(ctx, "DELETE FROM sessions WHERE user_id=$1", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM platform_administrators WHERE user_id=$1", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM users WHERE id=$1", actor.ID)
+	}()
+	if err = q.MarkUserEmailVerified(ctx, actor.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "INSERT INTO platform_administrators(user_id) VALUES($1)", actor.ID); err != nil {
+		t.Fatal(err)
+	}
+	sm := auth.NewSessionManager(q)
+	token, session, err := sm.CreateSession(ctx, actor.ID, "Campaign CI", "", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = q.RecordPlatformAdminSession(ctx, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	router := platform.RequestID(NewHandler(pool).Routes())
+	call := func(method, path string, body json.RawMessage, origin string, signed bool) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", origin)
+		req.Header.Set("X-Admin-Reason", url.PathEscape("Authorized isolated campaign regression"))
+		req.Header.Set("Idempotency-Key", "campaign-create-"+nonce)
+		if signed {
+			req.AddCookie(&http.Cookie{Name: auth.AdminSessionCookie, Value: token})
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+	marshal := func(body campaignBody) json.RawMessage {
+		raw, e := json.Marshal(body)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return raw
+	}
+	if got := call("GET", "/campaigns", nil, "", false); got.Code != 401 {
+		t.Fatalf("anonymous campaign access %d", got.Code)
+	}
+	body := campaignBody{Title: "CI campaign", Subject: "CI subject", Body: "Hello <unsafe>", ActionLabel: "Discover", ActionURL: "https://hackways.in/discover"}
+	if got := call("POST", "/campaigns", marshal(body), "https://untrusted.example.invalid", true); got.Code != 403 {
+		t.Fatal("untrusted origin accepted")
+	}
+	created := call("POST", "/campaigns", marshal(body), "http://localhost:3103", true)
+	if created.Code != 201 {
+		t.Fatalf("create %d %s", created.Code, created.Body.String())
+	}
+	var result struct {
+		Data campaignView `json:"data"`
+	}
+	if err = json.Unmarshal(created.Body.Bytes(), &result); err != nil || result.Data.Reference < 1 {
+		t.Fatal("missing numeric campaign reference")
+	}
+	ref := result.Data.Reference
+	path := "/campaigns/" + fmt.Sprint(ref)
+	again := call("POST", "/campaigns", marshal(body), "http://localhost:3103", true)
+	var replay struct {
+		Data campaignView `json:"data"`
+	}
+	_ = json.Unmarshal(again.Body.Bytes(), &replay)
+	if again.Code != 201 || replay.Data.Reference != ref {
+		t.Fatal("draft creation duplicated")
+	}
+	changed := body
+	changed.Subject = "Changed"
+	if got := call("POST", "/campaigns", marshal(changed), "http://localhost:3103", true); got.Code != 409 {
+		t.Fatal("creation key reused for different content")
+	}
+	contactEmail := "campaign-contact-" + nonce + "@example.invalid"
+	importPayload := struct {
+		CSV           string    `json:"csv"`
+		ConsentSource string    `json:"consent_source"`
+		ConsentedAt   time.Time `json:"consented_at"`
+		Confirmed     bool      `json:"confirmed"`
+	}{"email,name\n" + contactEmail + ",Contact CI", "Existing explicit opt-in record", time.Now().Add(-time.Hour), true}
+	raw, _ := json.Marshal(importPayload)
+	imported := call("POST", "/campaign-contacts/import", raw, "http://localhost:3103", true)
+	if imported.Code != 200 {
+		t.Fatalf("import %d %s", imported.Code, imported.Body.String())
+	}
+	detail := call("GET", path, nil, "", true)
+	if detail.Code != 200 || strings.Contains(detail.Body.String(), "unsubscribe_hash") {
+		t.Fatal("campaign detail failed or exposed secrets")
+	}
+	c, err := q.CampaignRead(ctx, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := campaignBody{Revision: 1}
+	test := call("POST", path+"/test", marshal(action), "http://localhost:3103", true)
+	if test.Code != 200 {
+		t.Fatalf("test queue %d %s", test.Code, test.Body.String())
+	}
+	if got := call("POST", path+"/test", marshal(action), "http://localhost:3103", true); got.Code != 200 || !strings.Contains(got.Body.String(), `"queued":0`) {
+		t.Fatal("test email duplicated")
+	}
+	var firstTest pgtype.UUID
+	if err = pool.QueryRow(ctx, "SELECT outbox_id FROM email_campaign_deliveries WHERE campaign_id=$1 AND is_test", c.ID).Scan(&firstTest); err != nil {
+		t.Fatal(err)
+	}
+	body.Revision = 1
+	body.Subject = "Reviewed subject"
+	if got := call("POST", path+"/edit", marshal(body), "http://localhost:3103", true); got.Code != 200 {
+		t.Fatalf("edit %d %s", got.Code, got.Body.String())
+	}
+	if active, e := q.CampaignMessageActive(ctx, firstTest); e != nil || active {
+		t.Fatal("old draft test remains active")
+	}
+	count, err := q.CampaignAudienceCount(ctx)
+	if err != nil || count < 1 {
+		t.Fatal("imported audience missing")
+	}
+	action = campaignBody{Revision: 2, AudienceCount: count + 1, Confirmed: true}
+	if got := call("POST", path+"/send", marshal(action), "http://localhost:3103", true); got.Code != 409 {
+		t.Fatal("stale audience accepted")
+	}
+	action.AudienceCount = count
+	// A replay is successful but can never add another recipient delivery.
+	first := call("POST", path+"/send", marshal(action), "http://localhost:3103", true)
+	if first.Code != 200 {
+		t.Fatalf("send %d %s", first.Code, first.Body.String())
+	}
+	if got := call("POST", path+"/send", marshal(action), "http://localhost:3103", true); got.Code != 200 {
+		t.Fatal("send replay failed")
+	}
+	stats, err := q.CampaignStats(ctx, c.ID)
+	if err != nil || stats.Total != count {
+		t.Fatal("campaign sent duplicates or missed recipients")
+	}
+	if got := call("POST", path+"/edit", marshal(body), "http://localhost:3103", true); got.Code != 409 {
+		t.Fatal("queued campaign edited")
+	}
+	var outbox pgtype.UUID
+	var payload []byte
+	if err = pool.QueryRow(ctx, "SELECT o.id,o.payload_json FROM email_outbox o JOIN email_campaign_deliveries d ON d.outbox_id=o.id WHERE d.campaign_id=$1 AND NOT d.is_test AND o.recipient_email=$2", c.ID, contactEmail).Scan(&outbox, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || !active {
+		t.Fatal("valid campaign suppressed")
+	}
+	var link struct {
+		URL string `json:"unsubscribe_url"`
+	}
+	_ = json.Unmarshal(payload, &link)
+	parsed, e := url.Parse(link.URL)
+	if e != nil || parsed.Host != "hackways.in" {
+		t.Fatal("invalid unsubscribe destination")
+	}
+	key := parsed.Query().Get("key")
+	public := auth.NewHandler(pool, false).Routes()
+	unsubscribe := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "/promotions/unsubscribe", strings.NewReader(`{"key":"`+key+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		public.ServeHTTP(w, req)
+		return w
+	}
+	if unsubscribe().Code != 200 || unsubscribe().Code != 200 {
+		t.Fatal("unsubscribe/replay failed")
+	}
+	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || active {
+		t.Fatal("unsubscribed recipient still eligible")
+	}
+	if got := call("POST", "/campaign-contacts/import", raw, "http://localhost:3103", true); got.Code != 200 {
+		t.Fatal("reimport failed")
+	}
+	subscribed, err := q.ReadPromotionPreference(ctx, contactEmail)
+	if err != nil || subscribed {
+		t.Fatal("import resubscribed an opt-out")
+	}
+	if got := call("POST", path+"/cancel", marshal(campaignBody{Revision: 2}), "http://localhost:3103", true); got.Code != 200 {
+		t.Fatal("cancel failed")
+	}
+	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || active {
+		t.Fatal("cancelled campaign still active")
+	}
+
+}

@@ -42,37 +42,18 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in failed", nil)
 		return
 	}
-	tx, err := h.pool.Begin(r.Context())
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
+	if err = h.establishSession(w, r, user.ID, user.PasswordHash, true); err != nil {
+		switch {
+		case errors.Is(err, errAdminAccess):
+			platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
+		case errors.Is(err, errCredentialsChanged):
+			platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in again with your current password", nil)
+		default:
+			platform.RespondDatabaseError(w, err)
+		}
 		return
 	}
-	defer tx.Rollback(r.Context())
-	q := h.queries.WithTx(tx)
-	allowed, err := q.IsPlatformAdministrator(r.Context(), user.ID)
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if !allowed {
-		platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
-		return
-	}
-	duration := 30 * time.Minute
-	token, session, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, duration)
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if err = q.RecordPlatformAdminSession(r.Context(), session.ID); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if err = tx.Commit(r.Context()); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	SetSessionCookie(w, AdminSessionCookie, token, duration, h.isProduction)
+
 	platform.RespondJSON(w, 200, struct {
 		DisplayName string `json:"display_name"`
 	}{user.DisplayName})

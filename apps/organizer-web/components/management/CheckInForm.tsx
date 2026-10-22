@@ -60,7 +60,6 @@ export function CheckInForm({
     <section className="host-entry scanner-entry">
       <div className="scanner-entry-heading">
         <h2>Scan QR passes</h2>
-        <p>Open the scanner and ask the guest to show their pass.</p>
       </div>
       {!open && (
         <p className="host-entry-closed">

@@ -252,6 +252,34 @@ type AuthRateLimits struct {
 	Attempts    int32              `json:"attempts"`
 }
 
+type EmailCampaignDeliveries struct {
+	OutboxID        pgtype.UUID `json:"outbox_id"`
+	CampaignID      pgtype.UUID `json:"campaign_id"`
+	ContactID       pgtype.UUID `json:"contact_id"`
+	Revision        int64       `json:"revision"`
+	IsTest          bool        `json:"is_test"`
+	UnsubscribeHash string      `json:"unsubscribe_hash"`
+}
+
+type EmailCampaigns struct {
+	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
+	Title        string             `json:"title"`
+	Subject      string             `json:"subject"`
+	Body         string             `json:"body"`
+	ActionLabel  string             `json:"action_label"`
+	ActionUrl    string             `json:"action_url"`
+	Status       string             `json:"status"`
+	Revision     int64              `json:"revision"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreationKey  string             `json:"creation_key"`
+	CreationHash string             `json:"creation_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	QueuedAt     pgtype.Timestamptz `json:"queued_at"`
+	CancelledAt  pgtype.Timestamptz `json:"cancelled_at"`
+}
+
 type EmailOutbox struct {
 	ID             pgtype.UUID        `json:"id"`
 	RsvpID         pgtype.UUID        `json:"rsvp_id"`
@@ -279,6 +307,7 @@ type EmailVerifications struct {
 	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
 	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Attempts   int16              `json:"attempts"`
 }
 
 type EventCategories struct {
@@ -397,6 +426,15 @@ type Organizers struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PasswordResetChallenges struct {
+	UserID     pgtype.UUID        `json:"user_id"`
+	TokenHash  string             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	Attempts   int16              `json:"attempts"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type PlatformAdminSessions struct {
 	SessionID pgtype.UUID        `json:"session_id"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
@@ -408,6 +446,31 @@ type PlatformAdministrators struct {
 	GrantedBy pgtype.UUID        `json:"granted_by"`
 	GrantedAt pgtype.Timestamptz `json:"granted_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type PromotionContacts struct {
+	ID             pgtype.UUID        `json:"id"`
+	Reference      int64              `json:"reference"`
+	Email          string             `json:"email"`
+	DisplayName    string             `json:"display_name"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	Source         string             `json:"source"`
+	ConsentSource  string             `json:"consent_source"`
+	ConsentedAt    pgtype.Timestamptz `json:"consented_at"`
+	Subscribed     bool               `json:"subscribed"`
+	UnsubscribedAt pgtype.Timestamptz `json:"unsubscribed_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+// Browser recognition for notification deduplication only; never an authentication factor.
+type RecognizedDevices struct {
+	UserID     pgtype.UUID        `json:"user_id"`
+	TokenHash  string             `json:"token_hash"`
+	UserAgent  string             `json:"user_agent"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
 }
 
 type RegistrationSubmissions struct {
@@ -495,14 +558,15 @@ type UserIdentities struct {
 }
 
 type Users struct {
-	ID             pgtype.UUID        `json:"id"`
-	Email          string             `json:"email"`
-	PasswordHash   string             `json:"password_hash"`
-	DisplayName    string             `json:"display_name"`
-	AvatarUrl      pgtype.Text        `json:"avatar_url"`
-	EmailVerified  bool               `json:"email_verified"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
-	AdminReference int64              `json:"admin_reference"`
+	ID               pgtype.UUID        `json:"id"`
+	Email            string             `json:"email"`
+	PasswordHash     string             `json:"password_hash"`
+	DisplayName      string             `json:"display_name"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	EmailVerified    bool               `json:"email_verified"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	AdminReference   int64              `json:"admin_reference"`
+	DeviceBaselineAt pgtype.Timestamptz `json:"device_baseline_at"`
 }

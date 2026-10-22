@@ -11,14 +11,38 @@ import { Icon } from '@/components/ui/Icon';
 export const metadata = { title: 'Event overview' };
 export default async function Overview({ params }: { params: { id: string } }) {
   const event = await managedEvent(params.id);
-  const [summary, activity] = await Promise.allSettled([privateApi<{ data: GuestSummary }>(`/events/${event.id}/summary`), privateApi<{ data: Activity[] }>(`/events/${event.id}/audit?limit=5`)]);
+  const [summary, activity] = await Promise.allSettled([
+    privateApi<{ data: GuestSummary }>(`/events/${event.id}/summary`),
+    privateApi<{ data: Activity[] }>(`/events/${event.id}/audit?limit=5`),
+  ]);
   const counts = summary.status === 'fulfilled' ? summary.value.data : null;
-  const editable = event.status !== 'cancelled' && Date.parse(event.starts_at) > Date.now();
-  return <div className="host-overview"><div className="host-overview-main">
-    <section className="host-attendance"><div className="host-section-heading"><h2>Attendance</h2><Link className="quiet-link" href={`/events/${event.slug}/guests`}>View guests<Icon name="arrow" size={15} /></Link></div>{counts ? <><p className="host-attendance-line"><Link href={`/events/${event.slug}/guests?status=confirmed`}><strong>{counts.confirmed}</strong> going</Link>{event.capacity != null && <span> of {event.capacity} places</span>}</p><div className="host-guest-counts"><Link href={`/events/${event.slug}/guests?status=pending_approval`}><strong>{counts.pending}</strong> awaiting approval</Link><Link href={`/events/${event.slug}/guests?status=waitlisted`}><strong>{counts.waitlisted}</strong> waiting</Link><Link href={`/events/${event.slug}/check-in`}><strong>{counts.checked_in}</strong> checked in</Link>{counts.offered > 0 && <Link href={`/events/${event.slug}/guests?status=offered`}><strong>{counts.offered}</strong> active offers</Link>}</div>{counts.pending > 0 && <Link className="host-attention" href={`/events/${event.slug}/guests?status=pending_approval`}><Icon name="people" size={20} /><span>{counts.pending} {counts.pending === 1 ? 'person is' : 'people are'} waiting for your decision.<small>Review applications to confirm their place.</small></span><Icon name="arrow" size={17} /></Link>}</> : <p className="journey-error" role="alert">Guest counts couldn’t be loaded. Use Refresh to try again.</p>}</section>
-    {event.status !== 'published' && event.status !== 'cancelled' && <div className="host-publication"><EventStatusControls event={event} /></div>}
+  const base = `/events/${event.slug}`;
+  const metrics = counts ? [
+    ['Going', counts.confirmed, `${base}/guests?status=confirmed`],
+    ['Awaiting approval', counts.pending, `${base}/guests?status=pending_approval`],
+    ['Waiting list', counts.waitlisted, `${base}/guests?status=waitlisted`],
+    ['Checked in', counts.checked_in, `${base}/check-in`],
+  ] as const : [];
+  return <div className="management-overview">
+    {counts ? <nav className="management-metrics" aria-label="Attendance">
+      {metrics.map(([label, count, href]) => <Link href={href} key={label}><span>{label}</span><strong>{count}</strong><Icon name="arrow" size={16} /></Link>)}
+    </nav> : <p className="journey-error" role="alert">Attendance could not be loaded.</p>}
+    <nav className="management-actions" aria-label="Event actions">
+      <Link className="app-button app-button-primary" href={`${base}/invitations`}><Icon name="add" size={18} />Invite attendees</Link>
+      <Link className="app-button app-button-outline" href={`${base}/guests`}><Icon name="people" size={18} />Manage guests</Link>
+      <Link className="app-button app-button-outline" href={`${base}/check-in`}><Icon name="scan" size={18} />Scan passes</Link>
+      <Link className="app-button app-button-outline" href={`${base}/registration/questions`}><Icon name="edit" size={18} />Edit registration</Link>
+    </nav>
+    <div className="management-overview-grid">
+      <section className="management-activity"><header className="host-section-heading"><h2>Recent activity</h2><Link className="quiet-link" href={`${base}/activity`}>View all activity<Icon name="arrow" size={16} /></Link></header>
+        {activity.status === 'fulfilled' ? <ActivityList items={activity.value.data} zone={event.timezone} /> : <p className="journey-error">Activity could not be loaded.</p>}
+      </section>
+      <section className="management-event"><EventArtwork event={event} /><h2>Event details</h2>
+        <dl><div><dt>Schedule</dt><dd>{dateLabel(event.starts_at, event.timezone)}<span>– {dateLabel(event.ends_at, event.timezone)}</span></dd></div><div><dt>Location</dt><dd>{event.format === 'online' ? 'Online event' : event.location_name || 'Venue to be announced'}</dd></div><div><dt>Capacity</dt><dd>{event.capacity == null ? 'No limit' : event.capacity}</dd></div><div><dt>Registration</dt><dd>{event.registration_mode === 'approval' ? 'Approval required' : 'Open registration'}</dd></div></dl>
+        <Link className="app-button app-button-outline" href={`${base}/edit`}><Icon name="edit" size={16} />Edit event</Link>
+      </section>
+    </div>
     <ShareEvent event={event} />
-    <section className="host-preparation"><h2>Make it yours.</h2><p className="host-muted">Everything guests need, from the first impression to their place at the event.</p><div><Link href={`/events/${event.slug}/edit`}><Icon name="calendar" size={20} /><span>Event details<small>Time, place and the story behind it</small></span><Icon name="arrow" size={17} /></Link><Link href={`/events/${event.slug}/appearance`}><Icon name="image" size={20} /><span>Cover & theme<small>Your event’s first impression</small></span><Icon name="arrow" size={17} /></Link><Link href={`/events/${event.slug}/registration/questions`}><Icon name="people" size={20} /><span>Registration questions<small>Get to know the people joining you</small></span><Icon name="arrow" size={17} /></Link></div></section>
-    <section className="host-recent"><div className="host-section-heading"><h2>What’s been happening</h2><Link className="quiet-link" href={`/events/${event.slug}/activity`}>All activity<Icon name="arrow" size={15} /></Link></div>{activity.status === 'fulfilled' ? <ActivityList items={activity.value.data} zone={event.timezone} /> : <p className="journey-error">Activity is unavailable. Refresh to try again.</p>}</section>
-  </div><aside className="host-event-aside"><EventArtwork event={event} /><dl className="host-essential-list"><div><dt><Icon name="calendar" size={18} />When{editable && <Link className="host-essential-edit" href={`/events/${event.slug}/edit`}>Edit<span className="visually-hidden"> event schedule</span></Link>}</dt><dd>{dateLabel(event.starts_at, event.timezone)}<small>Until {dateLabel(event.ends_at, event.timezone)}</small></dd></div><div><dt><Icon name={event.format === 'online' ? 'globe' : 'location'} size={18} />Where{editable && <Link className="host-essential-edit" href={`/events/${event.slug}/edit`}>Edit<span className="visually-hidden"> event location</span></Link>}</dt><dd>{event.format === 'online' ? 'Online event' : event.location_name || 'Venue to be added'}{event.location_address && <small>{event.location_address}</small>}</dd></div><div><dt><Icon name="people" size={18} />Joining{editable && <Link className="host-essential-edit" href={`/events/${event.slug}/registration`}>Edit<span className="visually-hidden"> registration settings</span></Link>}</dt><dd>{event.registration_mode === 'approval' ? 'You review applications' : 'Guests join directly'}<small>{event.visibility === 'private' ? 'Only people with the link can find it' : 'Listed on Discover'}</small></dd></div></dl><Link className="quiet-link" href={`/events/${event.slug}/edit`}>Edit event page<Icon name="arrow" size={15} /></Link></aside></div>;
+    {event.status !== 'published' && event.status !== 'cancelled' && <div className="management-publication"><EventStatusControls event={event} /></div>}
+  </div>;
 }

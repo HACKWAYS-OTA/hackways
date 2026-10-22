@@ -38,3 +38,10 @@
   .hw-auth-form-side { flex: 1; align-items: start; padding: 36px 24px 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .hw-auth-content * { transition: none; } }
+.hw-auth-note { color:var(--muted, #655d70); font-size:14px; line-height:1.7; margin:0 0 22px; overflow-wrap:anywhere; }
+.hw-auth-note strong { font-weight:500; color:var(--ink, #1f1f23); }
+.hw-auth-content .hw-auth-code { letter-spacing:.45em; font-size:24px; text-align:center; font-variant-numeric:tabular-nums; padding-left:24px; }
+.hw-auth-options { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:20px; }
+.hw-auth-options > button, .hw-auth-forgot { min-height:40px; padding:8px 0; border:0; background:transparent; color:var(--ink, #1f1f23); font:inherit; font-size:13px; text-decoration:underline; text-underline-offset:4px; }
+.hw-auth-forgot { justify-self:end; }
+.hw-auth-link-button { text-align:center; text-decoration:none; }

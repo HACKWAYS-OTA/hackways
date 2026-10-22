@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -22,13 +23,15 @@ import (
 // A successful send operation is provider acceptance, not inbox delivery.
 // Indeterminate requests older than ACS's five-minute replay window fail closed.
 type ACSEmailSender struct {
-	endpoint *url.URL
-	key      []byte
-	sender   string
-	client   *http.Client
+	endpoint          *url.URL
+	key               []byte
+	sender            string
+	accountSender     string
+	promotionalSender string
+	client            *http.Client
 }
 
-func NewACSEmailSender(endpoint, accessKey, sender string) (*ACSEmailSender, error) {
+func NewACSEmailSender(endpoint, accessKey, sender string, alternateSenders ...string) (*ACSEmailSender, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "https" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Port() != "" || !strings.HasSuffix(u.Hostname(), ".communication.azure.com") || u.Path != "" && u.Path != "/" {
 		return nil, errors.New("ACS_ENDPOINT must be a valid HTTPS Azure Communication Services endpoint")
@@ -37,7 +40,23 @@ func NewACSEmailSender(endpoint, accessKey, sender string) (*ACSEmailSender, err
 	if err != nil || len(key) < 32 || sender == "" || strings.ContainsAny(sender, "\r\n") {
 		return nil, errors.New("ACS access key and verified sender must be configured")
 	}
-	return &ACSEmailSender{u, key, sender, &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
+	account, promotion := sender, ""
+	if len(alternateSenders) > 0 && alternateSenders[0] != "" {
+		account = alternateSenders[0]
+	}
+	if len(alternateSenders) > 1 {
+		promotion = alternateSenders[1]
+	}
+	for _, value := range []string{sender, account, promotion} {
+		if value == "" {
+			continue
+		}
+		address, e := mail.ParseAddress(value)
+		if e != nil || address.Address != value || strings.ContainsAny(value, "\r\n") {
+			return nil, errors.New("ACS sender addresses must be valid email addresses")
+		}
+	}
+	return &ACSEmailSender{endpoint: u, key: key, sender: sender, accountSender: account, promotionalSender: promotion, client: &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
 }
 
 type providerResult struct {
@@ -84,6 +103,19 @@ func (s *ACSEmailSender) request(ctx context.Context, method, path string, body 
 	return result, response.StatusCode, delay, nil
 }
 func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
+	from := s.sender
+	switch msg.SenderClass {
+	case "account":
+		from = s.accountSender
+	case "promotion":
+		from = s.promotionalSender
+		if from == "" {
+			return errors.New("promotional sender is not configured")
+		}
+	case "event", "":
+	default:
+		return errors.New("unsupported email sender category")
+	}
 	if msg.Recipient == "" {
 		return ErrEmptyRecipient
 	}
@@ -122,7 +154,7 @@ func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
 			Content         content    `json:"content"`
 			Recipients      recipients `json:"recipients"`
 			DisableTracking bool       `json:"userEngagementTrackingDisabled"`
-		}{s.sender, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, true})
+		}{from, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, true})
 		if marshalErr != nil {
 			return marshalErr
 		}

@@ -87,21 +87,32 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
-	Code           string             `json:"verification_code"`
-	Title          string             `json:"event_title"`
-	StartsAt       time.Time          `json:"starts_at"`
-	EndsAt         time.Time          `json:"ends_at"`
-	OfferExpiresAt pgtype.Timestamptz `json:"offer_expires_at"`
-	CustomMessage  string             `json:"custom_message"`
-	RecipientName  string             `json:"recipient_name"`
-	OrganizerName  string             `json:"organizer_name"`
-	SpaceName      string             `json:"space_name"`
-	Location       string             `json:"location"`
-	EventURL       string             `json:"event_url"`
-	ActionURL      string             `json:"action_url"`
-	EventBannerURL string             `json:"event_banner_url"`
-	Reason         string             `json:"reason"`
-	TicketCode     string             `json:"ticket_code"`
+	PromotionSubject string             `json:"promotion_subject"`
+	PromotionBody    string             `json:"promotion_body"`
+	ActionLabel      string             `json:"action_label"`
+	UnsubscribeURL   string             `json:"unsubscribe_url"`
+	IsTest           bool               `json:"is_test"`
+	VerificationHash string             `json:"verification_hash"`
+	DeviceName       string             `json:"device_name"`
+	BrowserName      string             `json:"browser_name"`
+	ApproxLocation   string             `json:"approx_location"`
+	DeviceLabel      string             `json:"device_label"`
+	SignedInAt       time.Time          `json:"signed_in_at"`
+	Code             string             `json:"verification_code"`
+	Title            string             `json:"event_title"`
+	StartsAt         time.Time          `json:"starts_at"`
+	EndsAt           time.Time          `json:"ends_at"`
+	OfferExpiresAt   pgtype.Timestamptz `json:"offer_expires_at"`
+	CustomMessage    string             `json:"custom_message"`
+	RecipientName    string             `json:"recipient_name"`
+	OrganizerName    string             `json:"organizer_name"`
+	SpaceName        string             `json:"space_name"`
+	Location         string             `json:"location"`
+	EventURL         string             `json:"event_url"`
+	ActionURL        string             `json:"action_url"`
+	EventBannerURL   string             `json:"event_banner_url"`
+	Reason           string             `json:"reason"`
+	TicketCode       string             `json:"ticket_code"`
 }
 
 var registrationStateTemplates = map[string]struct{}{
@@ -178,11 +189,30 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 	actionURL = safeHTTPSURL(actionURL)
 	action := ""
 	if actionURL != "" {
-		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="display:inline-block;padding:11px 18px;background:#201a2b;color:#ffffff;text-decoration:none;font-weight:600;">Open in Hackways</a></p>`
+		label := "Open in Hackways"
+		if template.ID == "admin_promotion" && payload.ActionLabel != "" {
+			label = payload.ActionLabel
+		}
+		if template.ID == "password_reset_requested" {
+			label = "Reset password"
+		}
+		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="display:inline-block;padding:11px 18px;background:#201a2b;color:#ffffff;text-decoration:none;font-weight:600;">` + label + `</a></p>`
+	}
+	if isOTPTemplate(template.ID) && payload.Code != "" {
+		action = `<div style="margin:30px 0;text-align:center;"><p style="margin:0 0 12px;font-size:14px;color:#655d70;">Verification code</p><p style="margin:0;padding:22px 12px;background:#f3eef8;border:1px solid #e8e1ed;font-size:38px;line-height:1.3;font-weight:700;letter-spacing:8px;color:#201a2b;">` + html.EscapeString(payload.Code) + `</p></div>`
 	}
 	banner := ""
 	if bannerURL := safeHTTPSURL(payload.EventBannerURL); bannerURL != "" {
 		banner = `<img src="` + html.EscapeString(bannerURL) + `" alt="" style="display:block;width:100%;max-height:260px;object-fit:cover;margin:0 0 28px;">`
+	}
+	unsubscribe := ""
+	if template.ID == "admin_promotion" {
+		if link := safeHTTPSURL(payload.UnsubscribeURL); link != "" {
+			unsubscribe = `<p style="margin:18px 0;font-size:13px;"><a href="` + html.EscapeString(link) + `" style="color:#655d70;text-decoration:underline;">Unsubscribe from promotional emails</a></p>`
+		}
+		if payload.IsTest {
+			unsubscribe += `<p style="font-size:13px;color:#655d70;">Test email requested by an administrator. No subscription was added.</p>`
+		}
 	}
 	byline := ""
 	if organizer := strings.TrimSpace(payload.OrganizerName); organizer != "" {
@@ -192,6 +222,13 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		}
 		byline += `</p>`
 	}
+	footer := "You are receiving this message because it relates to your Hackways account or registration."
+	if template.ID == "admin_promotion" {
+		footer = "You are receiving Hackways news and offers because you opted in. Unsubscribe at any time."
+		if payload.IsTest {
+			footer = "This preview email was requested by an administrator. No subscription was added."
+		}
+	}
 	return `<div style="margin:0;padding:32px 20px;background:#ffffff;color:#201a2b;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;">` +
 		`<div style="max-width:600px;margin:0 auto;">` +
 		`<p style="margin:0 0 42px;font-size:14px;letter-spacing:.08em;font-weight:700;color:#6d587f;">HACKWAYS</p>` +
@@ -200,9 +237,9 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		`<h1 style="margin:0 0 22px;font-size:28px;line-height:1.2;font-weight:600;color:#201a2b;">` + html.EscapeString(subject) + `</h1>` +
 		byline +
 		`<p style="margin:0 0 18px;line-height:1.65;color:#3f3648;">` + content.String() + `</p>` +
-		action +
+		action + unsubscribe +
 		`<div style="height:1px;background:#e8e1ed;margin:34px 0 18px;"></div>` +
-		`<p style="margin:0;font-size:13px;line-height:1.55;color:#766b7f;">You are receiving this message because it relates to your Hackways account or registration.</p>` +
+		`<p style="margin:0;font-size:13px;line-height:1.55;color:#766b7f;">` + html.EscapeString(footer) + `</p>` +
 		`</div></div>`
 }
 
@@ -221,8 +258,36 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	}
 	subject, body := template.Subject, template.Copy
 	switch e.TemplateType {
+	case "admin_promotion":
+		subject = payload.PromotionSubject
+		body = payload.PromotionBody
+		if subject == "" || body == "" {
+			return EmailMessage{}, errors.New("campaign content is missing")
+		}
+		if payload.IsTest {
+			subject = "[Test] " + subject
+		}
 	case "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
-		body = "Your Hackways one-time code is: " + payload.Code + ". It expires 15 minutes after it was requested. Do not share it."
+		body = "Use this code to verify your email. It expires 15 minutes after it was requested. Do not share it."
+		if e.TemplateType != "email_verification" {
+			body = "Your Hackways one-time code expires 15 minutes after it was requested. Do not share it."
+		}
+	case "password_reset_requested":
+		body = "Use this secure link to reset your Hackways password. It expires 15 minutes after it was requested and can only be used once. If you did not request this, ignore this email."
+	case "sign_in_alert":
+		device, browser, location := payload.DeviceName, payload.BrowserName, payload.ApproxLocation
+		if device == "" {
+			device = payload.DeviceLabel
+		}
+		if browser == "" {
+			browser = "Not identified"
+		}
+		if location == "" {
+			location = "Unavailable"
+		}
+		body = "A new device signed in to your Hackways account.\n\nDevice: " + device + "\nBrowser: " + browser + "\nNear: " + location + "\nTime: " + payload.SignedInAt.UTC().Format(time.RFC1123) + "\n\nLocation is approximate and can differ when using a VPN or mobile network. If this was not you, reset your password and sign out of other sessions from your account."
+	case "password_changed":
+		body = "Your Hackways password was changed. All existing sessions and remembered devices have been signed out. If this was not you, recover your account immediately."
 	case "rsvp_confirmation", "rsvp_confirmed":
 		body = "Your registration for " + title + " is confirmed."
 	case "rsvp_cancellation", "rsvp_cancelled":
@@ -257,7 +322,24 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	} else {
 		body = appendTemplateContext(body, templatePayload{StartsAt: payload.StartsAt, Location: payload.Location, OrganizerName: payload.OrganizerName, SpaceName: payload.SpaceName, TicketCode: payload.TicketCode})
 	}
-	return EmailMessage{Recipient: e.RecipientEmail, Subject: subject, BodyText: body, BodyHTML: renderHTML(template, subject, body, payload), OperationID: uuid(e.ID)}, nil
+	htmlBody := renderHTML(template, subject, body, payload)
+	if e.TemplateType == "admin_promotion" && safeHTTPSURL(payload.UnsubscribeURL) != "" {
+		body += "\n\nUnsubscribe: " + safeHTTPSURL(payload.UnsubscribeURL)
+	}
+	if isOTPTemplate(e.TemplateType) {
+		body += "\n\nVerification code: " + payload.Code
+	}
+	if e.TemplateType == "password_reset_requested" {
+		body += "\n\nReset password: " + safeHTTPSURL(payload.ActionURL)
+	}
+	senderClass := "event"
+	if template.Category == "account" || template.Category == "security" || template.ID == "organizer_welcome" {
+		senderClass = "account"
+	}
+	if template.Category == "promotion" {
+		senderClass = "promotion"
+	}
+	return EmailMessage{SenderClass: senderClass, Recipient: e.RecipientEmail, Subject: subject, BodyText: body, BodyHTML: htmlBody, OperationID: uuid(e.ID)}, nil
 }
 
 func isOTPTemplate(id string) bool {
@@ -326,15 +408,8 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 var errSuperseded = errors.New("notification superseded; no provider send was attempted")
 
 func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) error {
-	if e.TemplateType == "email_verification" {
-		var payload struct {
-			Code string `json:"verification_code"`
-		}
-		if err := json.Unmarshal(e.PayloadJson, &payload); err != nil {
-			return err
-		}
-		sum := sha256.Sum256([]byte(payload.Code))
-		active, err := w.queries.VerificationCodeActive(ctx, hex.EncodeToString(sum[:]))
+	if e.TemplateType == "admin_promotion" {
+		active, err := w.queries.CampaignMessageActive(ctx, e.ID)
 		if err != nil {
 			return err
 		}
@@ -343,6 +418,32 @@ func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) er
 		}
 		return nil
 	}
+	if e.TemplateType == "email_verification" || e.TemplateType == "password_reset_requested" {
+		var payload templatePayload
+		if err := json.Unmarshal(e.PayloadJson, &payload); err != nil {
+			return err
+		}
+		hash := payload.VerificationHash
+		if hash == "" {
+			sum := sha256.Sum256([]byte(payload.Code))
+			hash = hex.EncodeToString(sum[:])
+		}
+		var active bool
+		var err error
+		if e.TemplateType == "email_verification" {
+			active, err = w.queries.VerificationCodeActive(ctx, hash)
+		} else {
+			active, err = w.queries.PasswordResetTokenActive(ctx, hash)
+		}
+		if err != nil {
+			return err
+		}
+		if !active {
+			return errSuperseded
+		}
+		return nil
+	}
+
 	state, err := w.queries.ReadOutboxCurrentState(ctx, e.ID)
 	if err != nil {
 		return err
@@ -369,4 +470,13 @@ func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) er
 		return errSuperseded
 	}
 	return nil
+}
+
+// Reuses the exact production renderer for the admin's saved-draft preview.
+func RenderCampaignPreview(subject, body, label, actionURL string) (EmailMessage, error) {
+	payload, err := json.Marshal(templatePayload{PromotionSubject: subject, PromotionBody: body, ActionLabel: label, ActionURL: actionURL})
+	if err != nil {
+		return EmailMessage{}, err
+	}
+	return render(db.ClaimEmailOutboxRow{TemplateType: "admin_promotion", PayloadJson: payload})
 }

@@ -225,7 +225,7 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, http.StatusUnauthorized, "INVALID_EXCHANGE", "The Google sign-in exchange is not bound to this browser", nil)
 		return
 	}
-	userID, err := h.queries.ConsumeOAuthExchangeToken(r.Context(), db.ConsumeOAuthExchangeTokenParams{TokenHash: HashToken(strings.TrimSpace(req.Code)), NonceHash: HashToken(nonceCookie.Value)})
+	userID, err := h.queries.ReadOAuthExchangeUser(r.Context(), db.ReadOAuthExchangeUserParams{TokenHash: HashToken(strings.TrimSpace(req.Code)), NonceHash: HashToken(nonceCookie.Value)})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			platform.RespondError(w, http.StatusUnauthorized, "INVALID_EXCHANGE", "The Google sign-in exchange expired or was already used", nil)
@@ -235,12 +235,15 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.clearGoogleNonceCookie(w)
-	token, _, err := h.sm.CreateSession(r.Context(), userID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
-	if err != nil {
-		platform.RespondError(w, http.StatusInternalServerError, "SESSION_ERROR", "Failed to establish session", nil)
+	if err = h.establishSession(w, r, userID, "", false, db.ConsumeOAuthExchangeTokenParams{TokenHash: HashToken(strings.TrimSpace(req.Code)), NonceHash: HashToken(nonceCookie.Value)}); err != nil {
+		if errors.Is(err, errCredentialsChanged) {
+			platform.RespondError(w, 401, "INVALID_EXCHANGE", "The Google sign-in exchange expired or was already used", nil)
+			return
+		}
+		platform.RespondDatabaseError(w, err)
 		return
 	}
-	SetSessionCookie(w, DefaultSessionCookie, token, 7*24*time.Hour, h.isProduction)
+
 	user, err := h.queries.GetUserByID(r.Context(), userID)
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
