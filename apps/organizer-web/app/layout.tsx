@@ -7,6 +7,7 @@ import { site } from '@/lib/site';
 import './globals.css';
 import './dashboard.css';
 import './host-dashboard.css';
+import '@hackways/ui/auth.css';
 
 export const metadata: Metadata = { metadataBase: new URL(site.organizer), title: { default: 'Manage events | Hackways', template: '%s | Hackways' }, description: 'Welcome your guests and manage the details of your events.', robots: { index: false, follow: false } };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#ffffff' };

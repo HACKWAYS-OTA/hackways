@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -94,9 +95,11 @@ type templatePayload struct {
 	CustomMessage  string             `json:"custom_message"`
 	RecipientName  string             `json:"recipient_name"`
 	OrganizerName  string             `json:"organizer_name"`
+	SpaceName      string             `json:"space_name"`
 	Location       string             `json:"location"`
 	EventURL       string             `json:"event_url"`
 	ActionURL      string             `json:"action_url"`
+	EventBannerURL string             `json:"event_banner_url"`
 	Reason         string             `json:"reason"`
 	TicketCode     string             `json:"ticket_code"`
 }
@@ -126,6 +129,12 @@ func appendTemplateContext(body string, payload templatePayload) string {
 	if location := strings.TrimSpace(payload.Location); location != "" {
 		body += "\nLocation: " + location
 	}
+	if organizer := strings.TrimSpace(payload.OrganizerName); organizer != "" {
+		body += "\nOrganiser: " + organizer
+	}
+	if space := strings.TrimSpace(payload.SpaceName); space != "" {
+		body += "\nSpace: " + space
+	}
 	if code := strings.TrimSpace(payload.TicketCode); code != "" {
 		body += "\nTicket: " + code
 	}
@@ -135,10 +144,15 @@ func appendTemplateContext(body string, payload templatePayload) string {
 	return body
 }
 
-func renderHTML(template EmailTemplate, subject, body string, payload templatePayload) string {
-	if template.TextOnly {
+func safeHTTPSURL(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 		return ""
 	}
+	return parsed.String()
+}
+
+func renderHTML(template EmailTemplate, subject, body string, payload templatePayload) string {
 	paragraphs := strings.Split(body, "\n\n")
 	var content strings.Builder
 	for _, paragraph := range paragraphs {
@@ -161,15 +175,30 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 	if actionURL == "" {
 		actionURL = strings.TrimSpace(payload.EventURL)
 	}
+	actionURL = safeHTTPSURL(actionURL)
 	action := ""
 	if actionURL != "" {
-		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="color:#201a2b;text-decoration:underline;font-weight:600;">Open Hackways</a></p>`
+		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="display:inline-block;padding:11px 18px;background:#201a2b;color:#ffffff;text-decoration:none;font-weight:600;">Open in Hackways</a></p>`
+	}
+	banner := ""
+	if bannerURL := safeHTTPSURL(payload.EventBannerURL); bannerURL != "" {
+		banner = `<img src="` + html.EscapeString(bannerURL) + `" alt="" style="display:block;width:100%;max-height:260px;object-fit:cover;margin:0 0 28px;">`
+	}
+	byline := ""
+	if organizer := strings.TrimSpace(payload.OrganizerName); organizer != "" {
+		byline = `<p style="margin:0 0 18px;font-size:14px;color:#766b7f;">Organised by <strong style="color:#3f3648;">` + html.EscapeString(organizer) + `</strong>`
+		if space := strings.TrimSpace(payload.SpaceName); space != "" {
+			byline += ` in <strong style="color:#3f3648;">` + html.EscapeString(space) + `</strong>`
+		}
+		byline += `</p>`
 	}
 	return `<div style="margin:0;padding:32px 20px;background:#ffffff;color:#201a2b;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;">` +
 		`<div style="max-width:600px;margin:0 auto;">` +
 		`<p style="margin:0 0 42px;font-size:14px;letter-spacing:.08em;font-weight:700;color:#6d587f;">HACKWAYS</p>` +
+		banner +
 		`<p style="margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#806a91;">` + html.EscapeString(template.Category) + `</p>` +
 		`<h1 style="margin:0 0 22px;font-size:28px;line-height:1.2;font-weight:600;color:#201a2b;">` + html.EscapeString(subject) + `</h1>` +
+		byline +
 		`<p style="margin:0 0 18px;line-height:1.65;color:#3f3648;">` + content.String() + `</p>` +
 		action +
 		`<div style="height:1px;background:#e8e1ed;margin:34px 0 18px;"></div>` +
@@ -192,8 +221,8 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	}
 	subject, body := template.Subject, template.Copy
 	switch e.TemplateType {
-	case "email_verification":
-		body = "Your Hackways email verification code is: " + payload.Code + ". This code expires 15 minutes after it was requested. Do not share it."
+	case "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
+		body = "Your Hackways one-time code is: " + payload.Code + ". It expires 15 minutes after it was requested. Do not share it."
 	case "rsvp_confirmation", "rsvp_confirmed":
 		body = "Your registration for " + title + " is confirmed."
 	case "rsvp_cancellation", "rsvp_cancelled":
@@ -218,15 +247,24 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	case "event_cancelled":
 		body = title + " was cancelled. Your registration is no longer valid."
 	}
-	if title != "your event" && e.TemplateType != "email_verification" && !strings.Contains(body, title) {
+	if title != "your event" && !isOTPTemplate(e.TemplateType) && !strings.Contains(body, title) {
 		body = "For " + title + ":\n\n" + body
 	}
 	if isRegistrationStateTemplate(e.TemplateType) {
 		body = appendTemplateContext(body, payload)
 	} else {
-		body = appendTemplateContext(body, templatePayload{StartsAt: payload.StartsAt, Location: payload.Location, TicketCode: payload.TicketCode})
+		body = appendTemplateContext(body, templatePayload{StartsAt: payload.StartsAt, Location: payload.Location, OrganizerName: payload.OrganizerName, SpaceName: payload.SpaceName, TicketCode: payload.TicketCode})
 	}
 	return EmailMessage{Recipient: e.RecipientEmail, Subject: subject, BodyText: body, BodyHTML: renderHTML(template, subject, body, payload), OperationID: uuid(e.ID)}, nil
+}
+
+func isOTPTemplate(id string) bool {
+	switch id {
+	case "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
+		return true
+	default:
+		return false
+	}
 }
 func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 	msg, err := render(e)

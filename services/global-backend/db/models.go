@@ -392,6 +392,19 @@ type Organizers struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PlatformAdminSessions struct {
+	SessionID pgtype.UUID        `json:"session_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Explicit platform access; verified email and a live admin session are also required.
+type PlatformAdministrators struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	GrantedBy pgtype.UUID        `json:"granted_by"`
+	GrantedAt pgtype.Timestamptz `json:"granted_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type RegistrationSubmissions struct {
 	ID           int64              `json:"id"`
 	RsvpID       pgtype.UUID        `json:"rsvp_id"`

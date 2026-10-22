@@ -54,6 +54,7 @@ func (h *Handler) Routes() chi.Router {
 
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
+	r.Mount("/admin", h.AdminRoutes())
 	r.Post("/logout", h.Logout)
 	r.Post("/verify", h.Verify)
 	r.Get("/google/start", h.GoogleStart)

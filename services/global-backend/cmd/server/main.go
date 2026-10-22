@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hackways/global-backend/internal/admin"
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
@@ -110,14 +111,16 @@ func main() {
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
 
-	if pool != nil && emailConfigured {
+	if pool != nil && emailConfigured && !cfg.AdminPreviewOnly {
 		outboxWorker = notifications.NewOutboxWorker(pool, emailSender, logger, 2*time.Second)
 		outboxWorker.Start(workerCtx)
 	}
 
 	var housekeepingWG sync.WaitGroup
-	housekeepingWG.Add(1)
-	go func() { defer housekeepingWG.Done(); notifications.Housekeeping(workerCtx, pool, logger) }()
+	if !cfg.AdminPreviewOnly {
+		housekeepingWG.Add(1)
+		go func() { defer housekeepingWG.Done(); notifications.Housekeeping(workerCtx, pool, logger) }()
+	}
 	// 6. Initialize HTTP router and middleware
 	r := chi.NewRouter()
 	r.Use(platform.RequestID)
@@ -144,8 +147,14 @@ func main() {
 				"version": "v1",
 			})
 		})
-		v1.Mount("/auth", authHandler.Routes())
-		v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
+		if cfg.AdminPreviewOnly {
+			v1.Mount("/auth/admin", authHandler.AdminRoutes())
+		} else {
+			v1.Mount("/auth", authHandler.Routes())
+			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
+		}
+		v1.Mount("/admin/global", admin.NewHandler(pool).Routes())
+
 	})
 
 	// 9. HTTP Server with production timeouts

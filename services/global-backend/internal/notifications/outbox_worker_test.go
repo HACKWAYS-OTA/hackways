@@ -213,7 +213,7 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 		seen[template.ID] = true
 		message, err := render(db.ClaimEmailOutboxRow{
 			TemplateType: template.ID,
-			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","action_url":"https://hackways.in/events/example"}`),
+			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example"}`),
 		})
 		if err != nil {
 			t.Fatalf("template %q did not render: %v", template.ID, err)
@@ -227,11 +227,14 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 		if strings.Contains(message.BodyHTML, "A & B <launch>") || strings.Contains(message.BodyHTML, "Welcome <back>") {
 			t.Fatalf("template %q did not escape HTML content", template.ID)
 		}
-		if template.TextOnly && message.BodyHTML != "" {
-			t.Fatalf("template %q should remain text-only", template.ID)
-		}
-		if !template.TextOnly && !strings.Contains(message.BodyHTML, "HACKWAYS") {
+		if !strings.Contains(message.BodyHTML, "HACKWAYS") {
 			t.Fatalf("template %q is missing the email wordmark", template.ID)
+		}
+		if !strings.Contains(message.BodyHTML, "Organised by") || !strings.Contains(message.BodyHTML, "Builders Space") {
+			t.Fatalf("template %q is missing organiser or space context", template.ID)
+		}
+		if !strings.Contains(message.BodyHTML, "Open in Hackways") || !strings.Contains(message.BodyHTML, "banner.jpg") {
+			t.Fatalf("template %q is missing its safe action link or banner", template.ID)
 		}
 	}
 }

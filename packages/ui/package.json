@@ -10,6 +10,8 @@
     "./select": "./src/Select.tsx",
     "./toggle": "./src/Toggle.tsx",
     "./section-jump": "./src/SectionJump.tsx",
+    "./auth": "./src/Auth.tsx",
+    "./auth.css": "./src/auth.css",
     "./styles.css": "./src/controls.css"
   },
   "sideEffects": ["**/*.css"],

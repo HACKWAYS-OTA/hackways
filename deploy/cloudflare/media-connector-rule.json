@@ -1,0 +1,9 @@
+{
+  "description": "Hackways public media from Azure Blob Storage",
+  "enabled": true,
+  "expression": "(http.host eq \"cdn.hackways.in\" and starts_with(http.request.uri.path, \"/media-uploads/\") and http.request.method in {\"GET\" \"HEAD\"} and http.request.uri.query eq \"\")",
+  "provider": "azure_storage",
+  "parameters": {
+    "host": "hackwaysstorage.blob.core.windows.net"
+  }
+}

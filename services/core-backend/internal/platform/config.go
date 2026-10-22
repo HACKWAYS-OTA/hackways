@@ -12,6 +12,7 @@ import (
 
 // Config holds runtime configuration loaded from environment variables.
 type Config struct {
+	AdminPreviewOnly   bool
 	BindHost           string
 	AppEnv             string
 	Port               int
@@ -91,6 +92,10 @@ func LoadConfig() (*Config, error) {
 		ShutdownTimeout:    15 * time.Second,
 	}
 
+	cfg.AdminPreviewOnly, err = adminPreviewMode(cfg.AppEnv, cfg.BindHost, cfg.DatabaseURL, os.Getenv("ADMIN_PREVIEW_ONLY"))
+	if err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
 

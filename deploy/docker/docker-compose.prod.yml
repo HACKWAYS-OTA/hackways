@@ -120,6 +120,8 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.hackways.in,https://organizer.hackways.in,https://hackways.in}
       AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT}
       AZURE_STORAGE_ACCOUNT_KEY: ${AZURE_STORAGE_ACCOUNT_KEY}
+      # Enable only after the public CDN hostname has passed HTTPS/origin checks.
+      AZURE_CDN_DOMAIN: ${AZURE_CDN_DOMAIN:-}
       AZURE_ACS_CONNECTION_STRING: ${AZURE_ACS_CONNECTION_STRING}
       AZURE_ACS_SENDER_ADDRESS: ${AZURE_ACS_SENDER_ADDRESS}
       ACS_ENDPOINT: ${ACS_ENDPOINT:-}
