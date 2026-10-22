@@ -137,10 +137,12 @@ export function AdminActions({ resource, record }: { resource: AdminModule; reco
   </div>;
   if (resource === 'registrations') {
     const transitions = [
-      ...(record.registration_open === true && ['pending_approval', 'offered', 'cancelled', 'expired', 'rejected'].includes(status) ? [{ value: 'confirmed', label: 'Confirm registration' }] : []),
-      ...(status === 'pending_approval' ? [{ value: 'rejected', label: 'Reject registration' }] : []),
-      ...(['confirmed', 'pending_approval', 'waitlisted', 'offered'].includes(status) ? [{ value: 'cancelled', label: 'Cancel registration' }] : []),
-    ];
+      { value: 'confirmed', label: 'Going' },
+      { value: 'pending_approval', label: 'Awaiting approval' },
+      { value: 'waitlisted', label: 'Waiting list' },
+      { value: 'rejected', label: 'Declined' },
+      { value: 'cancelled', label: 'Cancelled' },
+    ].filter(option => option.value !== status && (option.value !== 'confirmed' || record.registration_open === true));
     if (!record.editable || record.ticket_status === 'scanned' || transitions.length === 0) return null;
     return <div className="admin-actions" key={version}><ActionForm title="Registration action" path={`core/registrations/${id}/status`} payload={{ updated_at: version }} fields={data => ({ status: String(data.get('registration_status') || ''), notify_guest: data.get('notify_guest') === 'yes', message: String(data.get('message') || '') })} submitLabel="Update registration">
       <Choice name="registration_status" label="Action" value={transitions[0].value} options={transitions} />

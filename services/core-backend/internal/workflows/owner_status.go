@@ -14,28 +14,27 @@ import (
 )
 
 type StatusOption struct {
-	Value db.RegistrationStatus `json:"value"`
-	Label string                `json:"label"`
+	Value       db.RegistrationStatus `json:"value"`
+	Label       string                `json:"label"`
+	Description string                `json:"description,omitempty"`
 }
 
 // OwnerStatusOptions is presentation advice; ChangeOwnerStatus repeats it under the event lock.
 func OwnerStatusOptions(status db.RegistrationStatus, scanned, editable, canConfirm bool) []StatusOption {
-	options := make([]StatusOption, 0, 3)
+	options := make([]StatusOption, 0, 5)
 	if scanned || !editable || status == db.RegistrationStatusTransferred {
 		return options
 	}
-	if canConfirm {
-		switch status {
-		case db.RegistrationStatusPendingApproval, db.RegistrationStatusOffered, db.RegistrationStatusCancelled, db.RegistrationStatusExpired, db.RegistrationStatusRejected:
-			options = append(options, StatusOption{db.RegistrationStatusConfirmed, "Going"})
+	for _, option := range []StatusOption{
+		{Value: db.RegistrationStatusConfirmed, Label: "Going"},
+		{Value: db.RegistrationStatusPendingApproval, Label: "Awaiting approval"},
+		{Value: db.RegistrationStatusWaitlisted, Label: "Waiting list", Description: "If automatic waiting-list offers are enabled, an available place is offered to the guest."},
+		{Value: db.RegistrationStatusRejected, Label: "Declined"},
+		{Value: db.RegistrationStatusCancelled, Label: "Cancelled"},
+	} {
+		if option.Value != status && (option.Value != db.RegistrationStatusConfirmed || canConfirm) {
+			options = append(options, option)
 		}
-	}
-	if status == db.RegistrationStatusPendingApproval {
-		options = append(options, StatusOption{db.RegistrationStatusRejected, "Declined"})
-	}
-	switch status {
-	case db.RegistrationStatusConfirmed, db.RegistrationStatusPendingApproval, db.RegistrationStatusWaitlisted, db.RegistrationStatusOffered:
-		options = append(options, StatusOption{db.RegistrationStatusCancelled, "Not going"})
 	}
 	return options
 }
@@ -45,6 +44,7 @@ type OwnerStatusRequest struct {
 	Status                                        db.RegistrationStatus
 	ExpectedUpdatedAt                             time.Time
 	Notify                                        bool
+	ResendNotification                            bool
 	Message, Key, RequestID                       string
 }
 type OwnerStatusResult struct {
@@ -91,6 +91,9 @@ func (e *Engine) ChangeOwnerStatus(ctx context.Context, req OwnerStatusRequest) 
 		scope = mutation.Scope
 		canonical = append(canonical, []byte("\n"+mutation.Reason)...)
 	}
+	if req.ResendNotification {
+		scope = digest(scope + ":resend-notification")
+	}
 	key, requestHash := digest(req.Key), digest(string(canonical))
 	stored, err := q.GetIdempotentResponse(ctx, db.GetIdempotentResponseParams{ScopeHash: scope, KeyHash: key})
 	if err == nil {
@@ -128,43 +131,63 @@ func (e *Engine) ChangeOwnerStatus(ctx context.Context, req OwnerStatusRequest) 
 			allowed = true
 		}
 	}
+	if req.ResendNotification {
+		allowed = req.Notify && editable && req.Status == rsvp.Status && (rsvp.Status == db.RegistrationStatusConfirmed || rsvp.Status == db.RegistrationStatusRejected || rsvp.Status == db.RegistrationStatusCancelled || rsvp.Status == db.RegistrationStatusPendingApproval || rsvp.Status == db.RegistrationStatusWaitlisted || rsvp.Status == db.RegistrationStatusOffered)
+	}
 	if !allowed {
 		return OwnerStatusResult{}, false, fail("STATUS_CHANGE_UNAVAILABLE", "This status change is unavailable. Checked-in, transferred and closed-event registrations cannot be changed")
 	}
-	confirmed, held := int32(0), int32(0)
-	if rsvp.Status == db.RegistrationStatusConfirmed {
-		confirmed--
-	}
-	if rsvp.Status == db.RegistrationStatusOffered {
-		held--
-	}
-	if req.Status == db.RegistrationStatusConfirmed {
-		if rsvp.Status != db.RegistrationStatusOffered && Full(event) {
-			return OwnerStatusResult{}, false, fail("CAPACITY_FULL", "No place is available to mark this guest as going")
+	if !req.ResendNotification {
+		confirmed, held := int32(0), int32(0)
+		if rsvp.Status == db.RegistrationStatusConfirmed {
+			confirmed--
 		}
-		confirmed++
-	}
-	rsvp, err = q.SetWorkflowRSVPState(ctx, db.SetWorkflowRSVPStateParams{ID: rsvp.ID, Status: req.Status})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			err = fail("REGISTRATION_EXPIRED", "The application or offer expired. Reload the guest details")
+		if rsvp.Status == db.RegistrationStatusOffered {
+			held--
 		}
-		return OwnerStatusResult{}, false, err
+		if req.Status == db.RegistrationStatusConfirmed {
+			if rsvp.Status != db.RegistrationStatusOffered && Full(event) {
+				return OwnerStatusResult{}, false, fail("CAPACITY_FULL", "No place is available to mark this guest as going")
+			}
+			confirmed++
+		}
+		var approvalExpiry pgtype.Timestamptz
+		if req.Status == db.RegistrationStatusPendingApproval {
+			deadline := event.DatabaseNow.Time.Add(7 * 24 * time.Hour)
+			if event.StartsAt.Time.Before(deadline) {
+				deadline = event.StartsAt.Time
+			}
+			if event.RegistrationClosesAt.Valid && event.RegistrationClosesAt.Time.After(event.DatabaseNow.Time) && event.RegistrationClosesAt.Time.Before(deadline) {
+				deadline = event.RegistrationClosesAt.Time
+			}
+			approvalExpiry = pgtype.Timestamptz{Time: deadline, Valid: true}
+		}
+		rsvp, err = q.SetWorkflowRSVPState(ctx, db.SetWorkflowRSVPStateParams{ID: rsvp.ID, Status: req.Status, ApprovalExpiresAt: approvalExpiry})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				err = fail("REGISTRATION_EXPIRED", "The application or offer expired. Reload the guest details")
+			}
+			return OwnerStatusResult{}, false, err
+		}
+		if err = Inventory(ctx, q, event.ID, confirmed, held); err != nil {
+			return OwnerStatusResult{}, false, err
+		}
+		event.CurrentRsvpCount += confirmed
+		event.HeldRsvpCount += held
+		if req.Status == db.RegistrationStatusConfirmed {
+			_, err = q.EnsureTicket(ctx, rsvp.ID)
+		} else {
+			err = q.RevokeWorkflowTicket(ctx, rsvp.ID)
+		}
+		if err != nil {
+			return OwnerStatusResult{}, false, err
+		}
 	}
-	if err = Inventory(ctx, q, event.ID, confirmed, held); err != nil {
-		return OwnerStatusResult{}, false, err
+	action := "registration.owner_status_" + string(req.Status)
+	if req.ResendNotification {
+		action = "registration.notification_requested"
 	}
-	event.CurrentRsvpCount += confirmed
-	event.HeldRsvpCount += held
-	if req.Status == db.RegistrationStatusConfirmed {
-		_, err = q.EnsureTicket(ctx, rsvp.ID)
-	} else {
-		err = q.RevokeWorkflowTicket(ctx, rsvp.ID)
-	}
-	if err != nil {
-		return OwnerStatusResult{}, false, err
-	}
-	if err = Audit(ctx, q, req.ActorID, event.ID, rsvp.ID, "registration.owner_status_"+string(req.Status), req.RequestID); err != nil {
+	if err = Audit(ctx, q, req.ActorID, event.ID, rsvp.ID, action, req.RequestID); err != nil {
 		return OwnerStatusResult{}, false, err
 	}
 	queued := false
@@ -179,6 +202,15 @@ func (e *Engine) ChangeOwnerStatus(ctx context.Context, req OwnerStatusRequest) 
 	}
 	if err = e.ExpireAndPromote(ctx, q, &event); err != nil {
 		return OwnerStatusResult{}, false, err
+	}
+	if !req.ResendNotification && req.Status == db.RegistrationStatusWaitlisted {
+		rsvp, err = q.GetWorkflowRSVP(ctx, rsvp.ID)
+		if err != nil {
+			return OwnerStatusResult{}, false, err
+		}
+		if rsvp.Status == db.RegistrationStatusOffered {
+			queued = true
+		}
 	}
 	result := OwnerStatusResult{Data: rsvp, NotificationQueued: queued}
 	response, err := json.Marshal(result)

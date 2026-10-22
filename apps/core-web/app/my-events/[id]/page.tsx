@@ -16,5 +16,11 @@ export default async function RegistrationPage({ params }: { params: { id: strin
   let event: Event | null = null;
   try { event = (await privateApi<{ data: Event }>(`/events/${registration.event_id}`)).data; }
   catch (error) { if (!(error instanceof ApiClientError && error.code === 'NOT_FOUND')) throw error; }
-  return <div className="account-page"><Link className="quiet-link" href="/my-events">Back to my events</Link><div className="registration-heading"><span className={`journey-status status-${registration.status}`}>{registrationLabels[registration.status]}</span><h1>{event?.title || 'Your registration'}</h1>{event ? <p>{dateLabel(event.starts_at, event.timezone)} · {event.timezone}</p> : <p>The event page is currently unavailable.</p>}</div><RegistrationControls registration={registration} startsAt={event?.starts_at} />{event && <Link className="quiet-link" href={`/events/${encodeURIComponent(event.slug)}`}>See event details</Link>}</div>;
+  let pass: { qr_image: string; short_code: string } | null = null;
+  let passError = '';
+  if (registration.status === 'confirmed' && event?.status === 'published') {
+    try { pass = await privateApi<{ qr_image: string; short_code: string }>(`/rsvps/${registration.id}/ticket`); }
+    catch (error) { if (error instanceof ApiClientError) passError = error.message; else throw error; }
+  }
+  return <div className="account-page"><Link className="quiet-link" href="/my-events">Back to my events</Link><div className="registration-heading"><span className={`journey-status status-${registration.status}`}>{registrationLabels[registration.status]}</span><h1>{event?.title || 'Your registration'}</h1>{event ? <p>{dateLabel(event.starts_at, event.timezone)} · {event.timezone}</p> : <p>The event page is currently unavailable.</p>}</div><RegistrationControls registration={registration} startsAt={event?.starts_at} initialTicket={pass} initialTicketError={passError} />{event && <Link className="quiet-link" href={`/events/${encodeURIComponent(event.slug)}`}>See event details</Link>}</div>;
 }

@@ -1,6 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ManagedEvent } from '@/lib/management';
 import type { Guest } from '@/lib/guests';
 import { dateLabel, registrationLabels } from '@/lib/journeys';
@@ -8,10 +8,12 @@ import { Icon } from '@/components/ui/Icon';
 import { GuestDrawer } from './GuestDrawer';
 import './guest-list.css';
 export function GuestList({ event, guests, checkIn = false, checkinOpen = false }: { event: ManagedEvent; guests: Guest[]; checkIn?: boolean; checkinOpen?: boolean }) {
-  const params = useSearchParams(), code = params.get('guest');
+  const params = useSearchParams(), requestedCode = params.get('guest');
+  const [code, setCode] = useState(requestedCode);
+  useEffect(() => { setCode(requestedCode); }, [requestedCode]);
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
   const approvalOpen = event.status === 'published' && Date.now() < Date.parse(event.starts_at);
-  function select(code: string | null, action: 'approve' | 'reject' | null = null) { setDecision(action); const url = new URL(window.location.href); if (code) url.searchParams.set('guest', code); else url.searchParams.delete('guest'); window.history.replaceState(null, '', url.pathname + url.search); }
+  function select(code: string | null, action: 'approve' | 'reject' | null = null) { setDecision(action); setCode(code); const url = new URL(window.location.href); if (code) url.searchParams.set('guest', code); else url.searchParams.delete('guest'); window.history.replaceState(null, '', url.pathname + url.search); }
   return <>
     {guests.length === 0 ? <section className="host-empty"><Icon name="people" size={29} /><h2>No guests in this view.</h2><p>Try another name, email or status. New registrations appear here after guests sign up.</p></section> : <ul className="guest-list" aria-label={checkIn ? 'Guests for check-in' : 'Event guests'}>{guests.map(guest => {
       const name = guest.guest_name || guest.guest_email || `Registration ${guest.public_code}`;

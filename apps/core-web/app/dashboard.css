@@ -173,3 +173,8 @@ textarea.app-input { resize: vertical; min-height: 110px; }
 .registration-answer-check { display: flex; align-items: flex-start; gap: 12px; line-height: 1.7; }
 .registration-answer-check input { margin-top: 4px; }
 .registration-answer-choice .quiet-link { margin-top: 12px; font-size: 12px; }
+
+.ticket-pass { margin-block: 32px; padding-block: 24px; border-block: 1px solid var(--line); text-align: center; }
+.ticket-pass img { display: block; width: min(100%, 384px); height: auto; margin: 20px auto; background: #fff; image-rendering: pixelated; }
+.ticket-pass-reference { overflow-wrap: anywhere; }
+.ticket-pass-reference strong { display: block; margin-top: 6px; font-weight: 500; }

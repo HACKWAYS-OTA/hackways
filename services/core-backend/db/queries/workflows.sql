@@ -27,6 +27,7 @@ VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *;
 
 -- name: SetWorkflowRSVPState :one
 UPDATE rsvps SET status = sqlc.arg(status)::registration_status, offer_expires_at = sqlc.narg(offer_expires_at)::timestamptz,
+    approval_expires_at = sqlc.narg(approval_expires_at)::timestamptz,
     cancelled_at = CASE WHEN sqlc.arg(status)::registration_status = 'cancelled' THEN clock_timestamp() ELSE cancelled_at END,
     updated_at = clock_timestamp()
 WHERE id = sqlc.arg(id)

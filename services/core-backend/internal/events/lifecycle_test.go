@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -378,6 +379,77 @@ func TestOwnerLifecycle_RegistrationQuestionsAndPrivateAnswers(t *testing.T) {
 	if err = f.pool.QueryRow(context.Background(), "SELECT payload_json->>'custom_message' FROM email_outbox WHERE rsvp_id=$1 AND payload_json ? 'custom_message' ORDER BY created_at DESC LIMIT 1", result.Data.ID).Scan(&customMessage); err != nil || customMessage != "Welcome <back>" {
 		t.Fatal("custom notification text was not persisted")
 	}
+	var actionURL, organizerName string
+	if err = f.pool.QueryRow(context.Background(), "SELECT payload_json->>'action_url',payload_json->>'organizer_name' FROM email_outbox WHERE rsvp_id=$1 ORDER BY created_at DESC LIMIT 1", result.Data.ID).Scan(&actionURL, &organizerName); err != nil || !strings.Contains(actionURL, "/my-events/"+result.Data.PublicCode) || organizerName == "" {
+		t.Fatal("notification missing real registration action or host")
+	}
+	resendBody, _ := json.Marshal(struct {
+		Status    string    `json:"status"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Notify    bool      `json:"notify_guest"`
+		Message   string    `json:"message"`
+		Resend    bool      `json:"resend_notification"`
+	}{"confirmed", change.Data.UpdatedAt.Time, true, "Resend current status", true})
+	resendRequest := func(cookie *http.Cookie) *httptest.ResponseRecorder {
+		request := httptest.NewRequest("POST", detailPath+"/status", bytes.NewReader(resendBody))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Idempotency-Key", key+"-resend")
+		if cookie != nil {
+			request.AddCookie(cookie)
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response
+	}
+	if response := resendRequest(other.cookie); response.Code != 404 {
+		t.Fatal("cross-owner notification allowed")
+	}
+	if response := resendRequest(f.cookie); response.Code != 200 {
+		t.Fatalf("notification resend failed: %d %s", response.Code, response.Body.String())
+	}
+	var afterResend int
+	if err = f.pool.QueryRow(context.Background(), "SELECT count(*) FROM email_outbox WHERE rsvp_id=$1", result.Data.ID).Scan(&afterResend); err != nil {
+		t.Fatal(err)
+	}
+	if response := resendRequest(f.cookie); response.Code != 200 || response.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("notification retry did not replay")
+	}
+	var afterReplay int
+	_ = f.pool.QueryRow(context.Background(), "SELECT count(*) FROM email_outbox WHERE rsvp_id=$1", result.Data.ID).Scan(&afterReplay)
+	storedRSVP, readErr := f.q.GetWorkflowRSVP(context.Background(), result.Data.ID)
+	if readErr != nil || storedRSVP.Status != "confirmed" || !storedRSVP.UpdatedAt.Time.Equal(change.Data.UpdatedAt.Time) || afterReplay != afterResend {
+		t.Fatal("notification resend changed status or duplicated email")
+	}
+	// All five manual states must persist their actual inventory and admission effects.
+	version := storedRSVP.UpdatedAt.Time
+	for step, target := range []string{"pending_approval", "waitlisted", "rejected", "cancelled", "confirmed"} {
+		response := statusRequest(target, version, true, "Manual status check", fmt.Sprintf("%s-manual-%d", key, step), f.cookie)
+		if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || string(change.Data.Status) != target {
+			t.Fatalf("manual %s: %d %s", target, response.Code, response.Body.String())
+		}
+		version = change.Data.UpdatedAt.Time
+		row, readErr := f.q.GetWorkflowRSVP(context.Background(), result.Data.ID)
+		eventState, eventErr := f.q.GetEventByID(context.Background(), f.event.ID)
+		expectedCount := int32(0)
+		if target == "confirmed" {
+			expectedCount = 1
+		}
+		if readErr != nil || eventErr != nil || eventState.CurrentRsvpCount != expectedCount || (target == "pending_approval" && (!row.ApprovalExpiresAt.Valid || !row.ApprovalExpiresAt.Time.After(time.Now()))) {
+			t.Fatal("manual status did not preserve expiry/capacity")
+		}
+	}
+	// Existing automatic waiting-list behavior must report its actual offered state.
+	if _, err = f.pool.Exec(context.Background(), "UPDATE events SET waitlist_enabled=true WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	response := statusRequest("waitlisted", version, true, "Waiting list check", key+"-auto-list", f.cookie)
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || change.Data.Status != db.RegistrationStatusOffered || !change.NotificationQueued {
+		t.Fatalf("automatic offer response was stale: %d %s", response.Code, response.Body.String())
+	}
+	response = statusRequest("confirmed", change.Data.UpdatedAt.Time, true, "Confirm offered place", key+"-auto-confirm", f.cookie)
+	if response.Code != 200 || json.Unmarshal(response.Body.Bytes(), &change) != nil || change.Data.Status != db.RegistrationStatusConfirmed {
+		t.Fatal("manual confirmation did not consume held place")
+	}
 	ticket, ticketErr = f.q.GetTicketByRSVP(context.Background(), result.Data.ID)
 	stored, err = f.q.GetEventByID(context.Background(), f.event.ID)
 	if err != nil || ticketErr != nil || stored.CurrentRsvpCount != 1 || ticket.Status != "issued" {
@@ -608,10 +680,19 @@ func TestTransfer_RevokesOldTicketAndSignsRecipientTicket(t *testing.T) {
 		t.Fatalf("ticket: %d %s", w.Code, w.Body.String())
 	}
 	var response struct {
-		Code string `json:"code"`
+		Code    string `json:"code"`
+		QRImage string `json:"qr_image"`
 	}
 	if err = json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(response.QRImage, "data:image/png;base64,"))
+	if err != nil {
+		t.Fatal("pass QR is not encoded PNG")
+	}
+	qr, err := png.DecodeConfig(bytes.NewReader(raw))
+	if err != nil || qr.Width != 384 || qr.Height != 384 {
+		t.Fatal("pass QR image missing or invalid")
 	}
 	claims, err := rsvps.VerifyTicketCode(response.Code)
 	if err != nil || claims.EventID != f.event.ID || claims.TicketID != ticket.ID {
