@@ -15,15 +15,24 @@
     "./session-refresh": "./src/SessionRefresh.tsx",
     "./avatar": "./src/Avatar.tsx",
     "./auth.css": "./src/auth.css",
-    "./styles.css": "./src/controls.css"
+    "./styles.css": "./src/controls.css",
+    "./event-fonts": "./src/EventFonts.ts"
   },
-  "sideEffects": ["**/*.css"],
-  "scripts": { "type-check": "tsc --noEmit", "lint": "eslint src --ext .ts,.tsx" },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
   "dependencies": {
     "@base-ui/react": "1.8.0",
     "@hugeicons/core-free-icons": "4.3.5",
     "@hugeicons/react": "1.1.10",
     "motion": "14.3.0"
   },
-  "peerDependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" }
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
 }

@@ -12,6 +12,7 @@ import { uploadEventCover, type CoverAttempt } from '@/lib/cover-upload';
 import { CoverPicker } from './CoverPicker';
 import { EditorMenu } from './EditorMenu';
 import { ThemePicker } from './ThemePicker';
+import { eventFontFamily } from '@hackways/ui/event-fonts';
 import { defaultAppearance } from '@/lib/appearance';
 import { DateTimeField } from '@/components/ui/DateTimeField';
 import { AmbientBackdrop } from '@/components/events/AmbientBackdrop';
@@ -53,7 +54,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
     const theme = `theme-${appearance.theme}`;
     body.classList.add('event-theme', 'event-editor-theme', theme, 'event-display-' + appearance.theme_display);
     body.style.setProperty('--event-tint', appearance.theme_color);
-    body.style.setProperty('--event-heading', appearance.theme_font === 'google' ? '"Google Sans Flex"' : '"FG Futurist"');
+    body.style.setProperty('--event-heading', eventFontFamily(appearance.theme_font));
     body.style.setProperty('--event-radius', appearance.theme_style === 'crisp' ? '8px' : '16px');
     return () => {
       body.classList.remove('event-theme', 'event-editor-theme', theme, 'event-display-' + appearance.theme_display);

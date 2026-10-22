@@ -182,3 +182,11 @@ Global admin `GET /admin/global/rollouts?offset=` reads current configuration, r
 ## Session persistence and daily admin verification (schemas 18-19)
 
 Ordinary sign-in sessions last 90 days; authenticated `GET /auth/session` renews cookie transport with the remaining fixed server lifetime. Dedicated admin sessions also last 90 days and require email verification every 24 hours. Admin identity-only `POST /auth/admin/verification/request` and `/confirm` provide the ten-minute code flow; wrong or expired codes revoke only that admin session. Verified `GET /auth/admin/session` refreshes cookie transport and returns the remaining verification window. All paths are under `/api/v1`; both Go engines enforce daily verification for protected admin operations. See [session persistence](auth/session-persistence.md) for migration, cookie, error, sender and deployment contracts.
+
+## Optional registration answer rules
+
+Question `validation` accepts `enabled?: boolean` and `allowed_domain?: string`, alongside the existing length/number/message fields. New editor questions default to custom validation off. `enabled: false` clears/ignores custom constraints; omitted `enabled` preserves existing saved rules for compatibility. Required answers, HTTPS URL format, input kinds and payload limits are always enforced by Go.
+
+For Website questions, an organizer may configure any ASCII DNS domain (for example `linkedin.com`, `vercel.app`, or their own domain), without scheme, port or path. It is trimmed and lowercased. The URL hostname must equal the domain or end with a dot followed by that domain; subdomains are allowed. A final hostname dot is normalized. URL credentials, HTTP links, unrelated hosts and domain text appearing only in a path/query do not qualify. Empty domain permits any otherwise-valid HTTPS URL. Save conflicts retain the existing form revision contract.
+
+Event `theme_font` additionally accepts `dm-sans`, `manrope`, `space-grotesk`, `outfit`, `sora`, `fraunces`, `playfair-display`, `lora`, `dm-mono` and `bebas-neue`. Migration 000020 is required before deploying writers. The down migration refuses to run while new fonts are in use rather than rewriting saved event appearance.

@@ -6,9 +6,9 @@ import { getAdminAccess } from '@/lib/admin-access';
 import { SectionJumpButton } from '@hackways/ui/section-jump';
 import { AdminSessionRefresh } from './AdminSessionRefresh';
 
-export async function AdminShell({ active, query = '', status = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/discover-promotions' | '/rollouts' | '/preferences'; query?: string; status?: string; children: ReactNode }) {
+export async function AdminShell({ active, query = '', status = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/discover-promotions' | '/rollouts'; query?: string; status?: string; children: ReactNode }) {
   if (await getAdminAccess() !== 'allowed') return null;
-  const currentModule = active === '/campaigns' ? 'messaging' : active === '/discover-promotions' || active === '/rollouts' || active === '/preferences' || active === '/' ? 'events' : active.slice(1) as AdminModule;
+  const currentModule = active === '/campaigns' ? 'messaging' : active === '/discover-promotions' || active === '/rollouts' || active === '/' ? 'events' : active.slice(1) as AdminModule;
   const searchLabel = active === '/campaigns' ? 'Search campaigns' : `Search ${adminModules[currentModule].label.toLowerCase()}`;
   const snapshotAt = process.env.ADMIN_PREVIEW_SNAPSHOT_AT;
   return <div className="admin-frame">
@@ -22,7 +22,6 @@ export async function AdminShell({ active, query = '', status = '', children }: 
         <a href="/campaigns" aria-current={active === '/campaigns' ? 'page' : undefined}><Icon name="messaging" />Campaigns</a>
         <a href="/discover-promotions" aria-current={active === '/discover-promotions' ? 'page' : undefined}><Icon name="events" />Discover promotions</a>
         <a href="/rollouts" aria-current={active === '/rollouts' ? 'page' : undefined}><Icon name="audit" />Feature rollouts & versions</a>
-        <a href="/preferences" aria-current={active === '/preferences' ? 'page' : undefined}><Icon name="people" />Display & accessibility</a>
       </nav>
       <a href="https://hackways.in" className="admin-public-link">Public site<Icon name="external" size={17} /></a>
     </aside>

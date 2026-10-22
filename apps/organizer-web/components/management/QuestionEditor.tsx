@@ -1,6 +1,6 @@
 "use client";
 import { Checkbox } from "@hackways/ui/checkbox";
-import { RadioGroup } from "@hackways/ui/radio-group";
+import { Select } from "@hackways/ui/select";
 import type {
   RegistrationQuestion,
   QuestionKind,
@@ -38,6 +38,7 @@ export function QuestionEditor({
       "date",
       "time",
     ].includes(q.kind);
+  const validationEnabled = validation.enabled ?? Object.values(validation).some(value => value !== undefined && value !== "" && value !== false);
   function rule(patch: Partial<QuestionValidation>) {
     update({ validation: { ...validation, ...patch } });
   }
@@ -81,9 +82,10 @@ export function QuestionEditor({
       </div>
       {q.kind !== "section" && (
         <>
-          <fieldset className="hw-choice-field">
-            <legend>Answer type</legend>
-            <RadioGroup
+          <div className="field">
+            <label htmlFor="question-type">Answer type</label>
+            <Select
+              id="question-type"
               label="Answer type"
               name="question-type"
               value={q.kind}
@@ -105,7 +107,7 @@ export function QuestionEditor({
                 })
               }
             />
-          </fieldset>
+          </div>
           {["select", "multiselect"].includes(q.kind) ? (
             <div className="field">
               <label htmlFor="question-options">Choices, one per line</label>
@@ -151,7 +153,16 @@ export function QuestionEditor({
           </label>
           {(written || q.kind === "number") && (
             <section className="question-validation">
-              <h3>Answer validation</h3>
+              <label className="question-required">
+                <Checkbox checked={validationEnabled} disabled={disabled} onCheckedChange={enabled => update({ validation: enabled ? { enabled: true } : { enabled: false } })} />
+                <span>Validate answers</span>
+              </label>
+              {validationEnabled && <>
+              {q.kind === "url" && <div className="field">
+                <label htmlFor="question-domain">Allowed website domain</label>
+                <input id="question-domain" className="app-input" value={validation.allowed_domain || ""} maxLength={253} placeholder="linkedin.com" onChange={event => rule({ allowed_domain: event.target.value })} />
+                <p className="field-help">Accepts this domain and its subdomains, such as www.linkedin.com. Leave empty to accept any HTTPS website.</p>
+              </div>}
               <div className="form-pair">
                 {written ? (
                   <>
@@ -242,6 +253,7 @@ export function QuestionEditor({
                   onChange={(event) => rule({ message: event.target.value })}
                 />
               </div>
+              </>}
             </section>
           )}
         </>

@@ -30,9 +30,9 @@ Active slides rotate every seven seconds without polling on that interval. Manua
 - People retains profile editing, explicit admin grants/revocation with self/last-admin protection, related sessions and individual session revocation. Session and record affordances are styled as actions.
 - Audit history remains read-only.
 
-## Display and accessibility
+## Shared controls
 
-`/preferences` provides larger text, table density, high contrast, reduced motion and optional visible scrollbars. These presentation settings are saved in a small host-scoped browser cookie so server rendering starts with the chosen appearance. They confer no permissions. Table columns use browser-local storage and preserve the primary record column. All selectable inputs use shared `@hackways/ui` controls.
+The former `/preferences` display module has been removed at the product owner's request. The admin layout no longer reads or applies its browser cookie. Table column customization remains available. Standard keyboard focus, semantic labels, skip-to-content and device reduced-motion behavior remain enabled.
 
 The skip-to-content control uses the shared section jump behavior without adding URL fragments. Hidden radio roots and Base UI's companion form inputs are positioned inside their own option. The outer fixed dashboard frame uses `overflow: clip`, so focusing/validating a hidden input cannot programmatically scroll the entire clipped frame and leave a blank viewport. The workspace and sidebar retain their own scroll areas.
 

@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/mail"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,12 +24,14 @@ type Question struct {
 	Validation  Validation `json:"validation"`
 }
 type Validation struct {
-	MinLength *int     `json:"min_length,omitempty"`
-	MaxLength *int     `json:"max_length,omitempty"`
-	Min       *float64 `json:"min,omitempty"`
-	Max       *float64 `json:"max,omitempty"`
-	Integer   bool     `json:"integer,omitempty"`
-	Message   string   `json:"message,omitempty"`
+	Enabled       *bool    `json:"enabled,omitempty"`
+	AllowedDomain string   `json:"allowed_domain,omitempty"`
+	MinLength     *int     `json:"min_length,omitempty"`
+	MaxLength     *int     `json:"max_length,omitempty"`
+	Min           *float64 `json:"min,omitempty"`
+	Max           *float64 `json:"max,omitempty"`
+	Integer       bool     `json:"integer,omitempty"`
+	Message       string   `json:"message,omitempty"`
 }
 type Settings struct {
 	Title          string `json:"title"`
@@ -74,6 +77,10 @@ func ValidateQuestions(items []Question) error {
 		q.Label = strings.TrimSpace(q.Label)
 		q.Description = strings.TrimSpace(q.Description)
 		q.Placeholder = strings.TrimSpace(q.Placeholder)
+		if q.Validation.Enabled != nil && !*q.Validation.Enabled {
+			q.Validation = Validation{Enabled: q.Validation.Enabled}
+		}
+		q.Validation.AllowedDomain = strings.ToLower(strings.TrimSpace(q.Validation.AllowedDomain))
 		q.Validation.Message = strings.TrimSpace(q.Validation.Message)
 		if utf8.RuneCountInString(q.Placeholder) > 180 || utf8.RuneCountInString(q.Validation.Message) > 200 {
 			return fmt.Errorf("Keep hints within 180 characters and validation messages within 200")
@@ -161,6 +168,9 @@ func ValidateAnswers(form Form, name string, inputs []Answer) ([]Snapshot, error
 	out := make([]Snapshot, 0, len(form.Questions))
 	section := ""
 	for _, q := range form.Questions {
+		if q.Validation.Enabled != nil && !*q.Validation.Enabled {
+			q.Validation = Validation{}
+		}
 		if q.Kind == "section" {
 			section = q.Label
 			continue
@@ -210,6 +220,12 @@ func ValidateAnswers(form Form, name string, inputs []Answer) ([]Snapshot, error
 					u, err := url.Parse(a.Text)
 					if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
 						return nil, fmt.Errorf("Use a full https:// link for %s", q.Label)
+					}
+					if domain := q.Validation.AllowedDomain; domain != "" {
+						host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+						if host != domain && !strings.HasSuffix(host, "."+domain) {
+							return nil, answerError(q, "Use a link from "+domain)
+						}
 					}
 				case "number":
 					n, err := strconv.ParseFloat(a.Text, 64)
@@ -280,8 +296,14 @@ func answerError(q Question, fallback string) error {
 	}
 	return fmt.Errorf("%s: %s", q.Label, message)
 }
+
+var websiteDomain = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
+
 func validateRules(q Question) error {
 	v := q.Validation
+	if v.AllowedDomain != "" && (q.Kind != "url" || len(v.AllowedDomain) > 253 || !websiteDomain.MatchString(v.AllowedDomain)) {
+		return fmt.Errorf("Use a website domain such as linkedin.com for website questions only")
+	}
 	if v.MinLength != nil && (*v.MinLength < 0 || *v.MinLength > 2000) || v.MaxLength != nil && (*v.MaxLength < 1 || *v.MaxLength > 2000) || v.MinLength != nil && v.MaxLength != nil && *v.MinLength > *v.MaxLength {
 		return fmt.Errorf("Choose valid answer lengths for %s (up to 2000 characters)", q.Label)
 	}

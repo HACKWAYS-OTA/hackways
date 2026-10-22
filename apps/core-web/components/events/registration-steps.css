@@ -181,3 +181,18 @@
     font-size: 16px;
   }
 }
+
+.event-checkout.registration-checkout { display: block; max-width: 880px; margin-inline: auto; }
+.registration-event-summary { display: grid; grid-template-columns: 240px minmax(0,1fr); align-items: center; gap: 28px; margin-bottom: 36px; }
+.registration-event-banner { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: var(--event-radius,12px); }
+.registration-event-banner img { object-fit: cover; }
+.registration-event-summary h1 { font-size: clamp(26px,4vw,36px); line-height: 1.2; overflow-wrap: anywhere; }
+.registration-event-summary p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 12px; color: var(--event-copy); line-height: 1.6; }
+.registration-checkout .event-checkout-form { max-width: none; }
+.registration-checkout .event-detail-heading h2 { font-size: 24px; }
+.registration-checkout .event-page-form { border: 0; padding: 0; background: transparent; }
+.registration-checkout .registration-step-nav { margin-block: 8px 16px; }
+.registration-checkout .app-input { border: 1px solid var(--event-rule); border-radius: 8px; }
+.registration-checkout .registration-multiple-choices label { border: 0; padding-inline: 0; }
+.event-display-dark .registration-field-error,.event-display-dark .required-mark { color: #ffb4c3; }
+@media(max-width:640px) { .registration-event-summary { grid-template-columns: minmax(0,1fr); gap: 20px; margin-bottom: 28px; } }

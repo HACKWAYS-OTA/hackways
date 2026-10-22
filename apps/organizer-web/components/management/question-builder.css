@@ -24,7 +24,7 @@
 .question-builder-layout {
   display: grid;
   grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.6fr);
-  gap: 40px;
+  gap: 28px;
   align-items: start;
 }
 .question-outline {
@@ -95,13 +95,13 @@
   flex-wrap: wrap;
   gap: 16px;
   align-items: center;
-  padding-top: 24px;
+  padding-top: 18px;
 }
 .question-add-actions .app-button {
   font-size: 13px;
 }
 .question-editor-panel {
-  padding: 26px;
+  padding: 22px;
   border: 1px solid var(--line);
   border-radius: 14px;
   min-width: 0;
@@ -122,7 +122,7 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 24px;
+  gap: 18px;
   min-width: 0;
 }
 .question-detail-fields .hw-radio-option {
@@ -141,7 +141,7 @@
   display: grid;
   gap: 20px;
   border-top: 1px solid var(--line);
-  padding-top: 24px;
+  padding-top: 18px;
 }
 .question-validation h3 {
   font-size: 18px;
@@ -150,7 +150,7 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 24px;
+  padding-top: 18px;
   margin-top: 28px;
   border-top: 1px solid var(--line);
   font-size: 13px;
