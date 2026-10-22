@@ -10,13 +10,13 @@ SELECT * FROM email_campaigns WHERE reference=$1;
 SELECT * FROM email_campaigns WHERE reference=$1 FOR UPDATE;
 
 -- name: CampaignCreate :one
-INSERT INTO email_campaigns(title,subject,body,action_label,action_url,created_by,creation_key,creation_hash)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+INSERT INTO email_campaigns(title,subject,body,action_label,action_url,created_by,creation_key,creation_hash,configuration)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
 ON CONFLICT(created_by,creation_key) DO UPDATE SET creation_key=EXCLUDED.creation_key
 RETURNING *;
 
 -- name: CampaignEdit :execrows
-UPDATE email_campaigns SET title=$2,subject=$3,body=$4,action_label=$5,action_url=$6,revision=revision+1,updated_at=clock_timestamp()
+UPDATE email_campaigns SET title=$2,subject=$3,body=$4,action_label=$5,action_url=$6,configuration=$8,revision=revision+1,updated_at=clock_timestamp()
 WHERE id=$1 AND status='draft' AND revision=$7;
 
 -- name: CampaignSetQueued :exec
@@ -76,11 +76,12 @@ WITH audience AS MATERIALIZED (
  ((sqlc.arg(test_only)::boolean AND c.id=sqlc.narg(test_contact_id)::uuid)
  OR (NOT sqlc.arg(test_only)::boolean AND c.subscribed AND
  (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))))
+ AND (sqlc.arg(test_only)::boolean OR ((sqlc.arg(audience_source)::text='all' OR c.source=sqlc.arg(audience_source)) AND (coalesce(cardinality(sqlc.arg(recipient_emails)::text[]),0)=0 OR c.email=ANY(sqlc.arg(recipient_emails)::text[]))))
  AND NOT EXISTS(SELECT 1 FROM email_campaign_deliveries d WHERE d.campaign_id=sqlc.arg(campaign_id) AND d.contact_id=c.id AND d.revision=sqlc.arg(revision) AND d.is_test=sqlc.arg(test_only))
  ORDER BY c.reference LIMIT sqlc.arg(max_recipients) FOR SHARE OF c
 ), outboxes AS (
- INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json)
- SELECT a.outbox_id,a.email,a.display_name,'admin_promotion',sqlc.arg(base_payload)::jsonb || jsonb_build_object('unsubscribe_url','https://hackways.in/auth/unsubscribe?key='||a.unsubscribe_key,'is_test',sqlc.arg(test_only)::boolean)
+ INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json,scheduled_at)
+ SELECT a.outbox_id,a.email,a.display_name,'admin_promotion',sqlc.arg(base_payload)::jsonb || jsonb_build_object('unsubscribe_url','https://hackways.in/auth/unsubscribe?key='||a.unsubscribe_key,'is_test',sqlc.arg(test_only)::boolean), CASE WHEN sqlc.arg(test_only)::boolean THEN clock_timestamp() ELSE coalesce(sqlc.narg(send_at)::timestamptz,clock_timestamp()) END
  FROM audience a RETURNING id
 ), deliveries AS (
  INSERT INTO email_campaign_deliveries(outbox_id,campaign_id,contact_id,revision,is_test,unsubscribe_hash)
@@ -98,3 +99,16 @@ AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND 
 -- name: UnsubscribePromotion :execrows
 UPDATE promotion_contacts c SET subscribed=FALSE,unsubscribed_at=clock_timestamp(),updated_at=clock_timestamp()
 WHERE c.id=(SELECT d.contact_id FROM email_campaign_deliveries d WHERE d.unsubscribe_hash=$1);
+
+
+-- name: CampaignAudienceCountSelected :one
+SELECT count(*) FROM promotion_contacts c WHERE c.subscribed
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND (sqlc.arg(audience_source)::text='all' OR c.source=sqlc.arg(audience_source)) AND (coalesce(cardinality(sqlc.arg(recipient_emails)::text[]),0)=0 OR c.email=ANY(sqlc.arg(recipient_emails)::text[]));
+
+
+-- name: CampaignAudiencePreviewSelected :many
+SELECT c.reference,c.email,c.display_name,c.source,c.consented_at FROM promotion_contacts c WHERE c.subscribed
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND (sqlc.arg(audience_source)::text='all' OR c.source=sqlc.arg(audience_source)) AND (coalesce(cardinality(sqlc.arg(recipient_emails)::text[]),0)=0 OR c.email=ANY(sqlc.arg(recipient_emails)::text[]))
+ORDER BY c.reference LIMIT 20;

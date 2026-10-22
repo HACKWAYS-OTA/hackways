@@ -61,7 +61,9 @@ func requireAdminSession(sm *SessionManager, queries *db.Queries, allowVerificat
 					return
 				}
 			}
-			next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, userContextKey, user)))
+			// The three-second budget bounds identity reads, not the authenticated operation.
+			cancel()
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
 		})
 	}
 }

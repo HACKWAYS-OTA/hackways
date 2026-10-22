@@ -202,8 +202,8 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 
 func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 	catalog := EmailTemplateCatalog()
-	if len(catalog) != 42 {
-		t.Fatalf("expected 42 email templates, got %d", len(catalog))
+	if len(catalog) != 43 {
+		t.Fatalf("expected 43 email templates, got %d", len(catalog))
 	}
 	seen := make(map[string]bool, len(catalog))
 	for _, template := range catalog {
@@ -241,6 +241,16 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 			t.Fatalf("template %q is missing its safe action link or banner", template.ID)
 		}
 	}
+	design := CampaignDesign{Heading: "A <safe> heading", Accent: "#123456", Blocks: []CampaignBlock{{Kind: "text", Text: "Block <script>"}}}
+	preview, err := RenderCampaignPreview("Subject", "Body", "Read", "https://hackways.in", design)
+	if err != nil || !strings.Contains(preview.BodyHTML, "#123456") || strings.Contains(preview.BodyHTML, "Block <script>") || !strings.Contains(preview.BodyHTML, "&lt;safe&gt;") {
+		t.Fatalf("custom campaign rendering: %v", err)
+	}
+	design.Blocks = []CampaignBlock{{Kind: "button", Text: "Unsafe", URL: "javascript:alert(1)"}}
+	if _, err = RenderCampaignPreview("Subject", "Body", "", "", design); err == nil {
+		t.Fatal("unsafe custom block URL accepted")
+	}
+
 }
 
 func TestEmailTemplateCatalog_ReturnsCopy(t *testing.T) {

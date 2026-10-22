@@ -11,6 +11,7 @@ type EmailTemplate struct {
 }
 
 var emailTemplateCatalog = []EmailTemplate{
+ {ID:"admin_service_message",Subject:"A message from Hackways",Category:"event",Copy:"A service update from Hackways."},
 	{ID: "admin_daily_otp", Subject: "Verify your Hackways admin sign-in", Category: "security", Copy: "Confirm this device for the next 24 hours. This code expires in 10 minutes. An incorrect or expired code signs this device out."},
 	{ID: "admin_promotion", Subject: "Hackways updates", Category: "promotion", Copy: "News and offers from Hackways."},
 	{ID: "email_verification", Subject: "Verify your email", Category: "account", Copy: "Use the verification code below to confirm your email address."},

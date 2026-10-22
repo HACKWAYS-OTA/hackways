@@ -25,7 +25,10 @@ type Querier interface {
 	AdminListMessages(ctx context.Context, arg AdminListMessagesParams) ([]AdminListMessagesRow, error)
 	AdminListPeople(ctx context.Context, arg AdminListPeopleParams) ([]AdminListPeopleRow, error)
 	AdminLockRoleChanges(ctx context.Context) error
+	AdminMessageCreate(ctx context.Context, arg AdminMessageCreateParams) (AdminCustomMessages, error)
 	AdminMessageDetail(ctx context.Context, id pgtype.UUID) (AdminMessageDetailRow, error)
+	AdminMessageQueuedCount(ctx context.Context, messageID pgtype.UUID) (int64, error)
+	AdminMessageRecipientActive(ctx context.Context, outboxID pgtype.UUID) (bool, error)
 	AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminPersonDetailRow, error)
 	AdminPersonEvents(ctx context.Context, arg AdminPersonEventsParams) ([]AdminPersonEventsRow, error)
 	AdminPersonMessages(ctx context.Context, arg AdminPersonMessagesParams) ([]AdminPersonMessagesRow, error)
@@ -47,7 +50,9 @@ type Querier interface {
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
 	BoundRecognizedDevices(ctx context.Context, userID pgtype.UUID) error
 	CampaignAudienceCount(ctx context.Context) (int64, error)
+	CampaignAudienceCountSelected(ctx context.Context, arg CampaignAudienceCountSelectedParams) (int64, error)
 	CampaignAudiencePreview(ctx context.Context) ([]CampaignAudiencePreviewRow, error)
+	CampaignAudiencePreviewSelected(ctx context.Context, arg CampaignAudiencePreviewSelectedParams) ([]CampaignAudiencePreviewSelectedRow, error)
 	CampaignCancel(ctx context.Context, id pgtype.UUID) error
 	CampaignCreate(ctx context.Context, arg CampaignCreateParams) (EmailCampaigns, error)
 	CampaignDeliveryList(ctx context.Context, arg CampaignDeliveryListParams) ([]CampaignDeliveryListRow, error)
@@ -125,6 +130,7 @@ type Querier interface {
 	PasswordResetTokenActive(ctx context.Context, tokenHash string) (bool, error)
 	PromotionContactsList(ctx context.Context, pageOffset int32) ([]PromotionContactsListRow, error)
 	PromotionTestContact(ctx context.Context, arg PromotionTestContactParams) (pgtype.UUID, error)
+	QueueAdminCustomMessages(ctx context.Context, arg QueueAdminCustomMessagesParams) ([]int64, error)
 	QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error)
 	ReadAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) (AdminSessionChallenges, error)
 	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
