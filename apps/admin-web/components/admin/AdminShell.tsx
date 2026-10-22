@@ -22,7 +22,6 @@ export async function AdminShell({ active, query = '', status = '', children }: 
         <a href="/campaigns" aria-current={active === '/campaigns' ? 'page' : undefined}><Icon name="messaging" />Campaigns</a>
         <a href="/discover-promotions" aria-current={active === '/discover-promotions' ? 'page' : undefined}><Icon name="events" />Discover promotions</a>
         <a href="/rollouts" aria-current={active === '/rollouts' ? 'page' : undefined}><Icon name="audit" />Feature rollouts & versions</a>
-        <a href="/preferences" aria-current={active === '/preferences' ? 'page' : undefined}><Icon name="people" />Display & accessibility</a>
       </nav>
       <a href="https://hackways.in" className="admin-public-link">Public site<Icon name="external" size={17} /></a>
     </aside>

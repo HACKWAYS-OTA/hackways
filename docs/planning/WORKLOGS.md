@@ -914,3 +914,8 @@ All completed work is logged here with verified commands and output.
 - All six exact image digests are pinned in `/opt/hackways/releases/admin-auth-rollouts-dab8d1cd545b/images.compose.json`. Live OCI revisions and embedded SOURCE_COMMIT match the tested source; both backends are healthy and schema 19 is clean. Runtime feature configuration version 1 is fresh; zero active promotion selections correctly produce no Discover banner. Production has no local-review email filter.
 - Live origin HTTPS checks passed 27 route/asset probes: public/manage/recovery/unsubscribe pages, reset/unsubscribe no-referrer/no-store headers, anonymous admin/session denials and sign-in redirects, served viewport/radio containment CSS and Google provider start with a canonical callback host. Independent public Cloudflare HTTPS probes of homepage, Discover and management login return 200. A short post-release container memory snapshot was below configured limits; this is not a load/capacity measurement.
 - Interactive browser/camera/focus review was unavailable through connected tools. Google start/redirect was verified, not interactive consent completion. India ACS sender configuration is retained with noreply/notify/updates identities; prior authorized isolated sends were provider-accepted. The exact location proxy is configured, but Cloudflare city/region managed-transform availability remains unverified and missing location is displayed honestly.
+
+
+## 2026-10-22 ? Remove admin display navigation
+
+Removed the Display & accessibility link from the admin sidebar and home tools. All other module links and the normal accessible controls are preserved. This narrow change contains no database, authentication, network-policy or event-creation changes.
