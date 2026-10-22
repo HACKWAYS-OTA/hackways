@@ -360,6 +360,25 @@ type IdempotencyRecords struct {
 	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
 }
 
+type OauthExchangeTokens struct {
+	TokenHash string             `json:"token_hash"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	NonceHash string             `json:"nonce_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type OauthStates struct {
+	StateHash  string             `json:"state_hash"`
+	Verifier   string             `json:"verifier"`
+	ReturnTo   string             `json:"return_to"`
+	NonceHash  string             `json:"nonce_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Organizers struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
@@ -371,6 +390,19 @@ type Organizers struct {
 	Verified    bool               `json:"verified"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PlatformAdminSessions struct {
+	SessionID pgtype.UUID        `json:"session_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Explicit platform access; verified email and a live admin session are also required.
+type PlatformAdministrators struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	GrantedBy pgtype.UUID        `json:"granted_by"`
+	GrantedAt pgtype.Timestamptz `json:"granted_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type RegistrationSubmissions struct {
@@ -443,6 +475,14 @@ type Tickets struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	PublicCode  string             `json:"public_code"`
+}
+
+type UserIdentities struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Provider  string             `json:"provider"`
+	Subject   string             `json:"subject"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Users struct {

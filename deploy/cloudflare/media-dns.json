@@ -1,0 +1,8 @@
+{
+  "type": "CNAME",
+  "name": "cdn.hackways.in",
+  "content": "hackwaysstorage.blob.core.windows.net",
+  "ttl": 1,
+  "proxied": true,
+  "comment": "Public Hackways media; Cloud Connector routes Azure Blob reads."
+}

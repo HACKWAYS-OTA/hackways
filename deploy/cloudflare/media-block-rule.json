@@ -1,0 +1,6 @@
+{
+  "action": "block",
+  "description": "Restrict CDN to public media reads",
+  "enabled": true,
+  "expression": "(http.host eq \"cdn.hackways.in\" and not (starts_with(http.request.uri.path, \"/media-uploads/\") and http.request.method in {\"GET\" \"HEAD\"} and http.request.uri.query eq \"\"))"
+}

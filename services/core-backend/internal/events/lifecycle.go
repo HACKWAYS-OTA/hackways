@@ -313,6 +313,13 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
+	if replayed, replayErr := workflows.ReplayAdminMutation(w, r, q); replayErr != nil {
+		lifecycleError(w, replayErr)
+		return
+	} else if replayed {
+		return
+	}
+
 	organizer, _ := auth.OrganizerFromContext(r.Context())
 	if event.OrganizerID != organizer.ID {
 		lifecycleError(w, workflows.NotFound())
@@ -386,6 +393,10 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 		lifecycleError(w, err)
 		return
 	}
+	if err = workflows.RememberAdminMutation(r.Context(), q, updated); err != nil {
+		lifecycleError(w, err)
+		return
+	}
 	if err = tx.Commit(r.Context()); err != nil {
 		lifecycleError(w, err)
 		return
@@ -427,7 +438,7 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ticketID = claims.TicketID
-	} else if err := ticketID.Scan(body.TicketID); err != nil || !ticketID.Valid || len(strings.TrimSpace(body.Reason)) < 3 || len(body.Reason) > 500 {
+	} else if err := ticketID.Scan(body.TicketID); err != nil || !ticketID.Valid || !validManualReason(r, body.Reason) {
 		platform.RespondError(w, 422, "MANUAL_REASON_REQUIRED", "Manual check-in requires a valid ticket ID and reason", nil)
 		return
 	}
@@ -438,6 +449,13 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
+	if replayed, replayErr := workflows.ReplayAdminMutation(w, r, q); replayErr != nil {
+		lifecycleError(w, replayErr)
+		return
+	} else if replayed {
+		return
+	}
+
 	organizer, _ := auth.OrganizerFromContext(r.Context())
 	if event.OrganizerID != organizer.ID {
 		lifecycleError(w, workflows.NotFound())
@@ -448,7 +466,8 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "CHECK_IN_CLOSED", "Check-in opens 24 hours before the event and closes when it ends", nil)
 		return
 	}
-	ticket, err := q.CheckInWorkflowTicket(r.Context(), db.CheckInWorkflowTicketParams{ActorID: organizer.UserID, TicketID: ticketID, EventID: id})
+	actor, _ := auth.UserFromContext(r.Context())
+	ticket, err := q.CheckInWorkflowTicket(r.Context(), db.CheckInWorkflowTicketParams{ActorID: actor.UserID, TicketID: ticketID, EventID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, readErr := q.GetWorkflowTicket(r.Context(), ticketID)
 		if readErr == nil && existing.EventID == id && existing.Status == "scanned" {
@@ -466,10 +485,17 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 	if body.Code == "" {
 		action = "ticket.manual_check_in"
 	}
+	if _, isAdmin := auth.AdminMutationFromContext(r.Context()); isAdmin {
+		action = "admin." + action
+	}
 	metadata, _ := json.Marshal(struct {
 		Reason string `json:"reason,omitempty"`
 	}{body.Reason})
-	if err = q.AppendWorkflowAudit(r.Context(), db.AppendWorkflowAuditParams{ActorUserID: organizer.UserID, EventID: id, EntityID: ticketID, Action: action, RequestID: platform.GetRequestID(r.Context()), Metadata: metadata}); err != nil {
+	if err = q.AppendWorkflowAudit(r.Context(), db.AppendWorkflowAuditParams{ActorUserID: actor.UserID, EventID: id, EntityID: ticketID, Action: action, RequestID: platform.GetRequestID(r.Context()), Metadata: metadata}); err != nil {
+		lifecycleError(w, err)
+		return
+	}
+	if err = workflows.RememberAdminMutation(r.Context(), q, ticket); err != nil {
 		lifecycleError(w, err)
 		return
 	}
@@ -531,4 +557,12 @@ func (h *Handler) DeleteDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(204)
+}
+
+func validManualReason(r *http.Request, reason string) bool {
+	limit := 500
+	if _, admin := auth.AdminMutationFromContext(r.Context()); admin {
+		limit = 4000
+	}
+	return len(strings.TrimSpace(reason)) >= 3 && len(reason) <= limit
 }

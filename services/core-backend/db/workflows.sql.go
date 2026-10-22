@@ -986,6 +986,38 @@ func (q *Queries) LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWo
 	return i, err
 }
 
+const readEventNotificationContext = `-- name: ReadEventNotificationContext :one
+SELECT e.slug, e.banner_url, e.location_name, e.online_url,
+       o.display_name AS organizer_name, s.name AS space_name
+FROM events e
+JOIN organizers o ON o.id=e.organizer_id
+LEFT JOIN spaces s ON s.id=e.space_id
+WHERE e.id=$1 AND e.deleted_at IS NULL
+`
+
+type ReadEventNotificationContextRow struct {
+	Slug          string      `json:"slug"`
+	BannerUrl     pgtype.Text `json:"banner_url"`
+	LocationName  pgtype.Text `json:"location_name"`
+	OnlineUrl     pgtype.Text `json:"online_url"`
+	OrganizerName string      `json:"organizer_name"`
+	SpaceName     pgtype.Text `json:"space_name"`
+}
+
+func (q *Queries) ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error) {
+	row := q.db.QueryRow(ctx, readEventNotificationContext, id)
+	var i ReadEventNotificationContextRow
+	err := row.Scan(
+		&i.Slug,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.OnlineUrl,
+		&i.OrganizerName,
+		&i.SpaceName,
+	)
+	return i, err
+}
+
 const registrationWaitlistPosition = `-- name: RegistrationWaitlistPosition :one
 SELECT count(*)::bigint FROM rsvps r JOIN rsvps mine ON mine.id=$1
 WHERE mine.status='waitlisted' AND r.event_id=mine.event_id AND r.status='waitlisted'

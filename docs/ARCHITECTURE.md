@@ -35,6 +35,13 @@ global-backend outbox worker -> configured email provider
 Browser -> Azure Blob Storage using a short-lived write-only SAS
 ```
 
+Public Blob media has a prepared custom read origin, `https://cdn.hackways.in`.
+See [the CDN configuration and activation checks](../deploy/cloudflare/README.md).
+Cloudflare Cloud Connector routes public reads directly to Azure; signed uploads
+and server-side upload verification retain the Azure host. Compose forwards
+`AZURE_CDN_DOMAIN` with an empty default. This is prepared configuration, not a live
+cutover: Cloudflare access and HTTPS/content checks are still pending.
+
 Internal backend and database ports must not be published publicly. Admin ingress must be IP/VPN restricted at Nginx. Production credentials belong in Azure Key Vault and runtime environment, never source control.
 
 ## Data and concurrency
@@ -64,7 +71,7 @@ These are verified from the current source tree and must not be confused with co
 4. Public guest RSVP creation remains supported, and verified-email account claiming is now implemented; direct guest RSVP retrieval is not: the detail endpoint requires an account session and only returns a row owned by that account. RSVP creation now reads registration windows under the same event-row lock and optional-authenticates attendees so account-backed RSVP identity and notification email come from the session.
 5. Upload intent verifies event ownership or binds avatars to the session user. Event banner completion verifies Azure Blob properties before an owner/revision-scoped future-event metadata attachment in global-backend. Event publication remains in core-backend. Actual Azure calls remain unverified locally because credentials are missing; no media bytes are buffered through either engine.
 6. Event creation and host profile setup live in core-web on port 3001. The organizer web on 3002 handles existing events only. Both consume the same owner-scoped Go APIs; moving a page does not move its business logic. Authenticated browser create/edit journeys still require end-to-end verification.
-7. `apps/admin-web` reads the two backend health endpoints through the restricted admin Nginx vhost. Its former event fetch targeted a backend that does not serve that route and caused successful health data to be discarded; the dashboard now reports each health endpoint independently. Admin event/moderation APIs are still absent.
+7. The local admin redesign has independent Home, Events, Spaces, People, Registrations, Tickets, Moderation, Messaging, Storage, Audit and Sign-in pages. Read-only core/global admin endpoints use generated SQL and explicit database admin grants plus dedicated session records. The additive 000009 migration and admin routing have not been applied to production. Moderation is draft/unpublished content inspection; reports, decisions and administrative mutations remain unimplemented. See [the local admin contract](planning/ADMIN_DASHBOARD.md).
 8. `services/api` and `apps/web` in older planning notes refer to the superseded monolithic layout. Current code lives in the six directories listed above; historical phase documents are archival and are not current runbooks.
 9. `deploy/scripts/backup-db.sh` and `restore-db.sh` target the optional local PostgreSQL container, not the Azure database topology described by the deployment plan. No end-to-end backup or restore path is verified for the production database.
 10. Core-web has registration/sign-in, account verification/guest claim and My events pages. Organizer-web retains sign-in for its own host-scoped management session. Production subdomains intentionally do not share `__Host-` cookies, so a host may need to sign in separately when opening management. Tokens are never forwarded in URLs or browser storage.
@@ -78,3 +85,8 @@ Spaces, membership and owner-only event association now live in core-backend/Pos
 - Actual HTTP routes and cookie behavior: [API.md](API.md), backend router setup
 - Local and CI verification: [TESTING.md](TESTING.md)
 - Architecture roadmap: [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md), subject to reconciliation with these implementation gaps
+
+
+## Local admin data review
+
+The local admin console can run the existing two Go engines against an isolated, private PostgreSQL copy exported read-only from production. `ADMIN_PREVIEW_ONLY` is constrained to loopback and the `hackways_admin_preview` database. Normal mutation routes and background workers are excluded in that mode; admin sessions/grants are local to the copy. This adds no production service, JSON data store, ORM or direct TypeScript database access. See the [admin preview contract](planning/ADMIN_DASHBOARD.md) for the copy boundary, startup and evidence.

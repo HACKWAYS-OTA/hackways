@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hackways/core-backend/db"
+	"github.com/hackways/core-backend/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -77,6 +78,19 @@ func (e *Engine) ChangeOwnerStatus(ctx context.Context, req OwnerStatusRequest) 
 		return OwnerStatusResult{}, false, err
 	}
 	scope := digest("owner-status:" + hex.EncodeToString(event.ID.Bytes[:]) + ":" + hex.EncodeToString(rsvp.ID.Bytes[:]) + ":" + hex.EncodeToString(req.OrganizerID.Bytes[:]))
+	if mutation, isAdmin := auth.AdminMutationFromContext(ctx); isAdmin {
+		actor, _ := auth.UserFromContext(ctx)
+		allowed, checkErr := q.IsPlatformAdminSession(ctx, db.IsPlatformAdminSessionParams{SessionID: actor.SessionID, UserID: actor.UserID})
+		if checkErr != nil {
+			return OwnerStatusResult{}, false, checkErr
+		}
+		if !allowed {
+			return OwnerStatusResult{}, false, &Failure{403, "ADMIN_ACCESS_REQUIRED", "Admin access required"}
+		}
+		req.ActorID = actor.UserID
+		scope = mutation.Scope
+		canonical = append(canonical, []byte("\n"+mutation.Reason)...)
+	}
 	key, requestHash := digest(req.Key), digest(string(canonical))
 	stored, err := q.GetIdempotentResponse(ctx, db.GetIdempotentResponseParams{ScopeHash: scope, KeyHash: key})
 	if err == nil {
