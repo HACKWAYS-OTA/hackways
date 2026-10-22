@@ -234,6 +234,14 @@ func (ns NullRegistrationStatus) Value() (driver.Value, error) {
 	return string(ns.RegistrationStatus), nil
 }
 
+type AdminSessionChallenges struct {
+	SessionID  pgtype.UUID        `json:"session_id"`
+	CodeHash   string             `json:"code_hash"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+}
+
 // Append-only through application queries; no secrets or form answers in metadata.
 type AuditLog struct {
 	ID          int64              `json:"id"`
@@ -250,6 +258,21 @@ type AuthRateLimits struct {
 	ScopeHash   string             `json:"scope_hash"`
 	WindowStart pgtype.Timestamptz `json:"window_start"`
 	Attempts    int32              `json:"attempts"`
+}
+
+type DiscoverPromotionSettings struct {
+	Singleton bool               `json:"singleton"`
+	ID        pgtype.UUID        `json:"id"`
+	Revision  int64              `json:"revision"`
+	UpdatedBy pgtype.UUID        `json:"updated_by"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DiscoverPromotions struct {
+	Slot     int16              `json:"slot"`
+	EventID  pgtype.UUID        `json:"event_id"`
+	StartsAt pgtype.Timestamptz `json:"starts_at"`
+	EndsAt   pgtype.Timestamptz `json:"ends_at"`
 }
 
 type EmailCampaignDeliveries struct {
@@ -436,8 +459,9 @@ type PasswordResetChallenges struct {
 }
 
 type PlatformAdminSessions struct {
-	SessionID pgtype.UUID        `json:"session_id"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	SessionID     pgtype.UUID        `json:"session_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	OtpVerifiedAt pgtype.Timestamptz `json:"otp_verified_at"`
 }
 
 // Explicit platform access; verified email and a live admin session are also required.
@@ -499,6 +523,24 @@ type Rsvps struct {
 	TransferredFrom   pgtype.UUID        `json:"transferred_from"`
 	PublicCode        string             `json:"public_code"`
 	AdminReference    int64              `json:"admin_reference"`
+}
+
+type RuntimeRolloutControl struct {
+	Singleton     bool               `json:"singleton"`
+	ID            pgtype.UUID        `json:"id"`
+	ActiveVersion int64              `json:"active_version"`
+	CohortSalt    []byte             `json:"cohort_salt"`
+	Revision      int64              `json:"revision"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type RuntimeRolloutVersions struct {
+	Reference    int64              `json:"reference"`
+	Label        string             `json:"label"`
+	Flags        []byte             `json:"flags"`
+	RestoredFrom pgtype.Int8        `json:"restored_from"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type Sessions struct {

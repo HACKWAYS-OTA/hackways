@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hackways/core-backend/db"
 	"github.com/hackways/core-backend/internal/admin"
+	"github.com/hackways/core-backend/internal/auth"
 	"github.com/hackways/core-backend/internal/events"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/hackways/core-backend/internal/rsvps"
@@ -112,6 +114,10 @@ func main() {
 	})
 
 	maintenanceCtx, stopMaintenance := context.WithCancel(context.Background())
+	var activityDone <-chan struct{}
+	if !cfg.AdminPreviewOnly {
+		activityDone = auth.StartSessionActivity(maintenanceCtx, db.New(pool), logger)
+	}
 	var maintenanceWG sync.WaitGroup
 	if !cfg.AdminPreviewOnly {
 		maintenanceWG.Add(1)
@@ -143,6 +149,9 @@ func main() {
 		shutdownResult := srv.Shutdown(ctx)
 		stopMaintenance()
 		maintenanceWG.Wait()
+		if activityDone != nil {
+			<-activityDone
+		}
 
 		if pool != nil {
 			logger.Info("closing PostgreSQL connection pool...")

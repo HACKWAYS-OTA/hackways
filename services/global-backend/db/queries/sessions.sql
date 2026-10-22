@@ -41,3 +41,8 @@ WHERE token_hash = $1;
 -- name: DeleteSessionsByUserID :exec
 DELETE FROM sessions
 WHERE user_id = $1;
+
+-- name: UpdateSessionActivityBatch :exec
+UPDATE sessions SET last_seen=clock_timestamp()
+WHERE id=ANY(sqlc.arg(ids)::uuid[]) AND last_seen<clock_timestamp()-INTERVAL '5 minutes'
+AND expires_at>clock_timestamp();

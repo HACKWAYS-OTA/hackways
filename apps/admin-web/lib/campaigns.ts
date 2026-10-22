@@ -1,3 +1,4 @@
+import { adminVerificationRequired, adminVerificationPath } from './admin-verification';
 import 'server-only';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
@@ -14,7 +15,7 @@ export async function campaignServer<T>(path: string): Promise<T> {
   try {
     const response = await fetch(`${base}/admin/global${path}`, { headers: { Cookie: `${session.name}=${encodeURIComponent(session.value)}` }, cache: 'no-store', signal: controller.signal });
     if (response.status === 401) redirect('/login?next=%2Fcampaigns');
-    if (response.status === 403) redirect('/access-denied');
+    if (response.status === 403) redirect(await adminVerificationRequired(response) ? adminVerificationPath('/campaigns') : '/access-denied');
     if (response.status === 404) notFound();
     if (!response.ok) throw new Error('Campaign data could not be loaded.');
     return await response.json() as T;

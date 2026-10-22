@@ -131,6 +131,17 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 	return i, err
 }
 
+const updateSessionActivityBatch = `-- name: UpdateSessionActivityBatch :exec
+UPDATE sessions SET last_seen=clock_timestamp()
+WHERE id=ANY($1::uuid[]) AND last_seen<clock_timestamp()-INTERVAL '5 minutes'
+AND expires_at>clock_timestamp()
+`
+
+func (q *Queries) UpdateSessionActivityBatch(ctx context.Context, ids []pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, updateSessionActivityBatch, ids)
+	return err
+}
+
 const updateSessionLastSeen = `-- name: UpdateSessionLastSeen :exec
 UPDATE sessions
 SET last_seen = NOW()

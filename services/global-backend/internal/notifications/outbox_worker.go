@@ -28,14 +28,30 @@ const (
 )
 
 type OutboxWorker struct {
-	queries      *db.Queries
-	sender       EmailSender
-	logger       *slog.Logger
-	pollInterval time.Duration
-	stopCh       chan struct{}
-	stopOnce     sync.Once
-	wg           sync.WaitGroup
-	batchMu      sync.Mutex
+	queries        *db.Queries
+	sender         EmailSender
+	logger         *slog.Logger
+	pollInterval   time.Duration
+	stopCh         chan struct{}
+	stopOnce       sync.Once
+	wg             sync.WaitGroup
+	batchMu        sync.Mutex
+	templateFilter []string
+}
+
+// SetTemplateFilter is configured before Start. The SQL claim itself excludes
+// other templates, so a scoped review worker never leases historical emails.
+func (w *OutboxWorker) SetTemplateFilter(values []string) error {
+	if len(values) > 10 {
+		return errors.New("too many outbox template filters")
+	}
+	for _, value := range values {
+		if _, ok := emailTemplate(value); !ok {
+			return errors.New("unknown outbox template filter")
+		}
+	}
+	w.templateFilter = append([]string(nil), values...)
+	return nil
 }
 
 func NewOutboxWorker(pool *pgxpool.Pool, sender EmailSender, logger *slog.Logger, interval time.Duration) *OutboxWorker {
@@ -69,7 +85,7 @@ func (w *OutboxWorker) ProcessNextBatch(ctx context.Context) (int, error) {
 	// Serialize manual triggers with the background loop, preserving the two-send bound.
 	w.batchMu.Lock()
 	defer w.batchMu.Unlock()
-	entries, err := w.queries.ClaimEmailOutbox(ctx, BatchSize)
+	entries, err := w.queries.ClaimEmailOutbox(ctx, db.ClaimEmailOutboxParams{BatchLimit: BatchSize, TemplateTypes: w.templateFilter})
 	if err != nil {
 		return 0, err
 	}
@@ -267,6 +283,8 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 		if payload.IsTest {
 			subject = "[Test] " + subject
 		}
+	case "admin_daily_otp":
+		body = template.Copy
 	case "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
 		body = "Use this code to verify your email. It expires 15 minutes after it was requested. Do not share it."
 		if e.TemplateType != "email_verification" {
@@ -344,7 +362,7 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 
 func isOTPTemplate(id string) bool {
 	switch id {
-	case "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
+	case "admin_daily_otp", "email_verification", "login_otp", "email_change_otp", "guest_access_otp":
 		return true
 	default:
 		return false
@@ -418,7 +436,7 @@ func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) er
 		}
 		return nil
 	}
-	if e.TemplateType == "email_verification" || e.TemplateType == "password_reset_requested" {
+	if e.TemplateType == "admin_daily_otp" || e.TemplateType == "email_verification" || e.TemplateType == "password_reset_requested" {
 		var payload templatePayload
 		if err := json.Unmarshal(e.PayloadJson, &payload); err != nil {
 			return err
@@ -430,7 +448,9 @@ func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) er
 		}
 		var active bool
 		var err error
-		if e.TemplateType == "email_verification" {
+		if e.TemplateType == "admin_daily_otp" {
+			active, err = w.queries.AdminSessionCodeActive(ctx, hash)
+		} else if e.TemplateType == "email_verification" {
 			active, err = w.queries.VerificationCodeActive(ctx, hash)
 		} else {
 			active, err = w.queries.PasswordResetTokenActive(ctx, hash)

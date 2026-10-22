@@ -12,6 +12,7 @@
     "./section-jump": "./src/SectionJump.tsx",
     "./auth": "./src/Auth.tsx",
     "./auth-recovery": "./src/AuthRecovery.tsx",
+    "./session-refresh": "./src/SessionRefresh.tsx",
     "./avatar": "./src/Avatar.tsx",
     "./auth.css": "./src/auth.css",
     "./styles.css": "./src/controls.css"

@@ -6,10 +6,18 @@ WHERE a.user_id=$1 AND a.revoked_at IS NULL AND u.deleted_at IS NULL AND u.email
 SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
 JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
 WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
+AND g.otp_verified_at>clock_timestamp()-INTERVAL '24 hours' AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified);
+
+-- name: IsPlatformAdminIdentitySession :one
+SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
+JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
+WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
 AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified);
 
 -- name: RecordPlatformAdminSession :exec
-INSERT INTO platform_admin_sessions(session_id) VALUES ($1);
+-- Trusted, already verified server-side issuance; password sign-in uses the
+-- separate unverified-session query before the email challenge.
+INSERT INTO platform_admin_sessions(session_id,otp_verified_at) VALUES ($1,clock_timestamp());
 
 -- name: AdminListEvents :many
 SELECT e.id,e.admin_reference AS reference,e.title,e.slug,e.status::text AS status,o.display_name AS host_name,e.starts_at,e.current_rsvp_count,e.capacity

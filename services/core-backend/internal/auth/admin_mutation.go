@@ -51,6 +51,7 @@ func RequireAdminMutation(next http.Handler) http.Handler {
 		allowed := origin == "https://admin.hackways.in"
 		if os.Getenv("APP_ENV") == "development" {
 			allowed = allowed || origin == "http://localhost:3003" || origin == "http://127.0.0.1:3003"
+			allowed = allowed || origin == "http://localhost:3103" || origin == "http://127.0.0.1:3103"
 		}
 		if !allowed {
 			platform.RespondError(w, 403, "INVALID_ORIGIN", "This request origin is not allowed", nil)

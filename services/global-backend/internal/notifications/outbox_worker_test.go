@@ -166,7 +166,7 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := queries.ClaimEmailOutbox(ctx, BatchSize)
+	claimed, err := queries.ClaimEmailOutbox(ctx, db.ClaimEmailOutboxParams{BatchLimit: BatchSize})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,8 +202,8 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 
 func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 	catalog := EmailTemplateCatalog()
-	if len(catalog) != 41 {
-		t.Fatalf("expected 41 email templates, got %d", len(catalog))
+	if len(catalog) != 42 {
+		t.Fatalf("expected 42 email templates, got %d", len(catalog))
 	}
 	seen := make(map[string]bool, len(catalog))
 	for _, template := range catalog {
@@ -252,6 +252,10 @@ func TestEmailTemplateCatalog_ReturnsCopy(t *testing.T) {
 }
 
 func TestAuthEmailPresentation(t *testing.T) {
+	adminOTP, e := render(db.ClaimEmailOutboxRow{TemplateType: "admin_daily_otp", PayloadJson: []byte(`{"verification_code":"012345"}`)})
+	if e != nil || adminOTP.SenderClass != "account" || !strings.Contains(adminOTP.BodyHTML, "text-align:center") || !strings.Contains(adminOTP.BodyText, "24 hours") {
+		t.Fatal("admin daily email presentation or sender class is incorrect")
+	}
 	otp, err := render(db.ClaimEmailOutboxRow{TemplateType: "email_verification", PayloadJson: []byte(`{"verification_code":"012345"}`)})
 	if err != nil || !strings.Contains(otp.BodyHTML, "text-align:center") || !strings.Contains(otp.BodyHTML, "font-size:38px") || !strings.Contains(otp.BodyHTML, "012345") || !strings.Contains(otp.BodyText, "012345") {
 		t.Fatal("verification code presentation missing")

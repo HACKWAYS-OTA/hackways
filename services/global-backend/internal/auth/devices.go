@@ -158,10 +158,10 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 			return errAdminAccess
 		}
 	}
-	duration := 7 * 24 * time.Hour
+	duration := UserSessionLifetime
 	name := DefaultSessionCookie
 	if admin {
-		duration = 30 * time.Minute
+		duration = UserSessionLifetime
 		name = AdminSessionCookie
 	}
 	token, session, err := NewSessionManager(q).CreateSession(r.Context(), id, r.UserAgent(), r.RemoteAddr, duration)
@@ -169,7 +169,7 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 		return err
 	}
 	if admin {
-		if err = q.RecordPlatformAdminSession(r.Context(), session.ID); err != nil {
+		if err = q.CreateUnverifiedAdminSession(r.Context(), session.ID); err != nil {
 			return err
 		}
 	}
@@ -182,6 +182,9 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 	}
 	SetSessionCookie(w, name, token, duration, h.isProduction)
 	setDeviceCookie(w, device, admin)
+	if !admin && h.rollouts != nil {
+		h.rollouts.AccountCookie(w, id)
+	}
 	return nil
 }
 

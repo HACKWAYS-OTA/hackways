@@ -5,3 +5,9 @@
 .discovery-page .catalog-event h3 { font-size: 22px; line-height: 1.45; }
 .discovery-page .discovery-guidance { margin-top: 32px; max-width: 70ch; color: #5f5369; font-size: 16px; line-height: 1.75; }
 .discovery-page .discovery-guidance a { text-decoration: underline; text-underline-offset: 4px; }
+.discover-promotions { margin:28px 0 48px; }
+.discover-promotions .catalog-event--prominent { margin:0; }
+.promotion-navigation { display:flex; align-items:center; justify-content:flex-end; gap:20px; margin-top:16px; }
+.promotion-pages { display:flex; flex-wrap:wrap; gap:8px; }
+.promotion-pages button { min-width:44px; min-height:44px; border:1px solid var(--line); border-radius:50%; background:var(--paper); color:var(--ink); }
+.promotion-pages button[aria-current] { background:var(--ink); color:var(--paper); border-color:var(--ink); }

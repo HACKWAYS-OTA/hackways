@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { EventCardSkeleton } from '@/components/ui/Skeleton';
 import './discovery-reading.css';
+import { DiscoverPromotions } from './DiscoverPromotions';
+import type { PromotionFeed } from '@/lib/promotions';
 
-export function EventBrowser({ initial }: { initial: InitialEvents }) {
+export function EventBrowser({ initial, promotions }: { initial: InitialEvents; promotions: PromotionFeed | null }) {
   const [events, setEvents] = useState(initial.events);
   const [error, setError] = useState(initial.error);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -76,13 +78,14 @@ export function EventBrowser({ initial }: { initial: InitialEvents }) {
       </form>
     </section>
 
+    {!query.trim() && <DiscoverPromotions initial={promotions} />}
     <section className="feed-results" aria-labelledby="results-heading" aria-busy={pending || loadingMore}>
       <div className="feed-results-heading"><h2 id="results-heading">Upcoming gatherings</h2><span role="status" aria-live="polite">{pending ? 'Searching...' : error ? '' : `${visible.length} ${visible.length === 1 ? 'event' : 'events'}${hasMore ? ' loaded' : ''}`}</span></div>
       {appliedQuery && !pending && <p className="search-caption">Results for <strong>{appliedQuery}</strong><button type="button" className="quiet-link" onClick={() => setQuery('')}>Clear search <Icon name="close" size={14} /></button></p>}
       {pending ? <div className="feed-loading" role="status"><span className="visually-hidden">Finding events...</span><EventCardSkeleton /><EventCardSkeleton /></div>
         : error ? <div className="feed-state" role="alert"><Icon name="alert" size={25} /><h3>We couldn&apos;t load events.</h3><p>{error}</p><Button onClick={() => { void request(query.trim()); }}>Try again <Icon name="reload" size={16} /></Button><a href={`${site.public}/help`}>Get help <Icon name="external" size={14} /></a></div>
         : visible.length === 0 ? <div className="feed-state"><Icon name="calendar" size={26} /><h3>{query ? 'No events match your search.' : 'No upcoming events yet.'}</h3><p>{query ? 'Try another event name or topic.' : 'Check back later or host a gathering of your own.'}</p>{query ? <Button variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Link className="app-button app-button-outline" href="/create">Create an event <Icon name="arrow" size={16} /></Link>}</div>
-        : <div className="catalog-list">{visible.map((event, index) => <EventCard key={event.id} event={event} prominent={index === 0 && !appliedQuery} />)}</div>}
+        : <div className="catalog-list">{visible.map(event => <EventCard key={event.id} event={event} />)}</div>}
       {!pending && !error && hasMore && <div className="load-more">{pageError && <p role="alert">{pageError}</p>}<Button variant="outline" isLoading={loadingMore} onClick={() => { void request(appliedQuery, true); }}>{loadingMore ? 'Loading events...' : pageError ? 'Try loading more again' : 'Load more events'}</Button></div>}
     </section>
   </div>;

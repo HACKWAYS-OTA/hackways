@@ -11,6 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { next
   if (searchParams.switch !== '1') {
     const access = await getAdminAccess();
     if (access === 'allowed') redirect(next);
+    if (access === 'verification-required') redirect(`/verify?next=${encodeURIComponent(next)}`);
     if (access === 'denied') redirect('/access-denied');
     if (access === 'unavailable') redirect('/auth-unavailable');
   }

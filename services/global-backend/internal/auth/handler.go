@@ -14,6 +14,7 @@ import (
 	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
+	"github.com/hackways/global-backend/internal/rollouts"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -28,6 +29,7 @@ type Handler struct {
 	isProduction    bool
 	google          GoogleOAuthConfig
 	locationProxies []netip.Prefix
+	rollouts        *rollouts.Cache
 }
 
 // NewHandler constructs an Auth Handler.
@@ -51,6 +53,8 @@ func (h *Handler) SessionManager() *SessionManager {
 	return h.sm
 }
 
+func (h *Handler) SetRollouts(cache *rollouts.Cache) { h.rollouts = cache }
+
 // Routes mounts authentication endpoints.
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -62,6 +66,9 @@ func (h *Handler) Routes() chi.Router {
 	})
 
 	r.Post("/register", h.Register)
+	if h.rollouts != nil {
+		r.Get("/runtime", h.rollouts.ServeHTTP)
+	}
 	r.Post("/login", h.Login)
 	r.Post("/password-reset/request", h.RequestPasswordReset)
 	r.Post("/password-reset/confirm", h.ConfirmPasswordReset)
@@ -77,6 +84,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Group(func(protected chi.Router) {
 		protected.Use(RequireAuth(h.sm))
 		protected.Get("/me", h.Me)
+		protected.Get("/session", h.RefreshSessionCookie)
 		protected.Patch("/me", h.UpdateProfile)
 		protected.Get("/sessions", h.Sessions)
 		protected.Delete("/sessions", h.RevokeAllSessions)
@@ -174,7 +182,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	token, _, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, 7*24*time.Hour)
+	token, _, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, UserSessionLifetime)
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -193,8 +201,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	SetSessionCookie(w, DefaultSessionCookie, token, 7*24*time.Hour, h.isProduction)
+	SetSessionCookie(w, DefaultSessionCookie, token, UserSessionLifetime, h.isProduction)
 	setDeviceCookie(w, device, false)
+	if h.rollouts != nil {
+		h.rollouts.AccountCookie(w, user.ID)
+	}
 
 	userIDStr := formatUUID(user.ID)
 	createdAt := user.CreatedAt.Time
@@ -302,6 +313,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	ClearSessionCookie(w, DefaultSessionCookie)
 	ClearSessionCookie(w, AdminSessionCookie)
+	ClearSessionCookie(w, rollouts.CookieName)
 	platform.RespondJSON(w, http.StatusOK, map[string]string{
 		"message": "Logged out successfully",
 	})

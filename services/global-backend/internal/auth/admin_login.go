@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AdminLogin establishes a separate, short-lived host-only admin session.
+// AdminLogin establishes a separate host-only admin session requiring daily OTP.
 // Only explicitly granted, verified accounts can create one.
 func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
@@ -120,5 +120,8 @@ func (h *Handler) AdminRoutes() chi.Router {
 	r.Post("/login", h.AdminLogin)
 	r.Post("/logout", h.AdminLogout)
 	r.Get("/me", h.AdminEntry)
+	r.With(RequireAdminIdentity(h.sm, h.queries)).Post("/verification/request", h.RequestAdminVerification)
+	r.With(RequireAdminIdentity(h.sm, h.queries)).Post("/verification/confirm", h.ConfirmAdminVerification)
+	r.With(RequirePlatformAdmin(h.sm, h.queries)).Get("/session", h.RefreshAdminSessionCookie)
 	return r
 }

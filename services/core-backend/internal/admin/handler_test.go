@@ -69,6 +69,7 @@ func TestAdminCatalogueAccess(t *testing.T) {
 	if err = q.RecordPlatformAdminSession(ctx, session.ID); err != nil {
 		t.Fatal(err)
 	}
+
 	if got := request("/"+routes[0], auth.AdminSessionCookie).Code; got != 403 {
 		t.Fatalf("unverified account got %d", got)
 	}
@@ -108,6 +109,17 @@ func TestAdminCatalogueAccess(t *testing.T) {
 		t.Fatalf("ordinary session relabelled as admin got %d", got)
 	}
 	if err = q.RecordPlatformAdminSession(ctx, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Both engines independently gate an overdue daily verification.
+	if _, err = pool.Exec(ctx, "UPDATE platform_admin_sessions SET otp_verified_at=clock_timestamp()-interval '25 hours' WHERE session_id=$1", session.ID); err != nil {
+		t.Fatal(err)
+	}
+	stepup := request("/"+routes[0], auth.AdminSessionCookie)
+	if stepup.Code != 403 || !strings.Contains(stepup.Body.String(), "ADMIN_VERIFICATION_REQUIRED") {
+		t.Fatal("core admin API did not require daily verification")
+	}
+	if _, err = pool.Exec(ctx, "UPDATE platform_admin_sessions SET otp_verified_at=clock_timestamp() WHERE session_id=$1", session.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = pool.Exec(ctx, "UPDATE platform_administrators SET revoked_at=NOW() WHERE user_id=$1", user.ID); err != nil {

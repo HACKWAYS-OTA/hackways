@@ -1,3 +1,4 @@
+import { adminVerificationRequired, adminVerificationPath } from './admin-verification';
 import 'server-only';
 
 import { cookies } from 'next/headers';
@@ -52,7 +53,7 @@ export async function getAdminDetail(resource: AdminModule, id: string, section:
     clearTimeout(timeout);
   }
   if (response.status === 401) redirect(`/login?next=${encodeURIComponent(destination)}`);
-  if (response.status === 403) redirect('/access-denied');
+  if (response.status === 403) redirect(await adminVerificationRequired(response) ? adminVerificationPath(destination) : '/access-denied');
   if (response.status === 404) notFound();
   if (!response.ok) return null;
   return isDetail(body) ? body : null;

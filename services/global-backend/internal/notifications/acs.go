@@ -40,7 +40,8 @@ func NewACSEmailSender(endpoint, accessKey, sender string, alternateSenders ...s
 	if err != nil || len(key) < 32 || sender == "" || strings.ContainsAny(sender, "\r\n") {
 		return nil, errors.New("ACS access key and verified sender must be configured")
 	}
-	account, promotion := sender, ""
+	// Account/security mail must never inherit the event-notification sender.
+	account, promotion := "noreply@mail.hackways.in", ""
 	if len(alternateSenders) > 0 && alternateSenders[0] != "" {
 		account = alternateSenders[0]
 	}

@@ -1,4 +1,5 @@
 "use client";
+import { adminVerificationRequired, adminVerificationPath } from '@/lib/admin-verification';
 import { useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '@hackways/ui/checkbox';
@@ -11,7 +12,7 @@ async function mutate(path: string, values: Values, reason: string, key?: string
   const controller = new AbortController(), timeout = window.setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(`${base}/admin/global${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Admin-Reason': encodeURIComponent(reason), ...(key ? { 'Idempotency-Key': key } : {}) }, body: JSON.stringify(values), signal: controller.signal });
-    if (response.status === 401 || response.status === 403) { window.location.assign(response.status === 401 ? '/login?next=%2Fcampaigns' : '/access-denied'); throw new Error('Admin sign-in is required.'); }
+    if (response.status === 401 || response.status === 403) { window.location.assign(response.status === 401 ? '/login?next=%2Fcampaigns' : await adminVerificationRequired(response) ? adminVerificationPath('/campaigns') : '/access-denied'); throw new Error('Admin sign-in is required.'); }
     const result = await response.json() as { data?: Campaign; message?: string; error?: { message?: string }; queued?: number; imported?: number; unchanged?: number };
     if (!response.ok) throw new Error(result.error?.message || 'The action could not be saved. Your input is still here.');
     return result;

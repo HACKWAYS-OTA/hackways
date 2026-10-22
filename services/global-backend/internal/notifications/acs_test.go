@@ -277,6 +277,28 @@ func TestACSMissingIdentityDoesNotContactProvider(t *testing.T) {
 }
 
 func TestACSSenderCategories(t *testing.T) {
+	t.Run("account default does not inherit event sender", func(t *testing.T) {
+		sender, err := NewACSEmailSender("https://unit.communication.azure.com", base64.StdEncoding.EncodeToString(make([]byte, 32)), "notify@mail.hackways.in")
+		if err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		sender.client.Transport = acsTransport(func(request *http.Request) (*http.Response, error) {
+			calls++
+			var payload struct {
+				Sender string `json:"senderAddress"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Sender != "noreply@mail.hackways.in" {
+				t.Fatal("account mail inherited the event sender")
+			}
+			return acsResponse(202, `{"status":"Succeeded"}`)
+		})
+		message := testACSMessage()
+		message.SenderClass = "account"
+		if err = sender.Send(context.Background(), message); err != nil || calls != 1 {
+			t.Fatal("default account send did not succeed")
+		}
+	})
 	for _, test := range []struct{ class, address string }{{"account", "noreply@mail.hackways.in"}, {"event", "notify@mail.hackways.in"}, {"promotion", "updates@mail.hackways.in"}} {
 		t.Run(test.class, func(t *testing.T) {
 			sender, err := NewACSEmailSender("https://unit.communication.azure.com", base64.StdEncoding.EncodeToString(make([]byte, 32)), "notify@mail.hackways.in", "noreply@mail.hackways.in", "updates@mail.hackways.in")

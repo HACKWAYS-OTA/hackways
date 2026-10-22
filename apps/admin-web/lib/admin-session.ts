@@ -1,4 +1,5 @@
-export type AdminAccess = 'allowed' | 'signed-out' | 'denied' | 'unavailable';
+import { adminVerificationRequired } from './admin-verification';
+export type AdminAccess = 'allowed' | 'signed-out' | 'denied' | 'unavailable' | 'verification-required';
 
 type SessionCookie = { name: string; value: string };
 
@@ -16,7 +17,7 @@ export async function verifyAdminAccess(sessionCookies: SessionCookie[]): Promis
       cache: 'no-store', redirect: 'error', signal: controller.signal,
     });
     if (response.status === 401) return 'signed-out';
-    if (response.status === 403) return 'denied';
+    if (response.status === 403) return await adminVerificationRequired(response) ? 'verification-required' : 'denied';
     if (response.status !== 200) return 'unavailable';
     const body: unknown = await response.json();
     return body !== null && typeof body === 'object' && 'display_name' in body && typeof body.display_name === 'string'

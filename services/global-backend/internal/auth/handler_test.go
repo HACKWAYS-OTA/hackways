@@ -67,6 +67,9 @@ func TestAuthHandler_LivePostgres(t *testing.T) {
 			t.Fatalf("expected session cookie set upon registration")
 		}
 		sessionToken = cookies[0].Value
+		if cookies[0].MaxAge != int(UserSessionLifetime.Seconds()) {
+			t.Fatal("signup cookie must persist for ninety days")
+		}
 	})
 
 	t.Run("Duplicate email returns 409", func(t *testing.T) {
@@ -108,6 +111,9 @@ func TestAuthHandler_LivePostgres(t *testing.T) {
 			t.Fatalf("expected session cookie set upon login")
 		}
 		sessionToken = cookies[0].Value
+		if cookies[0].MaxAge != int(UserSessionLifetime.Seconds()) {
+			t.Fatal("sign-in cookie must persist for ninety days")
+		}
 	})
 
 	t.Run("Login invalid password returns 401", func(t *testing.T) {

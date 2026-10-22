@@ -8,6 +8,7 @@ export const revalidate = 0;
 
 export default async function ConsoleLayout({ children }: { children: ReactNode }) {
   const access = await getAdminAccess();
+  if (access === 'verification-required') redirect(`/verify?next=${encodeURIComponent(safeAdminDestination(headers().get('x-hackways-admin-path') || '/'))}`);
   if (access === 'signed-out') {
     const next = safeAdminDestination(headers().get('x-hackways-admin-path') || '/');
     redirect(`/login?next=${encodeURIComponent(next)}`);

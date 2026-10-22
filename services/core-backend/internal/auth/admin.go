@@ -13,6 +13,15 @@ import (
 // RequirePlatformAdmin requires a dedicated admin cookie backed by an explicit
 // database grant. An ordinary account session cannot authenticate admin reads.
 func RequirePlatformAdmin(sm *SessionManager, queries *db.Queries) func(http.Handler) http.Handler {
+	return requireAdminSession(sm, queries, false)
+}
+
+// Identity-only access is restricted to requesting and confirming daily OTPs.
+func RequireAdminIdentity(sm *SessionManager, queries *db.Queries) func(http.Handler) http.Handler {
+	return requireAdminSession(sm, queries, true)
+}
+
+func requireAdminSession(sm *SessionManager, queries *db.Queries, allowVerification bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "private, no-store")
@@ -32,7 +41,7 @@ func RequirePlatformAdmin(sm *SessionManager, queries *db.Queries) func(http.Han
 				}
 				return
 			}
-			allowed, err := queries.IsPlatformAdminSession(ctx, db.IsPlatformAdminSessionParams{SessionID: user.SessionID, UserID: user.UserID})
+			allowed, err := queries.IsPlatformAdminIdentitySession(ctx, db.IsPlatformAdminIdentitySessionParams{SessionID: user.SessionID, UserID: user.UserID})
 			if err != nil {
 				platform.RespondDatabaseError(w, err)
 				return
@@ -40,6 +49,17 @@ func RequirePlatformAdmin(sm *SessionManager, queries *db.Queries) func(http.Han
 			if !allowed {
 				platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
 				return
+			}
+			if !allowVerification {
+				fresh, e := queries.IsPlatformAdminSession(ctx, db.IsPlatformAdminSessionParams{SessionID: user.SessionID, UserID: user.UserID})
+				if e != nil {
+					platform.RespondDatabaseError(w, e)
+					return
+				}
+				if !fresh {
+					platform.RespondError(w, 403, "ADMIN_VERIFICATION_REQUIRED", "Verify your admin sign-in with the daily email code", nil)
+					return
+				}
 			}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(context.WithValue(ctx, platformAdminKey, true), userContextKey, user)))
 		})

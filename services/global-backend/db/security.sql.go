@@ -107,12 +107,18 @@ func (q *Queries) BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutbo
 const claimEmailOutbox = `-- name: ClaimEmailOutbox :many
 WITH picked AS (
  SELECT id FROM email_outbox WHERE status='pending' AND scheduled_at<=NOW()
- ORDER BY scheduled_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+ AND (COALESCE(cardinality($1::text[]),0)=0 OR template_type=ANY($1::text[]))
+ ORDER BY scheduled_at,id LIMIT $2::int FOR UPDATE SKIP LOCKED
 )
 UPDATE email_outbox o SET scheduled_at=NOW()+INTERVAL '5 minutes',lease_token=gen_random_uuid(),updated_at=NOW()
 FROM picked WHERE o.id=picked.id
 RETURNING o.id,o.rsvp_id,o.event_id,o.recipient_email,o.recipient_name,o.template_type,o.payload_json,o.retry_count,o.lease_token,o.first_sent_at
 `
+
+type ClaimEmailOutboxParams struct {
+	TemplateTypes []string `json:"template_types"`
+	BatchLimit    int32    `json:"batch_limit"`
+}
 
 type ClaimEmailOutboxRow struct {
 	ID             pgtype.UUID        `json:"id"`
@@ -127,8 +133,8 @@ type ClaimEmailOutboxRow struct {
 	FirstSentAt    pgtype.Timestamptz `json:"first_sent_at"`
 }
 
-func (q *Queries) ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error) {
-	rows, err := q.db.Query(ctx, claimEmailOutbox, limit)
+func (q *Queries) ClaimEmailOutbox(ctx context.Context, arg ClaimEmailOutboxParams) ([]ClaimEmailOutboxRow, error) {
+	rows, err := q.db.Query(ctx, claimEmailOutbox, arg.TemplateTypes, arg.BatchLimit)
 	if err != nil {
 		return nil, err
 	}

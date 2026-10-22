@@ -181,7 +181,7 @@ func (h *Handler) campaignMutation(w http.ResponseWriter, r *http.Request) (pgx.
 	}
 	var granted bool
 	if err == nil {
-		granted, err = q.IsPlatformAdministrator(r.Context(), user.UserID)
+		granted, err = q.IsPlatformAdminSession(r.Context(), db.IsPlatformAdminSessionParams{SessionID: user.SessionID, UserID: user.UserID})
 	}
 	if err != nil {
 		tx.Rollback(r.Context())

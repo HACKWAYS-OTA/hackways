@@ -11,7 +11,8 @@ DELETE FROM auth_rate_limits WHERE (scope_hash,window_start) IN
 -- name: ClaimEmailOutbox :many
 WITH picked AS (
  SELECT id FROM email_outbox WHERE status='pending' AND scheduled_at<=NOW()
- ORDER BY scheduled_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+ AND (COALESCE(cardinality(sqlc.arg(template_types)::text[]),0)=0 OR template_type=ANY(sqlc.arg(template_types)::text[]))
+ ORDER BY scheduled_at,id LIMIT sqlc.arg(batch_limit)::int FOR UPDATE SKIP LOCKED
 )
 UPDATE email_outbox o SET scheduled_at=NOW()+INTERVAL '5 minutes',lease_token=gen_random_uuid(),updated_at=NOW()
 FROM picked WHERE o.id=picked.id

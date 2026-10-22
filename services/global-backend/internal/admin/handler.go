@@ -10,6 +10,7 @@ import (
 	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/platform"
+	"github.com/hackways/global-backend/internal/rollouts"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,22 +18,41 @@ type Handler struct {
 	pool     *pgxpool.Pool
 	queries  *db.Queries
 	sessions *auth.SessionManager
+	rollouts *rollouts.Cache
 }
 
-func NewHandler(pool *pgxpool.Pool) *Handler {
+func NewHandler(pool *pgxpool.Pool, runtime ...*rollouts.Cache) *Handler {
 	q := db.New(pool)
-	return &Handler{pool: pool, queries: q, sessions: auth.NewSessionManager(q)}
+	h := &Handler{pool: pool, queries: q, sessions: auth.NewSessionManager(q)}
+	if len(runtime) > 0 {
+		h.rollouts = runtime[0]
+	}
+	return h
 }
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(auth.RequirePlatformAdmin(h.sessions, h.queries))
+	r.Get("/overview", h.Overview)
 	r.Get("/people", h.AdminListPeople)
 	r.Get("/messaging", h.AdminListMessages)
 	r.Get("/storage", h.AdminListAssets)
 	h.mountCampaigns(r)
+	r.Get("/rollouts", h.GetRollouts)
+	r.Post("/rollouts", h.SaveRollouts)
 	r.Get("/{resource}/{id}", h.Detail)
 	h.mountActions(r)
 	return r
+}
+
+func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
+	result, err := h.queries.AdminGlobalOverview(r.Context())
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data db.AdminGlobalOverviewRow `json:"data"`
+	}{result})
 }
 func pageParams(w http.ResponseWriter, r *http.Request) (string, string, int32, int32, bool) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
