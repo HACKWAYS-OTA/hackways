@@ -6,14 +6,14 @@ import { verifyAdminAccess } from './lib/admin-session';
 export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-hackways-admin-path', `${request.nextUrl.pathname}${request.nextUrl.search}`);
-  if (!['/login', '/access-denied', '/auth-unavailable'].includes(request.nextUrl.pathname)) {
+  if (!['/login', '/verify', '/access-denied', '/auth-unavailable'].includes(request.nextUrl.pathname)) {
     const sessionCookies = ['__Host-hackways_admin_session', '__Host-hackways_session']
       .map(name => request.cookies.get(name))
       .filter((cookie): cookie is { name: string; value: string } => Boolean(cookie?.value));
     const access = await verifyAdminAccess(sessionCookies);
     if (access !== 'allowed') {
-      const destination = new URL(access === 'signed-out' ? '/login' : access === 'denied' ? '/access-denied' : '/auth-unavailable', request.url);
-      if (access === 'signed-out') destination.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+      const destination = new URL(access === 'verification-required' ? '/verify' : access === 'signed-out' ? '/login' : access === 'denied' ? '/access-denied' : '/auth-unavailable', request.url);
+      if (access === 'signed-out' || access === 'verification-required') destination.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
       const blocked = NextResponse.redirect(destination);
       blocked.headers.set('Cache-Control', 'private, no-store');
       return blocked;

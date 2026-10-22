@@ -10,6 +10,7 @@ var ErrEmptyRecipient = errors.New("recipient email address cannot be empty")
 var ErrEmailProviderUnavailable = errors.New("transactional email provider is unavailable")
 
 type EmailMessage struct {
+	SenderClass string // account, event, or promotion; assigned by server template catalog.
 	OperationID string
 	FirstSentAt time.Time
 	// FirstAttempt comes from the claimed row's persisted first_sent_at state,

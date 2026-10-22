@@ -26,15 +26,30 @@ func NewHandler(pool *pgxpool.Pool) *Handler {
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(auth.RequirePlatformAdmin(h.sessions, h.queries))
+	r.Get("/overview", h.Overview)
 	r.Get("/events", h.AdminListEvents)
 	r.Get("/spaces", h.AdminListSpaces)
 	r.Get("/registrations", h.AdminListRegistrations)
 	r.Get("/tickets", h.AdminListTickets)
 	r.Get("/moderation", h.AdminListModeration)
 	r.Get("/audit", h.AdminListAudit)
+	r.Get("/discover-promotions", h.GetDiscoverPromotions)
+	r.Get("/discover-promotions/events", h.DiscoverPromotionChoices)
+	r.With(auth.RequireAdminMutation).Put("/discover-promotions", h.SaveDiscoverPromotions)
 	r.Get("/{resource}/{id}", h.Detail)
 	h.mountActions(r)
 	return r
+}
+
+func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
+	result, err := h.queries.AdminCoreOverview(r.Context())
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data db.AdminCoreOverviewRow `json:"data"`
+	}{result})
 }
 func pageParams(w http.ResponseWriter, r *http.Request) (string, string, int32, int32, bool) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))

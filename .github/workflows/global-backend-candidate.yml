@@ -97,6 +97,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/${{ steps.owner.outputs.value }}/hackways-global-backend:${{ env.CANDIDATE_SHA }}
+          build-args: |
+            SOURCE_COMMIT=${{ env.CANDIDATE_SHA }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ env.CANDIDATE_SHA }}

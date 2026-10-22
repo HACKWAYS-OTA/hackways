@@ -41,3 +41,8 @@
 - No secrets in git repositories.
 - `.env` strictly gitignored; `.env.example` provides safe placeholders.
 - Production secrets injected via environment variables in runtime container configurations.
+
+
+## Account recovery and promotional email
+
+[Account recovery](auth/account-recovery.md) documents single-use reset links, signup OTP limits, session revocation and trusted device/location metadata. [Admin campaigns](admin-campaigns.md) documents privileged sending, explicit consent, immutable queued content, replay protection and unsubscribe/cancellation checks. Recovery and unsubscribe keys are private credentials; do not log them or include them in analytics.

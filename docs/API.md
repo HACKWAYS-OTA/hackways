@@ -154,3 +154,31 @@ The owner registration-status endpoint accepts optional `resend_notification: tr
 Registration notifications include the actual event banner, host/Space context and a canonical registration action URL. `APP_PUBLIC_URL` can override the canonical origin for an approved environment.
 
 Owner and admin registration controls support the five manual states: `confirmed` (Going), `pending_approval` (Awaiting approval), `waitlisted` (Waiting list), `rejected` (Declined), and `cancelled` (Cancelled). The current state is omitted from change choices. Checked-in/transferred and closed-event restrictions remain. Pending review receives an expiry bounded by seven days, event start and any future registration closing time. Moving out of confirmed/offered releases confirmed/held capacity and revokes admission; confirming issues admission under the existing lock and capacity checks. Existing automatic waiting-list offers remain; if that policy immediately promotes a manual waitlist entry, the response returns the actual `offered` state and the UI explains it. No manual timed-offer status was added.
+
+
+## Account verification and recovery (schema 14)
+
+| Endpoint | Body / access | Result |
+|---|---|---|
+| `POST /auth/email-verification/request` | Session | Queues a six-digit email code; 60-second cooldown; 503 if email unavailable |
+| `POST /auth/email-verification/confirm` | Session, `{code}` | Confirms owned unexpired challenge; five wrong attempts lock it; one use |
+| `POST /auth/password-reset/request` | `{email}` | Generic 202 for known/unknown accounts; queues a 15-minute secure reset link for an existing account; cooldown and identity limits |
+| `POST /auth/password-reset/confirm` | `{token,password}` | Consumes a single-use random link secret and replaces password; revokes all sessions, pending OAuth exchanges and device recognition; queues change notice |
+
+These paths are under `/api/v1`. Signup additionally reports `verification_required` and `email_delivery_available`. Login/signup/Google/admin flows record browser recognition atomically with session creation; new verified browsers queue one sign-in alert. UI reset links use `key` in the URL; the API's secret field is internal transport, never displayed. Missing email configuration returns explicit unavailability. See [account recovery](auth/account-recovery.md) for trust boundaries and rollout settings.
+
+
+## Promotional campaigns (schema 15)
+
+Platform admin campaign, contact import, test/send/cancel, account opt-in and public unsubscribe endpoints are documented in [Admin campaigns](admin-campaigns.md). Go owns audience validation, consent suppression, revisions, idempotency and outbox transactions. All URLs use numeric campaign references; delivery records link to numeric messaging references.
+
+
+## Admin operations and feature rollout configuration (schemas 16-17)
+
+Core now serves revisioned Discover placement selection, a bounded eligible-event picker and the active public promotion feed. Both engines expose admin-only `/admin/{core|global}/overview` queue totals. See [admin operations](admin-operations.md) for exact promotion contracts and authorization.
+
+Global admin `GET /admin/global/rollouts?offset=` reads current configuration, registry, paginated history and evaluator freshness. `POST /admin/global/rollouts` accepts `{revision,label,flags}` or `{revision,label,restore_version}`, plus approved Origin, reason and idempotency headers. Global `GET /auth/runtime` evaluates the cached snapshot without a database call. See [feature rollouts](feature-rollouts.md) for cohort, scheduling, propagation and fallback contracts.
+
+## Session persistence and daily admin verification (schemas 18-19)
+
+Ordinary sign-in sessions last 90 days; authenticated `GET /auth/session` renews cookie transport with the remaining fixed server lifetime. Dedicated admin sessions also last 90 days and require email verification every 24 hours. Admin identity-only `POST /auth/admin/verification/request` and `/confirm` provide the ten-minute code flow; wrong or expired codes revoke only that admin session. Verified `GET /auth/admin/session` refreshes cookie transport and returns the remaining verification window. All paths are under `/api/v1`; both Go engines enforce daily verification for protected admin operations. See [session persistence](auth/session-persistence.md) for migration, cookie, error, sender and deployment contracts.

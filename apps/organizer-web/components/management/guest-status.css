@@ -39,6 +39,7 @@
 .guest-pending-note { padding:14px 18px; color:#76531e; background:#fbf3e5; font-size:14px; }
 .guest-quick-decision form { padding:4px 18px 18px; }
 .guest-decision-buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+.guest-decision-buttons > .app-button { width:100%; min-width:0; min-height:44px; border-radius:10px; font-family:"Google Sans Flex"; }
 .guest-approve-button { background:#2e6c47; color:#fff; }
 .guest-approve-button:hover:enabled { background:#225336; }
 .guest-decline-button { background:#fff2f3; color:#923b49; border:1px solid #e9c4ca; }

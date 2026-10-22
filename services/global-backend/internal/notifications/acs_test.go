@@ -275,3 +275,74 @@ func TestACSMissingIdentityDoesNotContactProvider(t *testing.T) {
 		t.Fatal("missing persisted first attempt was accepted")
 	}
 }
+
+func TestACSSenderCategories(t *testing.T) {
+	t.Run("account default does not inherit event sender", func(t *testing.T) {
+		sender, err := NewACSEmailSender("https://unit.communication.azure.com", base64.StdEncoding.EncodeToString(make([]byte, 32)), "notify@mail.hackways.in")
+		if err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		sender.client.Transport = acsTransport(func(request *http.Request) (*http.Response, error) {
+			calls++
+			var payload struct {
+				Sender string `json:"senderAddress"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Sender != "noreply@mail.hackways.in" {
+				t.Fatal("account mail inherited the event sender")
+			}
+			return acsResponse(202, `{"status":"Succeeded"}`)
+		})
+		message := testACSMessage()
+		message.SenderClass = "account"
+		if err = sender.Send(context.Background(), message); err != nil || calls != 1 {
+			t.Fatal("default account send did not succeed")
+		}
+	})
+	for _, test := range []struct{ class, address string }{{"account", "noreply@mail.hackways.in"}, {"event", "notify@mail.hackways.in"}, {"promotion", "updates@mail.hackways.in"}, {"", "notify@mail.hackways.in"}} {
+		t.Run(test.class, func(t *testing.T) {
+			sender, err := NewACSEmailSender("https://unit.communication.azure.com", base64.StdEncoding.EncodeToString(make([]byte, 32)), "notify@mail.hackways.in", "noreply@mail.hackways.in", "updates@mail.hackways.in")
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			sender.client.Transport = acsTransport(func(request *http.Request) (*http.Response, error) {
+				calls++
+				var payload struct {
+					Sender  string          `json:"senderAddress"`
+					ReplyTo json.RawMessage `json:"replyTo"`
+				}
+				if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Sender != test.address {
+					t.Fatal("wrong category sender")
+				}
+				if test.class == "account" {
+					if len(payload.ReplyTo) != 0 {
+						t.Fatal("account mail must omit the Reply-To field")
+					}
+				} else {
+					var replies []struct {
+						Address string `json:"address"`
+					}
+					if err := json.Unmarshal(payload.ReplyTo, &replies); err != nil || len(replies) != 1 || replies[0].Address != "hello@hackways.in" {
+						t.Fatal("event and promotion replies must use the shared mailbox")
+					}
+				}
+				return acsResponse(202, `{"status":"Succeeded"}`)
+			})
+			message := testACSMessage()
+			message.SenderClass = test.class
+			if err = sender.Send(context.Background(), message); err != nil || calls != 1 {
+				t.Fatal("category send did not succeed")
+			}
+		})
+	}
+	sender := testACSSender(t, func(*http.Request) (*http.Response, error) {
+		t.Fatal("unconfigured promotions reached provider")
+		return nil, nil
+	})
+	message := testACSMessage()
+	message.SenderClass = "promotion"
+	if err := sender.Send(context.Background(), message); err == nil {
+		t.Fatal("missing promotional sender silently fell back")
+	}
+}

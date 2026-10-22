@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ActivateRuntimeRolloutVersion(ctx context.Context, activeVersion int64) error
 	AdminActionRemember(ctx context.Context, arg AdminActionRememberParams) error
 	AdminActionReplay(ctx context.Context, arg AdminActionReplayParams) (AdminActionReplayRow, error)
 	AdminActiveCount(ctx context.Context) (int64, error)
@@ -18,6 +19,7 @@ type Querier interface {
 	AdminDetachAvatar(ctx context.Context, arg AdminDetachAvatarParams) (pgtype.UUID, error)
 	AdminDetachEventBanner(ctx context.Context, arg AdminDetachEventBannerParams) (pgtype.UUID, error)
 	AdminGlobalEntityHistory(ctx context.Context, arg AdminGlobalEntityHistoryParams) ([]AdminGlobalEntityHistoryRow, error)
+	AdminGlobalOverview(ctx context.Context) (AdminGlobalOverviewRow, error)
 	AdminGrantAccess(ctx context.Context, arg AdminGrantAccessParams) error
 	AdminListAssets(ctx context.Context, arg AdminListAssetsParams) ([]AdminListAssetsRow, error)
 	AdminListMessages(ctx context.Context, arg AdminListMessagesParams) ([]AdminListMessagesRow, error)
@@ -35,64 +37,118 @@ type Querier interface {
 	AdminRevokeAdminSessions(ctx context.Context, userID pgtype.UUID) error
 	AdminRevokePersonSession(ctx context.Context, arg AdminRevokePersonSessionParams) (int64, error)
 	AdminSerializeAction(ctx context.Context, scope string) error
+	AdminSessionCodeActive(ctx context.Context, codeHash string) (bool, error)
+	AdminSessionVerificationDeadline(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error)
 	AdminTouchPerson(ctx context.Context, id pgtype.UUID) error
 	AdminUpdatePersonName(ctx context.Context, arg AdminUpdatePersonNameParams) error
 	AdminUserLock(ctx context.Context, id pgtype.UUID) (AdminUserLockRow, error)
 	AppendAdminAudit(ctx context.Context, arg AppendAdminAuditParams) error
 	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
-	ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error)
+	BoundRecognizedDevices(ctx context.Context, userID pgtype.UUID) error
+	CampaignAudienceCount(ctx context.Context) (int64, error)
+	CampaignAudiencePreview(ctx context.Context) ([]CampaignAudiencePreviewRow, error)
+	CampaignCancel(ctx context.Context, id pgtype.UUID) error
+	CampaignCreate(ctx context.Context, arg CampaignCreateParams) (EmailCampaigns, error)
+	CampaignDeliveryList(ctx context.Context, arg CampaignDeliveryListParams) ([]CampaignDeliveryListRow, error)
+	CampaignEdit(ctx context.Context, arg CampaignEditParams) (int64, error)
+	CampaignList(ctx context.Context, arg CampaignListParams) ([]CampaignListRow, error)
+	CampaignLock(ctx context.Context, reference int64) (EmailCampaigns, error)
+	CampaignMessageActive(ctx context.Context, outboxID pgtype.UUID) (bool, error)
+	CampaignRead(ctx context.Context, reference int64) (EmailCampaigns, error)
+	CampaignSetQueued(ctx context.Context, id pgtype.UUID) error
+	CampaignStats(ctx context.Context, campaignID pgtype.UUID) (CampaignStatsRow, error)
+	ClaimEmailOutbox(ctx context.Context, arg ClaimEmailOutboxParams) ([]ClaimEmailOutboxRow, error)
 	CleanupAuthAttempts(ctx context.Context) error
+	CleanupExpiredRecognizedDevices(ctx context.Context) error
 	CleanupOAuthExchangeTokens(ctx context.Context) error
 	CleanupOAuthStates(ctx context.Context) error
+	ConsumeAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) error
 	ConsumeEmailVerification(ctx context.Context, tokenHash string) (ConsumeEmailVerificationRow, error)
 	ConsumeOAuthExchangeToken(ctx context.Context, arg ConsumeOAuthExchangeTokenParams) (pgtype.UUID, error)
 	ConsumeOAuthState(ctx context.Context, stateHash string) (ConsumeOAuthStateRow, error)
+	ConsumePasswordResetChallenge(ctx context.Context, userID pgtype.UUID) error
 	CountAuthAttempt(ctx context.Context, scopeHash string) (int32, error)
+	CreateAdminSessionChallenge(ctx context.Context, arg CreateAdminSessionChallengeParams) error
 	CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) error
 	CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error
 	CreateOAuthState(ctx context.Context, arg CreateOAuthStateParams) error
+	CreatePasswordResetChallenge(ctx context.Context, arg CreatePasswordResetChallengeParams) error
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
+	CreateRuntimeRolloutVersion(ctx context.Context, arg CreateRuntimeRolloutVersionParams) (int64, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
+	CreateUnverifiedAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteSessionByTokenHash(ctx context.Context, tokenHash string) error
 	DeleteSessionsByUserID(ctx context.Context, userID pgtype.UUID) error
 	EnqueueEmailOutbox(ctx context.Context, arg EnqueueEmailOutboxParams) (EmailOutbox, error)
+	FailEmailVerificationAttempt(ctx context.Context, userID pgtype.UUID) error
 	// Claim rows atomically. The scheduled_at lease expires if a worker crashes.
 	FetchPendingOutbox(ctx context.Context, limit int32) ([]FetchPendingOutboxRow, error)
+	FindPasswordResetUser(ctx context.Context, tokenHash string) (pgtype.UUID, error)
+	ForgetUserDevices(ctx context.Context, userID pgtype.UUID) error
 	GetEventByID(ctx context.Context, id pgtype.UUID) (Events, error)
 	GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByIDAndOrganizerParams) (Events, error)
 	GetOrCreateOAuthUser(ctx context.Context, arg GetOrCreateOAuthUserParams) (GetOrCreateOAuthUserRow, error)
 	GetOrganizerByUserID(ctx context.Context, userID pgtype.UUID) (Organizers, error)
 	GetRSVPByIDAndUser(ctx context.Context, arg GetRSVPByIDAndUserParams) (Rsvps, error)
+	GetRuntimeRolloutVersion(ctx context.Context, reference int64) (GetRuntimeRolloutVersionRow, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByGoogleSubject(ctx context.Context, subject string) (GetUserByGoogleSubjectRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	GrantLocalPreviewAdmin(ctx context.Context, email string) (pgtype.UUID, error)
+	ImportPromotionContact(ctx context.Context, arg ImportPromotionContactParams) (int64, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
+	InvalidateUserEmailCodes(ctx context.Context, userID pgtype.UUID) error
+	IsPlatformAdminIdentitySession(ctx context.Context, arg IsPlatformAdminIdentitySessionParams) (bool, error)
 	IsPlatformAdminSession(ctx context.Context, arg IsPlatformAdminSessionParams) (bool, error)
 	IsPlatformAdministrator(ctx context.Context, userID pgtype.UUID) (bool, error)
+	IsRecognizedDevice(ctx context.Context, arg IsRecognizedDeviceParams) (bool, error)
 	LinkUserIdentity(ctx context.Context, arg LinkUserIdentityParams) error
 	ListAccountSessions(ctx context.Context, userID pgtype.UUID) ([]ListAccountSessionsRow, error)
 	ListOwnedNotifications(ctx context.Context, arg ListOwnedNotificationsParams) ([]ListOwnedNotificationsRow, error)
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
 	ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventParams) ([]Rsvps, error)
+	ListRuntimeRolloutVersions(ctx context.Context, offset int32) ([]ListRuntimeRolloutVersionsRow, error)
+	LockAdminVerificationSession(ctx context.Context, arg LockAdminVerificationSessionParams) (LockAdminVerificationSessionRow, error)
+	LockAuthenticationUser(ctx context.Context, id pgtype.UUID) (LockAuthenticationUserRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
+	LockRuntimeRollout(ctx context.Context) (RuntimeRolloutControl, error)
+	MarkAdminSessionVerified(ctx context.Context, sessionID pgtype.UUID) error
 	MarkClaimedOutboxFailed(ctx context.Context, arg MarkClaimedOutboxFailedParams) (int64, error)
 	MarkClaimedOutboxSent(ctx context.Context, arg MarkClaimedOutboxSentParams) (int64, error)
+	MarkDeviceBaseline(ctx context.Context, id pgtype.UUID) error
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
 	MarkUserEmailVerified(ctx context.Context, id pgtype.UUID) error
+	PasswordResetTokenActive(ctx context.Context, tokenHash string) (bool, error)
+	PromotionContactsList(ctx context.Context, pageOffset int32) ([]PromotionContactsListRow, error)
+	PromotionTestContact(ctx context.Context, arg PromotionTestContactParams) (pgtype.UUID, error)
+	QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error)
+	ReadAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) (AdminSessionChallenges, error)
+	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
+	ReadOAuthExchangeUser(ctx context.Context, arg ReadOAuthExchangeUserParams) (pgtype.UUID, error)
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
 	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
+	ReadPasswordResetChallenge(ctx context.Context, userID pgtype.UUID) (ReadPasswordResetChallengeRow, error)
+	ReadPromotionPreference(ctx context.Context, email string) (bool, error)
+	ReadRuntimeRollout(ctx context.Context) (ReadRuntimeRolloutRow, error)
+	// Trusted, already verified server-side issuance; password sign-in uses the
+	// separate unverified-session query before the email challenge.
 	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
+	RememberRecognizedDevice(ctx context.Context, arg RememberRecognizedDeviceParams) error
+	ResetAccountPassword(ctx context.Context, arg ResetAccountPasswordParams) (int64, error)
 	RetryOwnedNotification(ctx context.Context, arg RetryOwnedNotificationParams) (pgtype.UUID, error)
 	RevokeOwnedSession(ctx context.Context, arg RevokeOwnedSessionParams) (int64, error)
+	RevokeUserOAuthExchanges(ctx context.Context, userID pgtype.UUID) error
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
+	SetPromotionPreference(ctx context.Context, arg SetPromotionPreferenceParams) error
 	SetStorageWriteTimeout(ctx context.Context) error
+	UnsubscribePromotion(ctx context.Context, unsubscribeHash string) (int64, error)
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
 	UpdateOwnDisplayName(ctx context.Context, arg UpdateOwnDisplayNameParams) (UpdateOwnDisplayNameRow, error)
+	UpdateSessionActivityBatch(ctx context.Context, ids []pgtype.UUID) error
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
 	VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error)
 	VerifyAccountEmail(ctx context.Context, arg VerifyAccountEmailParams) (int64, error)

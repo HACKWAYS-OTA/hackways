@@ -1,4 +1,5 @@
 "use client";
+import { adminVerificationRequired, adminVerificationPath } from './admin-verification';
 
 import { useEffect, useState } from 'react';
 import { adminModules, type AdminModule, type AdminRecord } from './admin-modules';
@@ -22,7 +23,7 @@ export function useCatalogue(resource: AdminModule, query: string, page: number,
         if (response.status === 401 || response.status === 403) {
           if (active) {
             setState({ rows: [], loading: true, error: null });
-            window.location.replace(response.status === 403 ? '/access-denied'
+            window.location.replace(response.status === 403 ? await adminVerificationRequired(response) ? adminVerificationPath(cataloguePath(resource, query, page, status)) : '/access-denied'
               : `/login?next=${encodeURIComponent(cataloguePath(resource, query, page, status))}`);
           }
           return;

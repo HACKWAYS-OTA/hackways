@@ -22,6 +22,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Minimal runtime stage
 FROM alpine:3.20
 
+ARG SOURCE_COMMIT=unreported
+ENV SOURCE_COMMIT=$SOURCE_COMMIT
+
 RUN apk add --no-cache ca-certificates tzdata wget \
     && addgroup -g 10001 -S hackways \
     && adduser -u 10001 -S hackways -G hackways

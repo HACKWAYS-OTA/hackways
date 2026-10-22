@@ -125,3 +125,4 @@ export class HackwaysClient {
     return res.json() as Promise<ApiResponse<Event[]>>;
   }
 }
+export { requestRolloutCookie } from './rollout-cohort';

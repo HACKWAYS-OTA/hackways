@@ -374,11 +374,30 @@ func (q *Queries) AdminListTickets(ctx context.Context, arg AdminListTicketsPara
 	return items, nil
 }
 
-const isPlatformAdminSession = `-- name: IsPlatformAdminSession :one
+const isPlatformAdminIdentitySession = `-- name: IsPlatformAdminIdentitySession :one
 SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
 JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
 WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
 AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified)
+`
+
+type IsPlatformAdminIdentitySessionParams struct {
+	SessionID pgtype.UUID `json:"session_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) IsPlatformAdminIdentitySession(ctx context.Context, arg IsPlatformAdminIdentitySessionParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isPlatformAdminIdentitySession, arg.SessionID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const isPlatformAdminSession = `-- name: IsPlatformAdminSession :one
+SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
+JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
+WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
+AND g.otp_verified_at>clock_timestamp()-INTERVAL '24 hours' AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified)
 `
 
 type IsPlatformAdminSessionParams struct {
@@ -406,9 +425,11 @@ func (q *Queries) IsPlatformAdministrator(ctx context.Context, userID pgtype.UUI
 }
 
 const recordPlatformAdminSession = `-- name: RecordPlatformAdminSession :exec
-INSERT INTO platform_admin_sessions(session_id) VALUES ($1)
+INSERT INTO platform_admin_sessions(session_id,otp_verified_at) VALUES ($1,clock_timestamp())
 `
 
+// Trusted, already verified server-side issuance; password sign-in uses the
+// separate unverified-session query before the email challenge.
 func (q *Queries) RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, recordPlatformAdminSession, sessionID)
 	return err

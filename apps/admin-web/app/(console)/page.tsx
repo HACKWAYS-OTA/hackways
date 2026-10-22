@@ -1,14 +1,14 @@
-import type { Metadata } from 'next';
+import Link from 'next/link';
 import { AdminShell } from '@/components/admin/AdminShell';
-import { Icon } from '@/components/ui/Icon';
-import { adminModules, adminModuleOrder } from '@/lib/admin-modules';
-
-export const metadata: Metadata = { title: 'Home | Hackways Admin' };
-export default function AdminHomePage() {
-  return <AdminShell active="/">
-    <div className="admin-page-heading admin-home-heading"><h1>Welcome to Hackways!</h1></div>
-    <nav className="admin-directory" aria-label="Administration areas">
-      {adminModuleOrder.map(name => <a href={`/${name}`} key={name}><Icon name={name} size={26} /><div><h2>{adminModules[name].label}</h2><p>{adminModules[name].description}</p></div><Icon name="arrow" /></a>)}
-    </nav>
-  </AdminShell>;
+import { adminServer } from '@/lib/admin-server';
+export const metadata = { title: 'Platform overview | Hackways Admin' };
+type CoreOverview = { upcoming_events: number; moderation_queue: number; pending_approvals: number; waiting_list: number; active_promotions: number };
+type GlobalOverview = { accounts: number; administrators: number; pending_emails: number; failed_emails: number; active_sessions: number };
+type Queue = readonly [string, number, string];
+export default async function AdminHomePage() {
+  const [core, global] = await Promise.allSettled([adminServer<{ data: CoreOverview }>('core', '/overview'), adminServer<{ data: GlobalOverview }>('global', '/overview')]);
+  const queues: Queue[] = core.status === 'fulfilled' ? [['Upcoming events', core.value.data.upcoming_events, '/events?status=published'], ['Moderation queue', core.value.data.moderation_queue, '/moderation'], ['Awaiting approval', core.value.data.pending_approvals, '/registrations?status=pending_approval'], ['Waiting list', core.value.data.waiting_list, '/registrations?status=waitlisted'], ['Active promotions', core.value.data.active_promotions, '/discover-promotions']] : [];
+  const operations: Queue[] = global.status === 'fulfilled' ? [['Accounts', global.value.data.accounts, '/people'], ['Administrators', global.value.data.administrators, '/people?status=admin'], ['Pending emails', global.value.data.pending_emails, '/messaging?status=pending'], ['Failed emails', global.value.data.failed_emails, '/messaging?status=failed'], ['Active sessions', global.value.data.active_sessions, '/people']] : [];
+  const sections = [{ heading: 'Events & registration', rows: queues, failed: core.status === 'rejected' }, { heading: 'Accounts & delivery', rows: operations, failed: global.status === 'rejected' }];
+  return <AdminShell active="/"><div className="admin-page-heading"><h1>Platform overview</h1><Link className="app-button app-button-outline" href="/rollouts">Manage feature rollouts</Link></div><div className="admin-overview-grid">{sections.map(section => <section key={section.heading}><h2>{section.heading}</h2>{section.failed ? <p className="field-error" role="alert">This engine?s overview is unavailable. Open its module to retry.</p> : <dl className="admin-overview-queues">{section.rows.map(([label, value, href]) => <div key={label}><dt>{label}</dt><dd><strong>{value}</strong><Link className="app-button app-button-outline app-button-sm" href={href} aria-label={`Open ${label.toLowerCase()}`}>Open</Link></dd></div>)}</dl>}</section>)}</div><nav className="admin-workflows" aria-label="Platform tools"><Link className="app-button app-button-primary" href="/discover-promotions">Schedule Discover banners</Link><Link className="app-button app-button-outline" href="/campaigns">Promotional campaigns</Link><Link className="app-button app-button-outline" href="/people?status=admin">Access & sessions</Link><Link className="app-button app-button-outline" href="/audit">Audit history</Link><Link className="app-button app-button-outline" href="/preferences">Display & accessibility</Link></nav></AdminShell>;
 }

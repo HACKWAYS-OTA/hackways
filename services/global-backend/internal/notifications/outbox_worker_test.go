@@ -166,7 +166,7 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimed, err := queries.ClaimEmailOutbox(ctx, BatchSize)
+	claimed, err := queries.ClaimEmailOutbox(ctx, db.ClaimEmailOutboxParams{BatchLimit: BatchSize})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,8 +202,8 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 
 func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 	catalog := EmailTemplateCatalog()
-	if len(catalog) != 40 {
-		t.Fatalf("expected 40 email templates, got %d", len(catalog))
+	if len(catalog) != 42 {
+		t.Fatalf("expected 42 email templates, got %d", len(catalog))
 	}
 	seen := make(map[string]bool, len(catalog))
 	for _, template := range catalog {
@@ -213,7 +213,7 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 		seen[template.ID] = true
 		message, err := render(db.ClaimEmailOutboxRow{
 			TemplateType: template.ID,
-			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example"}`),
+			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example","promotion_subject":"Campaign preview","promotion_body":"Campaign message"}`),
 		})
 		if err != nil {
 			t.Fatalf("template %q did not render: %v", template.ID, err)
@@ -233,7 +233,11 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 		if !strings.Contains(message.BodyHTML, "Organised by") || !strings.Contains(message.BodyHTML, "Builders Space") {
 			t.Fatalf("template %q is missing organiser or space context", template.ID)
 		}
-		if !strings.Contains(message.BodyHTML, "Open in Hackways") || !strings.Contains(message.BodyHTML, "banner.jpg") {
+		actionLabel := "Open in Hackways"
+		if template.ID == "password_reset_requested" {
+			actionLabel = "Reset password"
+		}
+		if !strings.Contains(message.BodyHTML, actionLabel) || !strings.Contains(message.BodyHTML, "banner.jpg") {
 			t.Fatalf("template %q is missing its safe action link or banner", template.ID)
 		}
 	}
@@ -244,5 +248,24 @@ func TestEmailTemplateCatalog_ReturnsCopy(t *testing.T) {
 	catalog[0].Subject = "mutated"
 	if EmailTemplateCatalog()[0].Subject == "mutated" {
 		t.Fatal("template catalog exposed mutable process-wide state")
+	}
+}
+
+func TestAuthEmailPresentation(t *testing.T) {
+	adminOTP, e := render(db.ClaimEmailOutboxRow{TemplateType: "admin_daily_otp", PayloadJson: []byte(`{"verification_code":"012345"}`)})
+	if e != nil || adminOTP.SenderClass != "account" || !strings.Contains(adminOTP.BodyHTML, "text-align:center") || !strings.Contains(adminOTP.BodyText, "24 hours") {
+		t.Fatal("admin daily email presentation or sender class is incorrect")
+	}
+	otp, err := render(db.ClaimEmailOutboxRow{TemplateType: "email_verification", PayloadJson: []byte(`{"verification_code":"012345"}`)})
+	if err != nil || !strings.Contains(otp.BodyHTML, "text-align:center") || !strings.Contains(otp.BodyHTML, "font-size:38px") || !strings.Contains(otp.BodyHTML, "012345") || !strings.Contains(otp.BodyText, "012345") {
+		t.Fatal("verification code presentation missing")
+	}
+	reset, err := render(db.ClaimEmailOutboxRow{TemplateType: "password_reset_requested", PayloadJson: []byte(`{"action_url":"https://hackways.in/auth/reset-password?key=example"}`)})
+	if err != nil || !strings.Contains(reset.BodyHTML, ">Reset password</a>") || strings.Contains(reset.BodyHTML, "Reset password: https:") || !strings.Contains(reset.BodyText, "?key=example") || strings.Contains(strings.ToLower(reset.BodyText), "token") || strings.Contains(reset.BodyHTML, "one-time code") {
+		t.Fatal("reset link presentation incorrect")
+	}
+	alert, err := render(db.ClaimEmailOutboxRow{TemplateType: "sign_in_alert", PayloadJson: []byte(`{"device_name":"Windows PC","browser_name":"Chrome 130","approx_location":"Bengaluru, Karnataka, IN","signed_in_at":"2026-10-22T12:00:00Z"}`)})
+	if err != nil || !strings.Contains(alert.BodyText, "Device: Windows PC") || !strings.Contains(alert.BodyText, "Browser: Chrome 130") || !strings.Contains(alert.BodyText, "Near: Bengaluru, Karnataka, IN") || !strings.Contains(alert.BodyText, "approximate") {
+		t.Fatal("new-device email context missing")
 	}
 }

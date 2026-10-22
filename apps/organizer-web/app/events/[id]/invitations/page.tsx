@@ -91,9 +91,7 @@ export default async function Invitations({
       <div className="host-section-heading">
         <div>
           <h2>Invitations</h2>
-          <p className="host-muted">
-            Invite your people and follow their responses.
-          </p>
+
         </div>
         <SectionJumpButton
           className="app-button app-button-primary"

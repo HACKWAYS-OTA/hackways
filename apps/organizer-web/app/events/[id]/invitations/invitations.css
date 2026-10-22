@@ -7,7 +7,7 @@
 .invite-form textarea { resize: vertical; }
 .invite-form .field-help { margin-top: 8px; font-size: 12px; color: var(--muted); }
 .invite-form .field > label span { color: var(--muted); }
-.invite-form > button { justify-self: start; }
+.invite-form > button { justify-self: center; }
 .invite-consent { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; }
 .invite-consent .hw-checkbox { flex-shrink: 0; }
 .invite-note { padding-left: 28px; border-left: 1px solid var(--line); }
@@ -25,7 +25,7 @@
 .invitation-history .field-help, .invite-empty { color: var(--muted); margin-top: 20px; font-size: 13px; }
 @media (max-width: 800px) { .invite-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; } .invite-note { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--line); } .invitation-history td, .invitation-history th { padding-inline: 8px; min-width: 130px; } }
 
-.invitation-list-tools {display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;align-items:center;margin-block:28px 12px;}
+.invitation-list-tools {display:flex;flex-wrap:wrap;justify-content:center;gap:24px;align-items:center;margin-block:28px 12px;}
 .invitation-list-tools nav {display:flex;gap:18px;flex-wrap:wrap;}
 .invitation-list-tools nav a {display:inline-flex;gap:8px;align-items:center;color:var(--muted);padding-block:12px;border-bottom:2px solid transparent;font-size:13px;}
 .invitation-list-tools nav a[aria-current] {color:var(--ink);border-color:var(--ink);}

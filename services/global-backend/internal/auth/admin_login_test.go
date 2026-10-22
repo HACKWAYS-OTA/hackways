@@ -103,11 +103,18 @@ func TestDedicatedAdminSignIn(t *testing.T) {
 		t.Fatalf("verified administrator got %d", rec.Code)
 	}
 	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatal("expected exactly one admin cookie")
+	if len(cookies) != 2 {
+		t.Fatal("expected an admin session cookie and a recognition cookie")
+	}
+	recognition := cookies[1]
+	if recognition.Name != adminDeviceCookie || !recognition.Secure || !recognition.HttpOnly || recognition.Domain != "" || recognition.Path != "/" || recognition.SameSite != http.SameSiteStrictMode || recognition.MaxAge != int(deviceLifetime.Seconds()) {
+		t.Fatal("incorrect admin device recognition cookie policy")
+	}
+	if strings.Contains(rec.Body.String(), recognition.Value) {
+		t.Fatal("device recognition token exposed in response")
 	}
 	cookie := cookies[0]
-	if cookie.Name != AdminSessionCookie || !cookie.Secure || !cookie.HttpOnly || cookie.Domain != "" || cookie.Path != "/" || cookie.SameSite != http.SameSiteStrictMode || cookie.MaxAge != 1800 {
+	if cookie.Name != AdminSessionCookie || !cookie.Secure || !cookie.HttpOnly || cookie.Domain != "" || cookie.Path != "/" || cookie.SameSite != http.SameSiteStrictMode || cookie.MaxAge != int(UserSessionLifetime.Seconds()) {
 		t.Fatal("incorrect admin cookie policy")
 	}
 	if strings.Contains(rec.Body.String(), cookie.Value) {
@@ -118,8 +125,11 @@ func TestDedicatedAdminSignIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowed, err := q.IsPlatformAdminSession(ctx, db.IsPlatformAdminSessionParams{SessionID: session.SessionID, UserID: user.ID})
-	if err != nil || !allowed {
-		t.Fatal("dedicated admin session missing")
+	if err != nil || allowed {
+		t.Fatal("password sign-in must require daily OTP before admin access")
+	}
+	if err = q.MarkAdminSessionVerified(ctx, session.SessionID); err != nil {
+		t.Fatal(err)
 	}
 	meReq := httptest.NewRequest(http.MethodGet, "/admin/me", nil)
 	meReq.AddCookie(cookie)

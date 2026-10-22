@@ -107,12 +107,18 @@ func (q *Queries) BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutbo
 const claimEmailOutbox = `-- name: ClaimEmailOutbox :many
 WITH picked AS (
  SELECT id FROM email_outbox WHERE status='pending' AND scheduled_at<=NOW()
- ORDER BY scheduled_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+ AND (COALESCE(cardinality($1::text[]),0)=0 OR template_type=ANY($1::text[]))
+ ORDER BY scheduled_at,id LIMIT $2::int FOR UPDATE SKIP LOCKED
 )
 UPDATE email_outbox o SET scheduled_at=NOW()+INTERVAL '5 minutes',lease_token=gen_random_uuid(),updated_at=NOW()
 FROM picked WHERE o.id=picked.id
 RETURNING o.id,o.rsvp_id,o.event_id,o.recipient_email,o.recipient_name,o.template_type,o.payload_json,o.retry_count,o.lease_token,o.first_sent_at
 `
+
+type ClaimEmailOutboxParams struct {
+	TemplateTypes []string `json:"template_types"`
+	BatchLimit    int32    `json:"batch_limit"`
+}
 
 type ClaimEmailOutboxRow struct {
 	ID             pgtype.UUID        `json:"id"`
@@ -127,8 +133,8 @@ type ClaimEmailOutboxRow struct {
 	FirstSentAt    pgtype.Timestamptz `json:"first_sent_at"`
 }
 
-func (q *Queries) ClaimEmailOutbox(ctx context.Context, limit int32) ([]ClaimEmailOutboxRow, error) {
-	rows, err := q.db.Query(ctx, claimEmailOutbox, limit)
+func (q *Queries) ClaimEmailOutbox(ctx context.Context, arg ClaimEmailOutboxParams) ([]ClaimEmailOutboxRow, error) {
+	rows, err := q.db.Query(ctx, claimEmailOutbox, arg.TemplateTypes, arg.BatchLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +176,7 @@ func (q *Queries) CleanupAuthAttempts(ctx context.Context) error {
 
 const consumeEmailVerification = `-- name: ConsumeEmailVerification :one
 UPDATE email_verifications SET consumed_at=clock_timestamp()
-WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() RETURNING user_id,email
+WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp() RETURNING user_id,email
 `
 
 type ConsumeEmailVerificationRow struct {
@@ -202,7 +208,7 @@ func (q *Queries) CountAuthAttempt(ctx context.Context, scopeHash string) (int32
 const createEmailVerification = `-- name: CreateEmailVerification :exec
 INSERT INTO email_verifications(user_id,email,token_hash,expires_at)
 VALUES ($1,$2,$3,NOW()+INTERVAL '15 minutes') ON CONFLICT(user_id)
-DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,created_at=NOW()
+DO UPDATE SET email=EXCLUDED.email,token_hash=EXCLUDED.token_hash,expires_at=EXCLUDED.expires_at,consumed_at=NULL,attempts=0,created_at=NOW()
 `
 
 type CreateEmailVerificationParams struct {
@@ -431,7 +437,7 @@ func (q *Queries) SetStorageWriteTimeout(ctx context.Context) error {
 }
 
 const verificationCodeActive = `-- name: VerificationCodeActive :one
-SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp())
+SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp())
 `
 
 func (q *Queries) VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error) {

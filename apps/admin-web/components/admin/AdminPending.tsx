@@ -1,0 +1,1 @@
+export function AdminPending() { return <div className="admin-result-state admin-loading" role="status" aria-label="Loading records"><span className="wordmark admin-loading-wordmark" aria-hidden="true">hackways.</span><span className="admin-loading-line" aria-hidden="true" /><span className="sr-only">Loading records</span></div>; }

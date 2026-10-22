@@ -9,6 +9,9 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@hackways/ui"],
   poweredByHeader: false,
+  async headers() {
+    return [{ source: "/auth/unsubscribe", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "private, no-store" }] }, { source: "/auth/reset-password", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "private, no-store" }] }];
+  },
 };
 
 module.exports = nextConfig;

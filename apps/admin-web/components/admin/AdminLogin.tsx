@@ -23,6 +23,7 @@ export function AdminLogin({ next }: { next: string }) {
   return <form onSubmit={submit} className="hw-auth-form" aria-busy={pending}>
     <Input name="email" type="email" label="Email address" autoComplete="username" disabled={pending} required maxLength={320} />
     <AuthPasswordInput name="password" autoComplete="current-password" disabled={pending} required maxLength={72} />
+    <a className="hw-auth-forgot" href={`${process.env.NEXT_PUBLIC_APP_URL || 'https://hackways.in'}/auth/forgot-password`}>Forgot password?</a>
     {error && <p className="hw-auth-error" role="alert">{error}</p>}
     <AuthSubmit disabled={pending}>{pending?'Signing in...':'Sign in'}</AuthSubmit>
   </form>;

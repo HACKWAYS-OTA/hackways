@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AdminLogin establishes a separate, short-lived host-only admin session.
+// AdminLogin establishes a separate host-only admin session requiring daily OTP.
 // Only explicitly granted, verified accounts can create one.
 func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
@@ -42,37 +42,18 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in failed", nil)
 		return
 	}
-	tx, err := h.pool.Begin(r.Context())
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
+	if err = h.establishSession(w, r, user.ID, user.PasswordHash, true); err != nil {
+		switch {
+		case errors.Is(err, errAdminAccess):
+			platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
+		case errors.Is(err, errCredentialsChanged):
+			platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in again with your current password", nil)
+		default:
+			platform.RespondDatabaseError(w, err)
+		}
 		return
 	}
-	defer tx.Rollback(r.Context())
-	q := h.queries.WithTx(tx)
-	allowed, err := q.IsPlatformAdministrator(r.Context(), user.ID)
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if !allowed {
-		platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
-		return
-	}
-	duration := 30 * time.Minute
-	token, session, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, duration)
-	if err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if err = q.RecordPlatformAdminSession(r.Context(), session.ID); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	if err = tx.Commit(r.Context()); err != nil {
-		platform.RespondDatabaseError(w, err)
-		return
-	}
-	SetSessionCookie(w, AdminSessionCookie, token, duration, h.isProduction)
+
 	platform.RespondJSON(w, 200, struct {
 		DisplayName string `json:"display_name"`
 	}{user.DisplayName})
@@ -139,5 +120,8 @@ func (h *Handler) AdminRoutes() chi.Router {
 	r.Post("/login", h.AdminLogin)
 	r.Post("/logout", h.AdminLogout)
 	r.Get("/me", h.AdminEntry)
+	r.With(RequireAdminIdentity(h.sm, h.queries)).Post("/verification/request", h.RequestAdminVerification)
+	r.With(RequireAdminIdentity(h.sm, h.queries)).Post("/verification/confirm", h.ConfirmAdminVerification)
+	r.With(RequirePlatformAdmin(h.sm, h.queries)).Get("/session", h.RefreshAdminSessionCookie)
 	return r
 }

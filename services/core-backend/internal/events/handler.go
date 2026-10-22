@@ -45,6 +45,7 @@ func (h *Handler) Routes() chi.Router {
 	r.With(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries)).Get("/organizer", h.ListOrganizerEvents)
 	r.With(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries)).Post("/", h.CreateEvent)
 	r.Get("/", h.ListEvents)
+	r.Get("/promotions", h.DiscoverPromotions)
 	r.Get("/by-slug/{slug}", h.GetEventBySlug)
 	r.Get("/by-slug/{slug}/registration-form", h.PublicRegistrationForm)
 	r.With(auth.RequireAuth(h.sessions)).Get("/by-slug/{slug}/invitation", h.AccountInvitation)

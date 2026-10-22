@@ -64,6 +64,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
             NEXT_PUBLIC_API_URL=/api/v1
             NEXT_PUBLIC_GLOBAL_API_URL=/api/v1
             NEXT_PUBLIC_SITE_URL=https://hackways.in

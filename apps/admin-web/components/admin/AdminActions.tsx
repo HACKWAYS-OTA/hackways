@@ -44,6 +44,7 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
       if (!response.ok) {
         const failure: unknown = await response.json().catch(() => null);
         const envelope = failure && typeof failure === 'object' && 'error' in failure ? failure.error : null;
+        if (envelope && typeof envelope === 'object' && 'code' in envelope && envelope.code === 'ADMIN_VERIFICATION_REQUIRED') { window.location.assign(`/verify?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
         if (response.status === 403 && envelope && typeof envelope === 'object' && 'code' in envelope && envelope.code === 'ADMIN_ACCESS_REQUIRED') {
           window.location.replace('/access-denied');
           return;
@@ -87,7 +88,7 @@ function Confirmation({ name, children }: { name: string; children: ReactNode })
 }
 
 export function SessionRevoke({ person, sessionID }: { person: AdminRecord; sessionID: string }) {
-  return <details className="admin-session-action"><summary>Revoke session</summary><ActionForm title="Revoke this session" path={`global/people/${person.reference}/sessions/${sessionID}/revoke`} payload={{ updated_at: text(person, 'updated_at') }} submitLabel="Revoke session" success="Session revoked." /></details>;
+  return <details className="admin-session-action"><summary className="app-button app-button-outline app-button-sm">Revoke session</summary><ActionForm title="Revoke this session" path={`global/people/${person.reference}/sessions/${sessionID}/revoke`} payload={{ updated_at: text(person, 'updated_at') }} submitLabel="Revoke session" success="Session revoked." /></details>;
 }
 
 export function AdminActions({ resource, record }: { resource: AdminModule; record: AdminRecord }) {

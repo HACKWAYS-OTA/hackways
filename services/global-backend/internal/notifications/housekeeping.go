@@ -22,6 +22,9 @@ func Housekeeping(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) 
 			if err := q.CleanupAuthAttempts(job); err != nil {
 				logger.Warn("authentication counter cleanup failed", "error", err)
 			}
+			if err := q.CleanupExpiredRecognizedDevices(job); err != nil {
+				logger.Warn("expired device cleanup failed", "error", err)
+			}
 			cancel()
 		}
 	}

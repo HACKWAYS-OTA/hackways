@@ -9,15 +9,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/admin"
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
+	"github.com/hackways/global-backend/internal/rollouts"
 	"github.com/hackways/global-backend/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -96,7 +99,7 @@ func main() {
 	emailConfigured := false
 	acsEndpoint, acsKey, acsSender := notifications.EmailConfiguration()
 	if acsEndpoint != "" || acsKey != "" || acsSender != "" {
-		configuredSender, senderErr := notifications.NewACSEmailSender(acsEndpoint, acsKey, acsSender)
+		configuredSender, senderErr := notifications.NewACSEmailSender(acsEndpoint, acsKey, acsSender, os.Getenv("ACS_TRANSACTIONAL_SENDER_ADDRESS"), os.Getenv("ACS_PROMOTIONAL_SENDER_ADDRESS"))
 		if senderErr != nil {
 			logger.Error("invalid ACS email configuration", "error", senderErr)
 			os.Exit(1)
@@ -110,13 +113,33 @@ func main() {
 	var outboxWorker *notifications.OutboxWorker
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
+	var activityDone <-chan struct{}
+	if !cfg.AdminPreviewOnly {
+		activityDone = auth.StartSessionActivity(workerCtx, db.New(pool), logger)
+	}
+	var housekeepingWG sync.WaitGroup
+	runtimeCache := rollouts.New(db.New(pool))
+	if err := runtimeCache.Refresh(workerCtx); err != nil {
+		logger.Warn("runtime configuration unavailable; presentation features use their safe baseline")
+	}
+	housekeepingWG.Add(1)
+	go func() { defer housekeepingWG.Done(); runtimeCache.Run(workerCtx, logger) }()
 
 	if pool != nil && emailConfigured && !cfg.AdminPreviewOnly {
 		outboxWorker = notifications.NewOutboxWorker(pool, emailSender, logger, 2*time.Second)
+		if filter := strings.TrimSpace(os.Getenv("EMAIL_OUTBOX_TEMPLATE_FILTER")); filter != "" {
+			var values []string
+			for _, value := range strings.Split(filter, ",") {
+				values = append(values, strings.TrimSpace(value))
+			}
+			if err := outboxWorker.SetTemplateFilter(values); err != nil {
+				logger.Error("invalid outbox template filter")
+				os.Exit(1)
+			}
+		}
 		outboxWorker.Start(workerCtx)
 	}
 
-	var housekeepingWG sync.WaitGroup
 	if !cfg.AdminPreviewOnly {
 		housekeepingWG.Add(1)
 		go func() { defer housekeepingWG.Done(); notifications.Housekeeping(workerCtx, pool, logger) }()
@@ -138,6 +161,8 @@ func main() {
 		RedirectURL: cfg.GoogleRedirectURL, ReturnOrigins: cfg.GoogleReturnOrigins,
 		IsProduction: cfg.AppEnv == "production",
 	})
+	authHandler.SetLocationProxies(cfg.AuthLocationProxyCIDRs)
+	authHandler.SetRollouts(runtimeCache)
 	storageHandler := storage.NewHandler(sasSigner, pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
@@ -153,7 +178,7 @@ func main() {
 			v1.Mount("/auth", authHandler.Routes())
 			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
 		}
-		v1.Mount("/admin/global", admin.NewHandler(pool).Routes())
+		v1.Mount("/admin/global", admin.NewHandler(pool, runtimeCache).Routes())
 
 	})
 
@@ -182,6 +207,9 @@ func main() {
 		shutdownResult := srv.Shutdown(ctx)
 		workerCancel()
 		housekeepingWG.Wait()
+		if activityDone != nil {
+			<-activityDone
+		}
 
 		if outboxWorker != nil {
 			logger.Info("stopping transactional email outbox worker...")

@@ -104,8 +104,13 @@ func (sm *SessionManager) GetSession(ctx context.Context, token string) (*Sessio
 		return nil, err
 	}
 
-	// Update last_seen asynchronously in background or inline
-	_ = sm.queries.UpdateSessionLastSeen(ctx, row.ID)
+	// Activity is non-authoritative telemetry. Only stale heartbeats enter the
+	// bounded process worker; every authorization read still checks PostgreSQL.
+	if time.Since(row.LastSeen.Time) >= 5*time.Minute {
+		if recorder := sessionActivity.Load(); recorder != nil {
+			recorder.Mark(row.ID)
+		}
+	}
 
 	var avatarURL *string
 	if row.AvatarUrl.Valid {
