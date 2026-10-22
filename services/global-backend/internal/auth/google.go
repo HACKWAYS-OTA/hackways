@@ -78,6 +78,10 @@ func (i *googleUserInfo) UnmarshalJSON(data []byte) error {
 // GoogleStart redirects the browser to Google's consent screen.
 func (h *Handler) GoogleStart(w http.ResponseWriter, r *http.Request) {
 	if !h.google.enabled() {
+		if destination := r.URL.Query().Get("return_to"); destination != "" && h.google.validReturnTo(destination) {
+			h.redirectGoogleError(w, r, destination, "Google sign-in is temporarily unavailable. Please sign in with email.")
+			return
+		}
 		platform.RespondError(w, http.StatusServiceUnavailable, "GOOGLE_AUTH_UNAVAILABLE", "Google sign-in is not configured", nil)
 		return
 	}

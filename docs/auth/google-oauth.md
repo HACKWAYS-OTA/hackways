@@ -9,7 +9,7 @@ Set these values in the protected runtime environment for `global-backend`:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URL` (`https://auth.hackways.in/api/v1/auth/google/callback` in production)
-- `GOOGLE_ALLOWED_RETURN_ORIGINS` (`https://app.hackways.in,https://organizer.hackways.in` in production)
+- `GOOGLE_ALLOWED_RETURN_ORIGINS` (`https://hackways.in` in production)
 
 The client secret must never be committed or printed. If the three Google variables are partially configured, the backend refuses to start rather than silently exposing a broken sign-in flow.
 
@@ -25,6 +25,8 @@ The one-time handoff is required because a host-only cookie set on `auth.hackway
 
 ## Google Cloud setup
 
-Register the production callback URI exactly as above and authorize the app origins `https://app.hackways.in` and `https://organizer.hackways.in`. Local development uses the localhost values in the relevant `.env.example` files.
+Register the production callback URI exactly as above and authorize the app origins `https://hackways.in`. Local development uses the localhost values in the relevant `.env.example` files.
 
 Apply migration `000008_google_oauth` before enabling the runtime variables. Better Auth remains unconfigured; enabling a second session implementation would bypass the existing Go authorization and session checks.
+
+The main application and management pages now share `hackways.in` and `/manage`. Core static chunks use `/_core/_next/` to avoid collisions with the independent public app; management retains `/manage/_next/`. Legacy app/organizer hosts redirect to the canonical origin. The Google sign-in icon comes unmodified from https://developers.google.com/static/identity/images/g-logo.png (Google Identity branding guidelines).

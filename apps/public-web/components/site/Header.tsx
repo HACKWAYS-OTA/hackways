@@ -29,7 +29,7 @@ export function Header() {
           if (event.target instanceof Element && event.target.closest("a")) setOpen(false);
         }}>
           <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Discover</Link>
-          <a href={site.app}>Explore</a>
+          <a href={`${site.app}/discover`}>Explore</a>
           <a href="/create">Create</a>
           <a className="button button-primary mobile-host-action" href="/create">Host an event</a>
         </nav>

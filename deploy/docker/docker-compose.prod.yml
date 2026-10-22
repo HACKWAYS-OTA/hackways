@@ -130,7 +130,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
-      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://app.hackways.in}
+      GOOGLE_ALLOWED_RETURN_ORIGINS: ${GOOGLE_ALLOWED_RETURN_ORIGINS:-https://hackways.in}
     networks:
       - hackways-internal
     deploy:
@@ -185,7 +185,7 @@ services:
     environment:
       PORT: 3001
       NODE_OPTIONS: "--max-old-space-size=190"
-      NEXT_PUBLIC_API_URL: https://app.hackways.in/api/v1
+      NEXT_PUBLIC_API_URL: https://hackways.in/api/v1
       CORE_API_URL: http://core-backend:8081/api/v1
       GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:
@@ -212,9 +212,9 @@ services:
     environment:
       PORT: 3002
       NODE_OPTIONS: "--max-old-space-size=180"
-      NEXT_PUBLIC_API_URL: https://app.hackways.in/api/v1
-      NEXT_PUBLIC_APP_URL: https://app.hackways.in
-      NEXT_PUBLIC_ORGANIZER_URL: https://app.hackways.in/manage
+      NEXT_PUBLIC_API_URL: https://hackways.in/api/v1
+      NEXT_PUBLIC_APP_URL: https://hackways.in
+      NEXT_PUBLIC_ORGANIZER_URL: https://hackways.in/manage
       CORE_API_URL: http://core-backend:8081/api/v1
       GLOBAL_API_URL: http://global-backend:8082/api/v1
     networks:

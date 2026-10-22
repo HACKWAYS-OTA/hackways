@@ -24,7 +24,7 @@ export default function HomePage() {
             </TextAnimate>
             <p className="hero-description">Find your next tech event. Meet people who share your curiosity, or bring a community together around an idea.</p>
             <div className="hero-cta-group">
-              <a className="button button-primary hero-cta" href={site.app}>
+              <a className="button button-primary hero-cta" href={`${site.app}/discover`}>
                 Explore events
                 <span className="hero-cta-arrow" aria-hidden="true">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10h11m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -54,7 +54,7 @@ export default function HomePage() {
             { label: "Conferences", title: "Make room for a new perspective.", icon: "mic", description: "Hear different perspectives, explore a subject in depth, and take a few ideas back to your own work.", note: "Look through the event description and schedule to decide whether the topics match what you want to learn." },
             { label: "Meetups", title: "Start with a shared interest.", icon: "people", description: "Make time for a shared interest and conversations with people working on similar things.", note: "A local discussion or a small online gathering can be a useful starting point when you are exploring a new community." },
           ]} />
-          <div className="section-actions centered-actions"><a className="button button-outline" href={site.app}>Browse events</a></div>
+          <div className="section-actions centered-actions"><a className="button button-outline" href={`${site.app}/discover`}>Browse events</a></div>
         </div>
       </section>
       </div>
@@ -69,7 +69,7 @@ export default function HomePage() {
               <h2 id="hackathons-heading" tabIndex={-1}>Hackathons.<br />Make room for an idea.</h2>
               <p>Spend focused time working on an idea, trying a tool, or solving a problem with others. Start with a question and see where a few hours of building can take you.</p>
               <details className="context-note"><summary>Before you join<span aria-hidden="true" /></summary><p>Read the organizer’s brief for the theme, team requirements, schedule, and what to bring. You do not need to arrive with everything figured out; check the event’s experience requirements before joining.</p></details>
-              <a className="button button-primary" href={site.app}>Explore events</a>
+              <a className="button button-primary" href={`${site.app}/discover`}>Explore events</a>
             </div>
           </div>
         </section>
@@ -81,7 +81,7 @@ export default function HomePage() {
               <h2 id="conferences-heading">Conferences.<br />Leave with a new perspective.</h2>
               <p>Hear how other people approach the work you care about. Explore a subject in depth and take a few ideas back to your own projects.</p>
               <details className="context-note"><summary>Before you join<span aria-hidden="true" /></summary><p>Look through the topics and schedule to find the sessions that interest you. Make room for conversations between them, and check the format and participation details before making plans.</p></details>
-              <a className="button button-primary" href={site.app}>Explore events</a>
+              <a className="button button-primary" href={`${site.app}/discover`}>Explore events</a>
             </div>
           </div>
         </section>
@@ -93,7 +93,7 @@ export default function HomePage() {
               <h2 id="meetups-heading">Meetups.<br />Start with a conversation.</h2>
               <p>Make time for a shared interest and people working on similar things. A small gathering can be a good place to ask a question, share something you learned, or simply listen.</p>
               <details className="context-note"><summary>Before you join<span aria-hidden="true" /></summary><p>Find a subject that makes you curious. Read the description for the format, location, and expected experience, whether the gathering is around the corner or online.</p></details>
-              <a className="button button-primary" href={site.app}>Explore events</a>
+              <a className="button button-primary" href={`${site.app}/discover`}>Explore events</a>
             </div>
           </div>
         </section>
@@ -112,7 +112,7 @@ export default function HomePage() {
             { label: "Online", title: "Join from where you are.", icon: "laptop", description: "Join without travelling to a venue. Check the event’s time zone and the online participation details, especially if you are joining from a different region.", note: "Make sure the schedule and any software requirements work for you." },
             { label: "Hybrid", title: "Choose your way to join.", icon: "globe", description: "Look for an event that combines a physical location with online participation. Read the organizer’s instructions to understand which activities are available in each format.", note: "Choose your way of attending based on the event’s own guidance." },
           ]} />
-          <a className="button button-outline" href={site.app}>Find a format that fits</a>
+          <a className="button button-outline" href={`${site.app}/discover`}>Find a format that fits</a>
         </div>
       </section>
 
@@ -128,7 +128,7 @@ export default function HomePage() {
             { title: "Submit your RSVP", body: "Enter your name and email, add any optional notes, and submit the form. A place is reserved only after the service confirms your request." },
           ]} />
           <p className="section-note">Availability is checked when your request is processed. Opening the RSVP form does not hold a place, and registration may close before the event starts.</p>
-          <div className="section-actions"><a className="button button-primary" href={site.app}>Find an event</a><Link className="text-link" href="/help">Registration FAQs</Link></div>
+          <div className="section-actions"><a className="button button-primary" href={`${site.app}/discover`}>Find an event</a><Link className="text-link" href="/help">Registration FAQs</Link></div>
         </div>
       </section>
 
@@ -137,7 +137,7 @@ export default function HomePage() {
           <div className="section-intro">
             <h2 id="preparation-heading">Arrive knowing what to expect.</h2>
             <p>A little preparation leaves more room for the event itself. Check the practical details before you make plans, especially when joining a new community or trying a different format.</p>
-            <a className="button button-outline" href={site.app}>Find your next event</a>
+            <a className="button button-outline" href={`${site.app}/discover`}>Find your next event</a>
           </div>
           <DisclosureList items={[
             { title: "Make time for the whole experience", body: "Check the start and end times, time zone, and any scheduled breaks. Allow time for travel or setting up an online connection." },
@@ -208,7 +208,7 @@ export default function HomePage() {
             <p>Take a look at what is happening, or create a gathering around something that matters to your community.</p>
           </div>
           <div className="start-options">
-            <div><h3>Find your next event.</h3><p>Browse hackathons, conferences, and meetups, then read the details and RSVP.</p><a className="button button-primary" href={site.app}>Explore events</a></div>
+            <div><h3>Find your next event.</h3><p>Browse hackathons, conferences, and meetups, then read the details and RSVP.</p><a className="button button-primary" href={`${site.app}/discover`}>Explore events</a></div>
             <div><h3>Host your own event.</h3><p>Create an organizer profile, add the details, and publish your next gathering.</p><a className="button button-primary" href="/create">Create an event</a></div>
           </div>
         </div>

@@ -21,7 +21,7 @@ export function AuthForm({ next }: { next: string }) {
     finally { setBusy(false); }
   }
   function continueWithGoogle() {
-    const callback = new URL('/auth/google/callback', window.location.origin);
+    const callback = new URL(process.env.NODE_ENV === 'production' ? '/manage/auth/google/callback' : '/auth/google/callback', window.location.origin);
     callback.searchParams.set('next', next);
     const start = new URL('/api/v1/auth/google/start', window.location.origin);
     start.searchParams.set('return_to', callback.toString());
