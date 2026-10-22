@@ -80,6 +80,17 @@ func TestAdminDailyVerificationAndPerDeviceRevocation(t *testing.T) {
 	if !strings.Contains(initial.Body.String(), "ADMIN_VERIFICATION_REQUIRED") {
 		t.Fatal("missing daily verification distinction")
 	}
+	operationContext, cancelOperation := context.WithTimeout(ctx, 15*time.Second)
+	defer cancelOperation()
+	request := httptest.NewRequest("POST", "/admin/verification/request", nil).WithContext(operationContext)
+	request.AddCookie(devices[0])
+	RequireAdminIdentity(h.sm, q)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		deadline, ok := r.Context().Deadline()
+		if !ok || time.Until(deadline) < 10*time.Second {
+			t.Fatal("identity lookup budget leaked into the authenticated operation")
+		}
+		w.WriteHeader(204)
+	})).ServeHTTP(httptest.NewRecorder(), request)
 	readCode := func() string {
 		t.Helper()
 		var raw []byte

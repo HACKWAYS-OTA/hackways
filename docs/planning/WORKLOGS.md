@@ -920,4 +920,6 @@ All completed work is logged here with verified commands and output.
 
 Removed the Display & accessibility link from the admin sidebar and home tools. All other module links and the normal accessible controls are preserved. This narrow change contains no database, authentication, network-policy or event-creation changes.
 
-The release race check exposed bcrypt work inside the admin verification transaction exceeding its existing idle timeout. Hashing and comparison now run before row locks; confirmation rechecks the exact stored challenge under lock. Database read failures retain the session. The existing per-device verification test passed locally. This recovery is separate from the navigation removal.
+The release race check exposed the three-second admin identity-lookup context being reused by the complete OTP handler. Hashing and comparison now run before row locks; confirmation rechecks the exact stored challenge under lock. Database read failures retain the session. The existing per-device verification test passed locally. This recovery is separate from the navigation removal.
+
+The identity lookup retains its three-second budget, while authenticated handlers inherit the original bounded request context. This prevents slow bcrypt work from expiring an unrelated identity lookup budget mid-operation.
