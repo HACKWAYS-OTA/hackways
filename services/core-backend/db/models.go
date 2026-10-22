@@ -303,6 +303,8 @@ type EventRegistrationQuestions struct {
 	Active      bool               `json:"active"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Placeholder string             `json:"placeholder"`
+	Validation  []byte             `json:"validation"`
 }
 
 type Events struct {
@@ -351,6 +353,7 @@ type Events struct {
 	RegistrationFormRevision int64              `json:"registration_form_revision"`
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
+	RegistrationFormSettings []byte             `json:"registration_form_settings"`
 }
 
 type IdempotencyRecords struct {

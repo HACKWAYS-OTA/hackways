@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,10 @@ func (h *Handler) sendRegistrationForm(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 	form := registrationforms.Form{Revision: row.RegistrationFormRevision, NameRequired: row.RegistrationNameRequired}
+	if err = json.Unmarshal(row.RegistrationFormSettings, &form.Settings); err != nil {
+		lifecycleError(w, err)
+		return
+	}
 	if err = json.Unmarshal(row.Questions, &form.Questions); err != nil {
 		lifecycleError(w, err)
 		return
@@ -57,7 +62,11 @@ func (h *Handler) SaveRegistrationForm(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 422, "INVALID_FORM", "Provide the current form revision and valid questions", nil)
 		return
 	}
-	if err := registrationforms.ValidateQuestions(form.Questions); err != nil {
+	form.Settings.Title = strings.TrimSpace(form.Settings.Title)
+	form.Settings.Description = strings.TrimSpace(form.Settings.Description)
+	form.Settings.SubmitLabel = strings.TrimSpace(form.Settings.SubmitLabel)
+	form.Settings.SuccessMessage = strings.TrimSpace(form.Settings.SuccessMessage)
+	if err := registrationforms.ValidateForm(form); err != nil {
 		platform.RespondError(w, 422, "INVALID_FORM", err.Error(), nil)
 		return
 	}
@@ -86,11 +95,16 @@ func (h *Handler) SaveRegistrationForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i, item := range form.Questions {
+		validation, marshalErr := json.Marshal(item.Validation)
+		if marshalErr != nil {
+			lifecycleError(w, marshalErr)
+			return
+		}
 		var code string
 		if item.PublicCode == "" {
-			code, err = q.CreateRegistrationQuestion(r.Context(), db.CreateRegistrationQuestionParams{EventID: id, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Position: int32(i), Options: item.Options})
+			code, err = q.CreateRegistrationQuestion(r.Context(), db.CreateRegistrationQuestionParams{EventID: id, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Position: int32(i), Options: item.Options, Placeholder: item.Placeholder, Validation: validation})
 		} else {
-			code, err = q.UpdateRegistrationQuestion(r.Context(), db.UpdateRegistrationQuestionParams{EventID: id, PublicCode: item.PublicCode, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Position: int32(i), Options: item.Options})
+			code, err = q.UpdateRegistrationQuestion(r.Context(), db.UpdateRegistrationQuestionParams{EventID: id, PublicCode: item.PublicCode, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Position: int32(i), Options: item.Options, Placeholder: item.Placeholder, Validation: validation})
 		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			platform.RespondError(w, 422, "INVALID_QUESTION", "A question does not belong to this event. Reload before saving", nil)
@@ -102,7 +116,12 @@ func (h *Handler) SaveRegistrationForm(w http.ResponseWriter, r *http.Request) {
 		}
 		form.Questions[i].PublicCode = code
 	}
-	if err = q.UpdateRegistrationForm(r.Context(), db.UpdateRegistrationFormParams{ID: id, RegistrationNameRequired: form.NameRequired}); err != nil {
+	settings, err := json.Marshal(form.Settings)
+	if err != nil {
+		lifecycleError(w, err)
+		return
+	}
+	if err = q.UpdateRegistrationForm(r.Context(), db.UpdateRegistrationFormParams{ID: id, RegistrationNameRequired: form.NameRequired, RegistrationFormSettings: settings}); err != nil {
 		lifecycleError(w, err)
 		return
 	}

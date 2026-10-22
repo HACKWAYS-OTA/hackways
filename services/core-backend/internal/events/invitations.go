@@ -1,10 +1,14 @@
 package events
 
 import (
+	"errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackways/core-backend/db"
 	"github.com/hackways/core-backend/internal/auth"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/hackways/core-backend/internal/workflows"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"net/mail"
 	"sort"
@@ -68,22 +72,96 @@ func (h *Handler) InviteAttendees(w http.ResponseWriter, r *http.Request) {
 	platform.RespondJSON(w, 200, result)
 }
 
+type invitationListItem struct {
+	RecipientEmail     string                 `json:"recipient_email"`
+	Status             db.NotificationStatus  `json:"status"`
+	CreatedAt          pgtype.Timestamptz     `json:"created_at"`
+	SentAt             pgtype.Timestamptz     `json:"sent_at"`
+	RetryCount         int32                  `json:"retry_count"`
+	RegistrationCode   *string                `json:"registration_code"`
+	RegistrationStatus *db.RegistrationStatus `json:"registration_status"`
+	CheckedInAt        pgtype.Timestamptz     `json:"checked_in_at"`
+	GuestName          string                 `json:"guest_name"`
+}
+
 func (h *Handler) Invitations(w http.ResponseWriter, r *http.Request) {
 	event, ok := h.owned(w, r)
 	if !ok {
 		return
 	}
 	limit, offset := pagination(r)
-	rows, err := h.queries.ListEventInvitations(r.Context(), db.ListEventInvitationsParams{EventID: event.ID, Limit: limit, Offset: offset})
+	search, valid := managementSearch(w, r)
+	if !valid {
+		return
+	}
+	state := r.URL.Query().Get("status")
+	if state == "" {
+		state = "all"
+	}
+	switch state {
+	case "all", "awaiting", "responded", "sent", "failed", "queued":
+	default:
+		platform.RespondError(w, 400, "INVALID_STATUS", "Choose an invitation filter", nil)
+		return
+	}
+	rows, err := h.queries.ListEventInvitations(r.Context(), db.ListEventInvitationsParams{EventID: event.ID, PageLimit: limit, PageOffset: offset, Search: search, StateFilter: state})
 	if err != nil {
 		lifecycleError(w, err)
 		return
 	}
-	if rows == nil {
-		rows = []db.ListEventInvitationsRow{}
+	items := make([]invitationListItem, 0, len(rows))
+	for _, row := range rows {
+		var code *string
+		var status *db.RegistrationStatus
+		if row.RegistrationCode != "" {
+			value := row.RegistrationCode
+			code = &value
+		}
+		if row.RegistrationStatus != "" {
+			value := db.RegistrationStatus(row.RegistrationStatus)
+			status = &value
+		}
+		items = append(items, invitationListItem{RecipientEmail: row.RecipientEmail, Status: row.Status, CreatedAt: row.CreatedAt, SentAt: row.SentAt, RetryCount: row.RetryCount, RegistrationCode: code, RegistrationStatus: status, CheckedInAt: row.CheckedInAt, GuestName: row.GuestName})
+	}
+	summary, err := h.queries.EventInvitationSummary(r.Context(), event.ID)
+	if err != nil {
+		lifecycleError(w, err)
+		return
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	platform.RespondJSON(w, 200, struct {
-		Data []db.ListEventInvitationsRow `json:"data"`
-	}{rows})
+		Data    []invitationListItem         `json:"data"`
+		Summary db.EventInvitationSummaryRow `json:"summary"`
+	}{items, summary})
+}
+
+func (h *Handler) AccountInvitation(w http.ResponseWriter, r *http.Request) {
+	event, err := h.queries.GetPublishedEventBySlug(r.Context(), chi.URLParam(r, "slug"))
+	if err != nil {
+		lifecycleError(w, err)
+		return
+	}
+	user, _ := auth.UserFromContext(r.Context())
+	invited := false
+	if user.EmailVerified {
+		invited, err = h.queries.AccountEventInvitation(r.Context(), db.AccountEventInvitationParams{EventID: event.ID, Column2: strings.ToLower(user.Email)})
+		if err != nil {
+			lifecycleError(w, err)
+			return
+		}
+	}
+	var registrationCode *string
+	registration, readErr := h.queries.GetAccountEventRSVP(r.Context(), db.GetAccountEventRSVPParams{EventID: event.ID, UserID: user.UserID})
+	if readErr != nil && !errors.Is(readErr, pgx.ErrNoRows) {
+		lifecycleError(w, readErr)
+		return
+	}
+	if readErr == nil && registration.Status != db.RegistrationStatusCancelled && registration.Status != db.RegistrationStatusExpired {
+		registrationCode = &registration.PublicCode
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	platform.RespondJSON(w, 200, struct {
+		Invited          bool    `json:"invited"`
+		RegistrationCode *string `json:"registration_code"`
+	}{invited, registrationCode})
 }

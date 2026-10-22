@@ -190,7 +190,11 @@ func (e *Engine) Register(ctx context.Context, req Request) (Reply, bool, error)
 	}
 	form := registrationforms.Form{Revision: event.RegistrationFormRevision, NameRequired: event.RegistrationNameRequired}
 	for _, item := range questions {
-		form.Questions = append(form.Questions, registrationforms.Question{PublicCode: item.PublicCode, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Options: item.Options})
+		var validation registrationforms.Validation
+		if err = json.Unmarshal(item.Validation, &validation); err != nil {
+			return Reply{}, false, err
+		}
+		form.Questions = append(form.Questions, registrationforms.Question{PublicCode: item.PublicCode, Label: item.Label, Description: item.Description, Kind: item.Kind, Required: item.Required, Options: item.Options, Placeholder: item.Placeholder, Validation: validation})
 	}
 	snapshots, err := registrationforms.ValidateAnswers(form, req.Name, req.Answers)
 	if err != nil {

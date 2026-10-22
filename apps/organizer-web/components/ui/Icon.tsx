@@ -17,7 +17,9 @@ import ArrowDown01Icon from '@hugeicons/core-free-icons/ArrowDown01Icon';
 import LockKeyIcon from '@hugeicons/core-free-icons/LockKeyIcon';
 import PencilEdit02Icon from '@hugeicons/core-free-icons/PencilEdit02Icon';
 
-const icons = { search: Search01Icon, calendar: Calendar03Icon, location: Location01Icon, arrow: ArrowRight01Icon, external: ArrowUpRight01Icon, close: Cancel01Icon, alert: Alert02Icon, check: Tick02Icon, globe: Globe02Icon, reload: ReloadIcon, discover: Compass01Icon, add: Add01Icon, image: Image01Icon, people: UserGroupIcon, down: ArrowDown01Icon, lock: LockKeyIcon, edit: PencilEdit02Icon };
+import QrCodeScanIcon from '@hugeicons/core-free-icons/QrCodeScanIcon';
+import Camera01Icon from '@hugeicons/core-free-icons/Camera01Icon';
+const icons = { scan: QrCodeScanIcon, camera: Camera01Icon, search: Search01Icon, calendar: Calendar03Icon, location: Location01Icon, arrow: ArrowRight01Icon, external: ArrowUpRight01Icon, close: Cancel01Icon, alert: Alert02Icon, check: Tick02Icon, globe: Globe02Icon, reload: ReloadIcon, discover: Compass01Icon, add: Add01Icon, image: Image01Icon, people: UserGroupIcon, down: ArrowDown01Icon, lock: LockKeyIcon, edit: PencilEdit02Icon };
 export function Icon({ name, size = 20, className = '' }: { name: keyof typeof icons; size?: number; className?: string }) {
   return <HugeiconsIcon icon={icons[name]} size={size} strokeWidth={1.8} className={className} aria-hidden="true" focusable="false" />;
 }

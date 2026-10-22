@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	AccountEventInvitation(ctx context.Context, arg AccountEventInvitationParams) (bool, error)
 	AdjustWorkflowInventory(ctx context.Context, arg AdjustWorkflowInventoryParams) error
 	AdminAuditDetail(ctx context.Context, id int64) (AdminAuditDetailRow, error)
 	AdminEditEvent(ctx context.Context, arg AdminEditEventParams) (pgtype.UUID, error)
@@ -57,6 +58,7 @@ type Querier interface {
 	EnqueueRegistrationNotification(ctx context.Context, arg EnqueueRegistrationNotificationParams) (int64, error)
 	EnsureTicket(ctx context.Context, rsvpID pgtype.UUID) (Tickets, error)
 	EventGuestSummary(ctx context.Context, eventID pgtype.UUID) (EventGuestSummaryRow, error)
+	EventInvitationSummary(ctx context.Context, eventID pgtype.UUID) (EventInvitationSummaryRow, error)
 	EventRoster(ctx context.Context, arg EventRosterParams) ([]EventRosterRow, error)
 	EventRosterFiltered(ctx context.Context, arg EventRosterFilteredParams) ([]EventRosterFilteredRow, error)
 	EventWorkflowActivity(ctx context.Context, eventID pgtype.UUID) (EventWorkflowActivityRow, error)

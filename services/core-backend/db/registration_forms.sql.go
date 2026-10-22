@@ -12,8 +12,8 @@ import (
 )
 
 const createRegistrationQuestion = `-- name: CreateRegistrationQuestion :one
-INSERT INTO event_registration_questions(event_id,label,description,kind,required,position,options)
-VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING public_code
+INSERT INTO event_registration_questions(event_id,label,description,kind,required,position,options,placeholder,validation)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::jsonb,'{}'::jsonb)) RETURNING public_code
 `
 
 type CreateRegistrationQuestionParams struct {
@@ -24,6 +24,8 @@ type CreateRegistrationQuestionParams struct {
 	Required    bool        `json:"required"`
 	Position    int32       `json:"position"`
 	Options     []string    `json:"options"`
+	Placeholder string      `json:"placeholder"`
+	Validation  []byte      `json:"validation"`
 }
 
 func (q *Queries) CreateRegistrationQuestion(ctx context.Context, arg CreateRegistrationQuestionParams) (string, error) {
@@ -35,6 +37,8 @@ func (q *Queries) CreateRegistrationQuestion(ctx context.Context, arg CreateRegi
 		arg.Required,
 		arg.Position,
 		arg.Options,
+		arg.Placeholder,
+		arg.Validation,
 	)
 	var public_code string
 	err := row.Scan(&public_code)
@@ -83,7 +87,7 @@ func (q *Queries) LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.U
 }
 
 const listRegistrationQuestions = `-- name: ListRegistrationQuestions :many
-SELECT public_code,label,description,kind,required,position,options FROM event_registration_questions
+SELECT public_code,label,description,kind,required,position,options,placeholder,validation FROM event_registration_questions
 WHERE event_id=$1 AND active ORDER BY position,id
 `
 
@@ -95,6 +99,8 @@ type ListRegistrationQuestionsRow struct {
 	Required    bool     `json:"required"`
 	Position    int32    `json:"position"`
 	Options     []string `json:"options"`
+	Placeholder string   `json:"placeholder"`
+	Validation  []byte   `json:"validation"`
 }
 
 func (q *Queries) ListRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) ([]ListRegistrationQuestionsRow, error) {
@@ -114,6 +120,8 @@ func (q *Queries) ListRegistrationQuestions(ctx context.Context, eventID pgtype.
 			&i.Required,
 			&i.Position,
 			&i.Options,
+			&i.Placeholder,
+			&i.Validation,
 		); err != nil {
 			return nil, err
 		}
@@ -176,8 +184,8 @@ func (q *Queries) ManagedGuestDetail(ctx context.Context, arg ManagedGuestDetail
 }
 
 const readRegistrationForm = `-- name: ReadRegistrationForm :one
-SELECT e.registration_form_revision,e.registration_name_required,
- COALESCE((SELECT jsonb_agg(jsonb_build_object('public_code',q.public_code,'label',q.label,'description',q.description,'kind',q.kind,'required',q.required,'options',q.options) ORDER BY q.position,q.id)
+SELECT e.registration_form_revision,e.registration_name_required,e.registration_form_settings,
+ COALESCE((SELECT jsonb_agg(jsonb_build_object('public_code',q.public_code,'label',q.label,'description',q.description,'kind',q.kind,'required',q.required,'options',q.options,'placeholder',q.placeholder,'validation',q.validation) ORDER BY q.position,q.id)
  FROM event_registration_questions q WHERE q.event_id=e.id AND q.active),'[]'::jsonb)::jsonb AS questions
 FROM events e WHERE e.id=$1 AND e.deleted_at IS NULL
 `
@@ -185,32 +193,39 @@ FROM events e WHERE e.id=$1 AND e.deleted_at IS NULL
 type ReadRegistrationFormRow struct {
 	RegistrationFormRevision int64  `json:"registration_form_revision"`
 	RegistrationNameRequired bool   `json:"registration_name_required"`
+	RegistrationFormSettings []byte `json:"registration_form_settings"`
 	Questions                []byte `json:"questions"`
 }
 
 func (q *Queries) ReadRegistrationForm(ctx context.Context, id pgtype.UUID) (ReadRegistrationFormRow, error) {
 	row := q.db.QueryRow(ctx, readRegistrationForm, id)
 	var i ReadRegistrationFormRow
-	err := row.Scan(&i.RegistrationFormRevision, &i.RegistrationNameRequired, &i.Questions)
+	err := row.Scan(
+		&i.RegistrationFormRevision,
+		&i.RegistrationNameRequired,
+		&i.RegistrationFormSettings,
+		&i.Questions,
+	)
 	return i, err
 }
 
 const updateRegistrationForm = `-- name: UpdateRegistrationForm :exec
-UPDATE events SET registration_form_revision=registration_form_revision+1,registration_name_required=$2,revision=revision+1,updated_at=clock_timestamp() WHERE id=$1
+UPDATE events SET registration_form_revision=registration_form_revision+1,registration_name_required=$2,registration_form_settings=COALESCE($3::jsonb,'{}'::jsonb),revision=revision+1,updated_at=clock_timestamp() WHERE id=$1
 `
 
 type UpdateRegistrationFormParams struct {
 	ID                       pgtype.UUID `json:"id"`
 	RegistrationNameRequired bool        `json:"registration_name_required"`
+	RegistrationFormSettings []byte      `json:"registration_form_settings"`
 }
 
 func (q *Queries) UpdateRegistrationForm(ctx context.Context, arg UpdateRegistrationFormParams) error {
-	_, err := q.db.Exec(ctx, updateRegistrationForm, arg.ID, arg.RegistrationNameRequired)
+	_, err := q.db.Exec(ctx, updateRegistrationForm, arg.ID, arg.RegistrationNameRequired, arg.RegistrationFormSettings)
 	return err
 }
 
 const updateRegistrationQuestion = `-- name: UpdateRegistrationQuestion :one
-UPDATE event_registration_questions SET label=$3,description=$4,kind=$5,required=$6,position=$7,options=$8,active=true,updated_at=clock_timestamp()
+UPDATE event_registration_questions SET label=$3,description=$4,kind=$5,required=$6,position=$7,options=$8,placeholder=$9,validation=COALESCE($10::jsonb,'{}'::jsonb),active=true,updated_at=clock_timestamp()
 WHERE event_id=$1 AND public_code=$2 RETURNING public_code
 `
 
@@ -223,6 +238,8 @@ type UpdateRegistrationQuestionParams struct {
 	Required    bool        `json:"required"`
 	Position    int32       `json:"position"`
 	Options     []string    `json:"options"`
+	Placeholder string      `json:"placeholder"`
+	Validation  []byte      `json:"validation"`
 }
 
 func (q *Queries) UpdateRegistrationQuestion(ctx context.Context, arg UpdateRegistrationQuestionParams) (string, error) {
@@ -235,6 +252,8 @@ func (q *Queries) UpdateRegistrationQuestion(ctx context.Context, arg UpdateRegi
 		arg.Required,
 		arg.Position,
 		arg.Options,
+		arg.Placeholder,
+		arg.Validation,
 	)
 	var public_code string
 	err := row.Scan(&public_code)

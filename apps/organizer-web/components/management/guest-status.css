@@ -34,3 +34,13 @@
   .host-drawer-person > div { flex-basis: calc(100% - 64px); }
   .host-drawer-person .guest-status-trigger, .host-drawer-person .guest-status-label { margin-left: 64px; margin-top: 0; }
 }
+
+.guest-quick-decision { margin-top:24px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.guest-pending-note { padding:14px 18px; color:#76531e; background:#fbf3e5; font-size:14px; }
+.guest-quick-decision form { padding:4px 18px 18px; }
+.guest-decision-buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+.guest-approve-button { background:#2e6c47; color:#fff; }
+.guest-approve-button:hover:enabled { background:#225336; }
+.guest-decline-button { background:#fff2f3; color:#923b49; border:1px solid #e9c4ca; }
+.guest-decline-button:hover:enabled { background:#f8e5e9; }
+.guest-row-checkin { flex-shrink:0; margin-right:18px; }

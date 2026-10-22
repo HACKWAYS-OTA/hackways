@@ -775,3 +775,113 @@ func TestTransfer_RevokesOldTicketAndSignsRecipientTicket(t *testing.T) {
 		t.Fatal("tampered ticket accepted")
 	}
 }
+
+func TestSectionedRegistration_ValidationInvitationAndSnapshot(t *testing.T) {
+	f, guest := ownerSetup(t), ownerSetup(t)
+	ctx := context.Background()
+	if _, err := f.pool.Exec(ctx, "UPDATE users SET email_verified=TRUE WHERE id=$1 OR id=$2", f.owner.ID, guest.owner.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, "UPDATE events SET registration_mode='approval' WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	api := NewHandler(f.pool).Routes()
+	path := "/" + idString(f.event.ID)
+	body := []byte(`{"revision":1,"name_required":true,"settings":{"title":"Join our community","description":"Tell us about your team","submit_label":"Send my details","success_message":"Thank you for applying"},"questions":[{"label":"Your team","kind":"section","description":"A few details","required":false},{"label":"Contact email","kind":"email","required":true},{"label":"Team size","kind":"number","required":true,"validation":{"min":2,"max":5,"integer":true}},{"label":"Your interests","kind":"section"},{"label":"Topics","kind":"multiselect","required":true,"options":["Go","PostgreSQL","Design"]},{"label":"Tell us more","kind":"textarea","validation":{"min_length":5,"max_length":100,"message":"Use between five and one hundred characters"},"placeholder":"Your idea"}]}`)
+	w := requestJSON(t, api, "PUT", path+"/registration-form", body, f.cookie)
+	var form struct {
+		Data registrationforms.Form `json:"data"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &form) != nil || len(form.Data.Questions) != 6 || form.Data.Settings.Title != "Join our community" {
+		t.Fatalf("section form save: %d %s", w.Code, w.Body.String())
+	}
+	if w = requestJSON(t, api, "GET", "/by-slug/"+f.event.Slug+"/registration-form", nil, nil); w.Code != 200 || !strings.Contains(w.Body.String(), "Your idea") {
+		t.Fatal("public form settings not persisted")
+	}
+	invitationBody, _ := json.Marshal(struct {
+		Emails []string `json:"emails"`
+	}{[]string{guest.owner.Email}})
+	r := httptest.NewRequest("POST", path+"/invitations", bytes.NewReader(invitationBody))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Idempotency-Key", "sectioned-invitation-integration-key")
+	r.AddCookie(f.cookie)
+	w = httptest.NewRecorder()
+	api.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Fatalf("invite: %d %s", w.Code, w.Body.String())
+	}
+	if w = requestJSON(t, api, "GET", "/by-slug/"+f.event.Slug+"/invitation", nil, nil); w.Code != 401 {
+		t.Fatal("anonymous invitation lookup allowed")
+	}
+	w = requestJSON(t, api, "GET", "/by-slug/"+f.event.Slug+"/invitation", nil, guest.cookie)
+	var state struct {
+		Invited          bool    `json:"invited"`
+		RegistrationCode *string `json:"registration_code"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &state) != nil || !state.Invited || state.RegistrationCode != nil {
+		t.Fatal("verified invitee not recognized")
+	}
+	outsider := ownerSetup(t)
+	w = requestJSON(t, api, "GET", "/by-slug/"+f.event.Slug+"/invitation", nil, outsider.cookie)
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &state) != nil || state.Invited {
+		t.Fatal("invitation leaked to another account")
+	}
+	revision := form.Data.Revision
+	inputs := []registrationforms.Answer{{Code: form.Data.Questions[1].PublicCode, Text: "contact@example.invalid"}, {Code: form.Data.Questions[2].PublicCode, Text: "3"}, {Code: form.Data.Questions[4].PublicCode, Selected: []string{"Go", "PostgreSQL"}}, {Code: form.Data.Questions[5].PublicCode, Text: "Building together"}}
+	engine := workflows.New(f.pool)
+	req := workflows.Request{EventID: f.event.ID, UserID: guest.owner.ID, Email: guest.owner.Email, Name: guest.owner.DisplayName, Key: "sectioned-registration-integration-key", FormRevision: &revision, Answers: inputs}
+	inputs[1].Text = "6"
+	if _, _, err := engine.Register(ctx, req); err == nil {
+		t.Fatal("numeric maximum bypassed")
+	}
+	inputs[1].Text = "2.5"
+	if _, _, err := engine.Register(ctx, req); err == nil {
+		t.Fatal("whole number rule bypassed")
+	}
+	inputs[1].Text = "3"
+	inputs[2].Selected = []string{"Unknown"}
+	if _, _, err := engine.Register(ctx, req); err == nil {
+		t.Fatal("unknown multiple choice accepted")
+	}
+	inputs[2].Selected = []string{"Go", "PostgreSQL"}
+	inputs[3].Text = "tiny"
+	if _, _, err := engine.Register(ctx, req); err == nil {
+		t.Fatal("minimum length bypassed")
+	}
+	inputs[3].Text = "Building together"
+	result, _, err := engine.Register(ctx, req)
+	if err != nil || result.Data.Status != db.RegistrationStatusPendingApproval {
+		t.Fatalf("invited registration bypassed approval or failed: %v", err)
+	}
+	if replay, yes, err := engine.Register(ctx, req); err != nil || !yes || replay.Data.ID != result.Data.ID {
+		t.Fatal("section submission did not replay safely")
+	}
+	stored, err := f.q.LatestRegistrationAnswers(ctx, result.Data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answers []registrationforms.Snapshot
+	if json.Unmarshal(stored.Answers, &answers) != nil || len(answers) != 4 || answers[0].Section != "Your team" || answers[2].Section != "Your interests" || len(answers[2].Selected) != 2 {
+		t.Fatal("section labels or multiple-choice snapshots lost")
+	}
+	w = requestJSON(t, api, "GET", path+"/invitations?status=responded", nil, f.cookie)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"registration_status":"pending_approval"`) || strings.Contains(w.Body.String(), `"valid"`) {
+		t.Fatalf("invitation response contract: %d %s", w.Code, w.Body.String())
+	}
+	w = requestJSON(t, api, "GET", path+"/invitations?status=awaiting", nil, f.cookie)
+	var history struct {
+		Data    []db.ListEventInvitationsRow `json:"data"`
+		Summary db.EventInvitationSummaryRow `json:"summary"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &history) != nil || len(history.Data) != 0 || history.Summary.Awaiting != 0 || history.Summary.Responded != 1 {
+		t.Fatal("invitation filters or counts disagree")
+	}
+	w = requestJSON(t, api, "GET", "/by-slug/"+f.event.Slug+"/invitation", nil, guest.cookie)
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &state) != nil || state.RegistrationCode == nil || *state.RegistrationCode != result.Data.PublicCode {
+		t.Fatal("existing invited registration not returned")
+	}
+	event, err := f.q.GetEventByID(ctx, f.event.ID)
+	if err != nil || event.CurrentRsvpCount != 0 || event.HeldRsvpCount != 0 {
+		t.Fatal("application reserved inventory")
+	}
+}

@@ -47,6 +47,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/", h.ListEvents)
 	r.Get("/by-slug/{slug}", h.GetEventBySlug)
 	r.Get("/by-slug/{slug}/registration-form", h.PublicRegistrationForm)
+	r.With(auth.RequireAuth(h.sessions)).Get("/by-slug/{slug}/invitation", h.AccountInvitation)
 	r.Get("/{id}", h.GetEvent)
 	h.mountManagement(r)
 	return r

@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountEventInvitation = `-- name: AccountEventInvitation :one
+SELECT EXISTS(SELECT 1 FROM email_outbox WHERE event_id=$1 AND template_type='event_invitation' AND lower(recipient_email)=lower($2::text))::boolean AS invited
+`
+
+type AccountEventInvitationParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	Column2 string      `json:"column_2"`
+}
+
+func (q *Queries) AccountEventInvitation(ctx context.Context, arg AccountEventInvitationParams) (bool, error) {
+	row := q.db.QueryRow(ctx, accountEventInvitation, arg.EventID, arg.Column2)
+	var invited bool
+	err := row.Scan(&invited)
+	return invited, err
+}
+
 const countEventInvitations = `-- name: CountEventInvitations :one
 SELECT count(*) FROM email_outbox WHERE event_id=$1 AND template_type='event_invitation'
 `
@@ -66,28 +82,80 @@ func (q *Queries) EnqueueEventInvitation(ctx context.Context, arg EnqueueEventIn
 	return result.RowsAffected(), nil
 }
 
+const eventInvitationSummary = `-- name: EventInvitationSummary :one
+SELECT count(*)::integer AS total,count(*) FILTER(WHERE status='sent')::integer AS sent,
+ count(*) FILTER(WHERE status='pending')::integer AS queued,
+ count(*) FILTER(WHERE status='failed')::integer AS failed,
+ count(*) FILTER(WHERE EXISTS(SELECT 1 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=o.event_id AND lower(COALESCE(u.email,r.guest_email))=lower(o.recipient_email) AND r.status IN ('confirmed','pending_approval','waitlisted','offered')))::integer AS responded,
+ count(*) FILTER(WHERE NOT EXISTS(SELECT 1 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=o.event_id AND lower(COALESCE(u.email,r.guest_email))=lower(o.recipient_email)))::integer AS awaiting
+FROM email_outbox o WHERE o.event_id=$1 AND template_type='event_invitation'
+`
+
+type EventInvitationSummaryRow struct {
+	Total     int32 `json:"total"`
+	Sent      int32 `json:"sent"`
+	Queued    int32 `json:"queued"`
+	Failed    int32 `json:"failed"`
+	Responded int32 `json:"responded"`
+	Awaiting  int32 `json:"awaiting"`
+}
+
+func (q *Queries) EventInvitationSummary(ctx context.Context, eventID pgtype.UUID) (EventInvitationSummaryRow, error) {
+	row := q.db.QueryRow(ctx, eventInvitationSummary, eventID)
+	var i EventInvitationSummaryRow
+	err := row.Scan(
+		&i.Total,
+		&i.Sent,
+		&i.Queued,
+		&i.Failed,
+		&i.Responded,
+		&i.Awaiting,
+	)
+	return i, err
+}
+
 const listEventInvitations = `-- name: ListEventInvitations :many
-SELECT recipient_email, status, created_at, sent_at, retry_count
-FROM email_outbox WHERE event_id=$1 AND template_type='event_invitation'
-ORDER BY created_at DESC, id LIMIT $2 OFFSET $3
+SELECT o.recipient_email,o.status,o.created_at,o.sent_at,o.retry_count,
+ COALESCE(r.public_code,'')::text AS registration_code,COALESCE(r.status::text,'')::text AS registration_status,t.checked_in_at,
+ COALESCE(u.display_name,r.guest_name,'')::text AS guest_name
+FROM email_outbox o
+LEFT JOIN users u ON lower(u.email)=lower(o.recipient_email) AND u.deleted_at IS NULL
+LEFT JOIN LATERAL (SELECT rr.public_code,rr.status,rr.id,rr.guest_name FROM rsvps rr WHERE rr.event_id=o.event_id AND (rr.user_id=u.id OR rr.user_id IS NULL AND lower(rr.guest_email)=lower(o.recipient_email)) ORDER BY (rr.status IN ('confirmed','pending_approval','waitlisted','offered')) DESC,rr.registered_at DESC,rr.id LIMIT 1) r ON true
+LEFT JOIN tickets t ON t.rsvp_id=r.id
+WHERE o.event_id=$1 AND o.template_type='event_invitation'
+AND ($2::text='' OR lower(o.recipient_email) LIKE '%' || lower($2::text) || '%' OR lower(COALESCE(u.display_name,r.guest_name,'')) LIKE '%' || lower($2::text) || '%')
+AND ($3::text='all' OR $3::text='awaiting' AND r.id IS NULL OR $3::text='responded' AND r.status IN ('confirmed','pending_approval','waitlisted','offered') OR $3::text IN ('sent','failed') AND o.status::text=$3::text OR $3::text='queued' AND o.status='pending')
+ORDER BY o.created_at DESC,o.id LIMIT $5 OFFSET $4
 `
 
 type ListEventInvitationsParams struct {
-	EventID pgtype.UUID `json:"event_id"`
-	Limit   int32       `json:"limit"`
-	Offset  int32       `json:"offset"`
+	EventID     pgtype.UUID `json:"event_id"`
+	Search      string      `json:"search"`
+	StateFilter string      `json:"state_filter"`
+	PageOffset  int32       `json:"page_offset"`
+	PageLimit   int32       `json:"page_limit"`
 }
 
 type ListEventInvitationsRow struct {
-	RecipientEmail string             `json:"recipient_email"`
-	Status         NotificationStatus `json:"status"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	SentAt         pgtype.Timestamptz `json:"sent_at"`
-	RetryCount     int32              `json:"retry_count"`
+	RecipientEmail     string             `json:"recipient_email"`
+	Status             NotificationStatus `json:"status"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	SentAt             pgtype.Timestamptz `json:"sent_at"`
+	RetryCount         int32              `json:"retry_count"`
+	RegistrationCode   string             `json:"registration_code"`
+	RegistrationStatus string             `json:"registration_status"`
+	CheckedInAt        pgtype.Timestamptz `json:"checked_in_at"`
+	GuestName          string             `json:"guest_name"`
 }
 
 func (q *Queries) ListEventInvitations(ctx context.Context, arg ListEventInvitationsParams) ([]ListEventInvitationsRow, error) {
-	rows, err := q.db.Query(ctx, listEventInvitations, arg.EventID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listEventInvitations,
+		arg.EventID,
+		arg.Search,
+		arg.StateFilter,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +169,10 @@ func (q *Queries) ListEventInvitations(ctx context.Context, arg ListEventInvitat
 			&i.CreatedAt,
 			&i.SentAt,
 			&i.RetryCount,
+			&i.RegistrationCode,
+			&i.RegistrationStatus,
+			&i.CheckedInAt,
+			&i.GuestName,
 		); err != nil {
 			return nil, err
 		}

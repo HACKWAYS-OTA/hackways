@@ -70,16 +70,18 @@ export interface Registration {
   transferred_from?: string | null;
 }
 
-export type QuestionKind = 'text' | 'textarea' | 'url' | 'number' | 'checkbox' | 'select' | 'phone';
+export type QuestionKind = 'text' | 'textarea' | 'url' | 'number' | 'checkbox' | 'select' | 'phone' | 'email' | 'date' | 'time' | 'multiselect' | 'section';
 export interface RegistrationQuestion {
   public_code: string; label: string; description: string; kind: QuestionKind;
-  required: boolean; options: string[];
+  required: boolean; options: string[]; placeholder?: string; validation?: QuestionValidation;
 }
+export interface QuestionValidation { min_length?: number; max_length?: number; min?: number; max?: number; integer?: boolean; message?: string }
+export interface RegistrationFormSettings { title?: string; description?: string; submit_label?: string; success_message?: string }
 export interface RegistrationFormConfig {
-  revision: number; name_required: boolean; questions: RegistrationQuestion[];
+  revision: number; name_required: boolean; questions: RegistrationQuestion[]; settings?: RegistrationFormSettings;
 }
-export interface RegistrationAnswer { code: string; text: string; checked: boolean }
-export interface RegistrationAnswerSnapshot extends RegistrationAnswer { label: string; kind: QuestionKind }
+export interface RegistrationAnswer { code: string; text: string; checked: boolean; selected?: string[] }
+export interface RegistrationAnswerSnapshot extends RegistrationAnswer { label: string; kind: QuestionKind; section?: string }
 
 export interface Space {
   id: string; organizer_id: string; name: string; slug: string; description: string;

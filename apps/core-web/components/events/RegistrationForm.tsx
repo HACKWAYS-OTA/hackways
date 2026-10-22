@@ -1,77 +1,541 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import type { Event, Registration, User, RegistrationFormConfig, RegistrationAnswer } from '@/types/api';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Icon } from '@/components/ui/Icon';
-import { fetchApi, ApiClientError } from '@/lib/api';
-import { eventDate, eventPath, eventZone, registrationState } from '@/lib/events';
-
-import { RegistrationQuestions } from './RegistrationQuestions';
-
-export function RegistrationForm({ event, user, initialForm }: { event: Event; user: User | null; initialForm: RegistrationFormConfig }) {
-  const [form, setForm] = useState(initialForm);
-  const [answers, setAnswers] = useState<Record<string, RegistrationAnswer>>({});
-  const [needsReload, setNeedsReload] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<Registration | null>(null);
-  const submitting = useRef(false);
-  const attempt = useRef<{ payload: string; key: string } | null>(null);
-  const feedback = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const state = registrationState(event);
-  const awaitingApproval = confirmed?.status === 'pending_approval';
-  const waitlisted = confirmed?.status === 'waitlisted';
-  const joiningWaitlist = state.label === 'Join waiting list';
-  const heading = <header className="event-detail-heading"><h1>{confirmed ? waitlisted ? 'You’re on the waiting list.' : awaitingApproval ? 'Your application is submitted.' : 'Your place is reserved.' : joiningWaitlist ? 'Join the waiting list.' : event.registration_mode === 'approval' ? 'Request a place.' : 'Reserve your place.'}</h1><p className="registration-event-title">{event.title}</p><p className="registration-event-date">{eventDate(event, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} {eventZone(event)}</p></header>;
-  useEffect(() => { if (error || confirmed) feedback.current?.focus({ preventScroll: true }); }, [error, confirmed]);
-
-  async function reloadQuestions() {
-    const result = await fetchApi<{ data: RegistrationFormConfig }>(`/events/by-slug/${encodeURIComponent(event.slug)}/registration-form`, { cache: 'no-store' });
-    setForm(result.data); setNeedsReload(false);
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { scrollToSection } from "@hackways/ui/section-jump";
+import type {
+  Event,
+  Registration,
+  User,
+  RegistrationFormConfig,
+  RegistrationAnswer,
+} from "@/types/api";
+import { Icon } from "@/components/ui/Icon";
+import { fetchApi, ApiClientError } from "@/lib/api";
+import {
+  eventDate,
+  eventPath,
+  eventZone,
+  registrationState,
+} from "@/lib/events";
+import { registrationSteps, answerError } from "@/lib/registration-form";
+import { RegistrationIdentityStep } from "./RegistrationIdentityStep";
+import { RegistrationReview } from "./RegistrationReview";
+import { RegistrationQuestions } from "./RegistrationQuestions";
+import "./registration-steps.css";
+export function RegistrationForm({
+  event,
+  user,
+  initialForm,
+  invited = false,
+  invitationHint = false,
+  existingCode,
+}: {
+  event: Event;
+  user: User | null;
+  initialForm: RegistrationFormConfig;
+  invited?: boolean;
+  invitationHint?: boolean;
+  existingCode?: string | null;
+}) {
+  const router = useRouter(),
+    submitting = useRef(false),
+    attempt = useRef<{ payload: string; key: string } | null>(null),
+    feedback = useRef<HTMLDivElement>(null);
+  const [form, setForm] = useState(initialForm),
+    [answers, setAnswers] = useState<Record<string, RegistrationAnswer>>({}),
+    [step, setStep] = useState(0),
+    [name, setName] = useState(""),
+    [email, setEmail] = useState(""),
+    [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false),
+    [error, setError] = useState(""),
+    [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}),
+    [needsReload, setNeedsReload] = useState(false),
+    [confirmed, setConfirmed] = useState<Registration | null>(null);
+  const sections = registrationSteps(form.questions),
+    reviewStep = sections.length + 1,
+    labels = [
+      "Your details",
+      ...sections.map((section) => section.title),
+      "Review",
+    ],
+    state = registrationState(event),
+    joiningWaitlist = state.label === "Join waiting list";
+  useEffect(() => {
+    if (error || confirmed) feedback.current?.focus({ preventScroll: true });
+  }, [error, confirmed]);
+  useEffect(() => {
+    if (
+      confirmed ||
+      (!Object.keys(answers).length && !name && !email && !notes)
+    )
+      return;
+    const leave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", leave);
+    return () => window.removeEventListener("beforeunload", leave);
+  }, [answers, name, email, notes, confirmed]);
+  function go(next: number) {
+    setStep(next);
+    setFieldErrors({});
+    setError("");
+    requestAnimationFrame(() => scrollToSection("registration-step"));
   }
-
+  function validate(index: number): Record<string, string> {
+    const errors: Record<string, string> = {};
+    if (index === 0) {
+      if (form.name_required && !(user?.display_name || name).trim())
+        errors.name = "Your name is required.";
+      if (!user && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+        errors.email = "Enter a valid email address.";
+    } else if (index <= sections.length) {
+      for (const q of sections[index - 1].questions) {
+        const message = answerError(q, answers[q.public_code]),
+          input = document.getElementById(`answer-${q.public_code}`);
+        if (message) errors[q.public_code] = message;
+        else if (input instanceof HTMLInputElement && input.validity.badInput)
+          errors[q.public_code] = "Enter a valid answer.";
+      }
+    }
+    return errors;
+  }
+  async function reload() {
+    const result = await fetchApi<{ data: RegistrationFormConfig }>(
+      `/events/by-slug/${encodeURIComponent(event.slug)}/registration-form`,
+      { cache: "no-store" },
+    );
+    setAnswers((current) => {
+      const compatible: Record<string, RegistrationAnswer> = {};
+      for (const question of result.data.questions) {
+        const previous = form.questions.find(
+            (item) => item.public_code === question.public_code,
+          ),
+          answer = current[question.public_code];
+        if (!answer || previous?.kind !== question.kind) continue;
+        compatible[question.public_code] =
+          question.kind === "multiselect"
+            ? {
+                ...answer,
+                selected: answer.selected?.filter((value) =>
+                  question.options.includes(value),
+                ),
+              }
+            : question.kind === "select" &&
+                !question.options.includes(answer.text)
+              ? { code: question.public_code, text: "", checked: false }
+              : answer;
+      }
+      return compatible;
+    });
+    setForm(result.data);
+    setNeedsReload(false);
+    setStep(0);
+  }
   async function submit(action: FormEvent<HTMLFormElement>) {
     action.preventDefault();
     if (submitting.current || state.disabled || needsReload) return;
-    if (!user && !email.trim()) { setError('Enter your email address to reserve a place.'); return; }
-    submitting.current = true; setLoading(true); setError(null);
+    const currentErrors = validate(step);
+    if (Object.keys(currentErrors).length) {
+      setFieldErrors(currentErrors);
+      setError("Check the highlighted answers before continuing.");
+      return;
+    }
+    if (step < reviewStep) {
+      go(step + 1);
+      return;
+    }
+    for (let index = 0; index < reviewStep; index++) {
+      const errors = validate(index);
+      if (Object.keys(errors).length) {
+        setStep(index);
+        setFieldErrors(errors);
+        setError("Review the highlighted answers before submitting.");
+        return;
+      }
+    }
+    submitting.current = true;
+    setLoading(true);
+    setError("");
     try {
-      const payload = JSON.stringify({ event_id: event.id, guest_name: user?.display_name || name.trim(), guest_email: user?.email || email.trim(), notes: notes.trim(), form_revision: form.revision, answers: form.questions.map(q => answers[q.public_code] || { code: q.public_code, text: '', checked: false }), ...(joiningWaitlist ? { waitlist: true } : {}) });
-      if (attempt.current?.payload !== payload) attempt.current = { payload, key: crypto.randomUUID() };
-      const response = await fetchApi<{ data: Registration }>('/rsvps', { method: 'POST', headers: { 'Idempotency-Key': attempt.current.key }, body: payload });
-      if (!response.data?.id || response.data.event_id !== event.id || !['confirmed', 'pending_approval', 'waitlisted'].includes(response.data.status)) throw new Error('The registration response could not be verified. Check its current status before retrying.');
+      const payload = JSON.stringify({
+        event_id: event.id,
+        guest_name: user?.display_name || name.trim(),
+        guest_email: user?.email || email.trim(),
+        notes: notes.trim(),
+        form_revision: form.revision,
+        answers: form.questions
+          .filter((q) => q.kind !== "section")
+          .map(
+            (q) =>
+              answers[q.public_code] || {
+                code: q.public_code,
+                text: "",
+                checked: false,
+              },
+          ),
+        ...(joiningWaitlist ? { waitlist: true } : {}),
+      });
+      if (attempt.current?.payload !== payload)
+        attempt.current = { payload, key: crypto.randomUUID() };
+      const response = await fetchApi<{ data: Registration }>("/rsvps", {
+        method: "POST",
+        headers: { "Idempotency-Key": attempt.current.key },
+        body: payload,
+      });
+      if (
+        !response.data?.id ||
+        response.data.event_id !== event.id ||
+        !["confirmed", "pending_approval", "waitlisted"].includes(
+          response.data.status,
+        )
+      )
+        throw new Error(
+          "The registration could not be confirmed. Check My events before retrying.",
+        );
       setConfirmed(response.data);
       router.refresh();
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Your reservation could not be confirmed. Please try again.');
-      if (failure instanceof ApiClientError && failure.code === 'FORM_CHANGED') {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Registration could not be saved. Your answers are still here.",
+      );
+      if (
+        failure instanceof ApiClientError &&
+        failure.code === "FORM_CHANGED"
+      ) {
         setNeedsReload(true);
-        try { await reloadQuestions(); setError('The organizer updated these questions. Your answers are kept. Review the form and submit again.'); }
-        catch { setError('The questions changed, but the latest form could not be loaded. Reload the questions to continue. Your entries are still here.'); }
+        try {
+          await reload();
+          setError(
+            "The organizer updated the registration. Your answers are kept. Review each section before submitting again.",
+          );
+        } catch {
+          setError(
+            "The registration changed. Load the updated questions to continue. Your answers are kept.",
+          );
+        }
+      } else if (
+        failure instanceof ApiClientError &&
+        failure.code === "INVALID_ANSWERS"
+      ) {
+        const index = sections.findIndex((section) =>
+          section.questions.some((q) => failure.message.includes(q.label)),
+        );
+        if (index >= 0) setStep(index + 1);
       }
+    } finally {
+      submitting.current = false;
+      setLoading(false);
     }
-    finally { submitting.current = false; setLoading(false); }
   }
-
-  if (confirmed) return <>{heading}<div className="registration-success registration-page-success" ref={feedback} tabIndex={-1} role="status"><span className="success-icon"><Icon name="check" size={32} /></span><Badge variant={awaitingApproval || waitlisted ? 'warning' : 'success'}>{waitlisted ? 'On the waiting list' : awaitingApproval ? 'Awaiting organizer approval' : 'RSVP confirmed'}</Badge>{waitlisted && <p>No place is reserved yet. Check My events for an offer when a place becomes available.</p>}{awaitingApproval && <p>The organizer will review your application. A place has not been reserved yet.</p>}{(confirmed.guest_name || confirmed.guest_email) && <p className="confirmed-attendee">{awaitingApproval || waitlisted ? 'Submitted for' : 'Reserved for'} {confirmed.guest_name || confirmed.guest_email}</p>}<div className="reservation-reference"><span>Registration reference</span><span>{confirmed.public_code}</span></div><Link className="app-button app-button-primary" href={eventPath(event)}>Back to event <Icon name="arrow" size={17} /></Link><Link className="detail-text-link" href="/my-events">View my events</Link></div></>;
-  if (state.disabled) return <>{heading}<section className="event-registration-panel"><h2>{state.label}</h2><p>Registration is not available at the moment.</p><Link className="detail-text-link" href={eventPath(event)}>Back to event details</Link></section></>;
-  if (!user && (event.allow_guest === false || event.registration_mode === "approval" || joiningWaitlist)) return <>{heading}<section className="event-registration-panel"><h2>Sign in to join.</h2><p>This event requires an account so you can keep track of your registration.</p><Link className="app-button app-button-primary" href={`/login?next=${encodeURIComponent(eventPath(event) + "/register")}`}>Sign in or create an account</Link></section></>;
-  return <>{heading}<form onSubmit={submit} className="registration-form event-page-form"><p className="registration-intro">{user ? `Registering as ${user.display_name} (${user.email}).` : <>Share your details with the event organizer. <Link className="quiet-link" href={`/login?next=${encodeURIComponent(eventPath(event) + "/register")}`}>Sign in to keep this in My events</Link></>}</p>{error && <div className="form-alert" role="alert" ref={feedback} tabIndex={-1}><Icon name="alert" size={19} /><p>{error}</p></div>}
-    {needsReload && <button className="app-button app-button-outline" type="button" disabled={loading} onClick={async () => { setLoading(true); try { await reloadQuestions(); setError('Questions updated. Review your answers before submitting again.'); } catch (err) { setError(err instanceof Error ? err.message : 'The latest questions could not be loaded.'); } finally { setLoading(false); } }}>Reload questions</button>}
-    {!user && <><Input label={form.name_required ? 'Your name' : 'Your name (optional)'} required={form.name_required} name="name" autoComplete="name" value={name} maxLength={200} onChange={(action) => setName(action.target.value)} disabled={loading} />
-    <Input label="Email address" name="email" type="email" autoComplete="email" inputMode="email" required maxLength={320} value={email} onChange={(action) => setEmail(action.target.value)} disabled={loading} helperText="Use the same email for any reservation retries." /></>}
-    {user && form.name_required && !user.display_name.trim() && <p className="form-alert">This event requires your name. <Link href="/account">Add your name to your account</Link> before registering.</p>}
-    <RegistrationQuestions questions={form.questions} answers={answers} onChange={answer => setAnswers(current => ({ ...current, [answer.code]: answer }))} disabled={loading} />
-    <div className="field"><label htmlFor="registration-notes">A note for the organizer <span>(optional)</span></label><Textarea id="registration-notes" name="notes" maxLength={2000} value={notes} onChange={(action) => setNotes(action.target.value)} disabled={loading} aria-describedby="registration-notes-help" /><p id="registration-notes-help" className="field-help">Anything you would like them to know before the event.</p></div>
-    <div className="registration-actions"><Button variant="outline" disabled={loading} onClick={() => router.push(eventPath(event))}>Back</Button><Button type="submit" isLoading={loading} disabled={needsReload}>{loading ? 'Submitting...' : joiningWaitlist ? 'Join waiting list' : event.registration_mode === 'approval' ? 'Submit application' : 'Confirm RSVP'}{!loading && <Icon name="arrow" size={17} />}</Button></div><p className="registration-note">Availability is checked when you confirm your RSVP.</p>
-  </form></>;
+  const heading = (
+    <header className="event-detail-heading">
+      <h1>
+        {confirmed
+          ? confirmed.status === "confirmed"
+            ? "You’re registered"
+            : confirmed.status === "waitlisted"
+              ? "You’re on the waiting list"
+              : "Application submitted"
+          : form.settings?.title ||
+            (invited ? "Accept your invitation" : "Register for this event")}
+      </h1>
+      <p className="registration-event-title">{event.title}</p>
+      <p className="registration-event-date">
+        {eventDate(event, {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}{" "}
+        {eventZone(event)}
+      </p>
+    </header>
+  );
+  if (confirmed)
+    return (
+      <>
+        {heading}
+        <div
+          className="registration-success registration-page-success"
+          ref={feedback}
+          tabIndex={-1}
+          role="status"
+        >
+          <Icon name="check" size={30} />
+          <h2>
+            {confirmed.status === "pending_approval"
+              ? "Awaiting organizer approval"
+              : confirmed.status === "waitlisted"
+                ? "Waiting for a place"
+                : "Your place is confirmed"}
+          </h2>
+          <p>
+            {confirmed.status === "pending_approval"
+              ? "The organizer will review your answers. A place has not been reserved yet."
+              : confirmed.status === "waitlisted"
+                ? "No place is reserved yet. Check My events for an offer."
+                : "Your QR pass is available with your registration."}
+          </p>
+          {form.settings?.success_message && (
+            <p>{form.settings.success_message}</p>
+          )}
+          <Link
+            className="app-button app-button-primary"
+            href={`/my-events/${confirmed.public_code}`}
+          >
+            View registration
+            <Icon name="arrow" size={17} />
+          </Link>
+          <Link className="quiet-link" href={eventPath(event)}>
+            Back to event
+          </Link>
+        </div>
+      </>
+    );
+  if (existingCode)
+    return (
+      <>
+        {heading}
+        <section className="event-registration-panel">
+          <h2>You have already registered</h2>
+          <p>Open your registration to see its current status and pass.</p>
+          <Link
+            className="app-button app-button-primary"
+            href={`/my-events/${existingCode}`}
+          >
+            View registration
+          </Link>
+        </section>
+      </>
+    );
+  if (state.disabled)
+    return (
+      <>
+        {heading}
+        <section className="event-registration-panel">
+          <h2>{state.label}</h2>
+          <p>Registration is not available at the moment.</p>
+          <Link className="quiet-link" href={eventPath(event)}>
+            Back to event
+          </Link>
+        </section>
+      </>
+    );
+  if (
+    !user &&
+    (invitationHint ||
+      event.allow_guest === false ||
+      event.registration_mode === "approval" ||
+      joiningWaitlist)
+  )
+    return (
+      <>
+        {heading}
+        <section className="event-registration-panel">
+          <h2>
+            {invitationHint
+              ? "Sign in to accept your invitation"
+              : "Sign in to register"}
+          </h2>
+          <p>
+            {invitationHint
+              ? "Use the email address that received the invitation."
+              : "Sign in to keep your registration and pass together."}
+          </p>
+          <Link
+            className="app-button app-button-primary"
+            href={`/login?next=${encodeURIComponent(eventPath(event) + "/register" + (invitationHint ? "?invitation=1" : ""))}`}
+          >
+            Sign in or create an account
+          </Link>
+        </section>
+      </>
+    );
+  if (invitationHint && user && !invited)
+    return (
+      <>
+        {heading}
+        <section className="event-registration-panel">
+          <h2>Check your invitation email</h2>
+          <p>
+            {!user.email_verified
+              ? "Verify your account email before accepting this invitation."
+              : "This account has no invitation for this event. Use the email address the organizer invited, or register normally."}
+          </p>
+          <Link
+            className="app-button app-button-outline"
+            href={
+              !user.email_verified ? "/account" : eventPath(event) + "/register"
+            }
+          >
+            {!user.email_verified ? "Open your account" : "Register normally"}
+          </Link>
+        </section>
+      </>
+    );
+  return (
+    <>
+      {heading}
+      <form
+        onSubmit={submit}
+        className="registration-form event-page-form section-registration-form"
+        noValidate
+        aria-busy={loading}
+      >
+        {form.settings?.description && (
+          <p className="registration-intro">{form.settings.description}</p>
+        )}
+        {invited && (
+          <p className="registration-invited-note">
+            <Icon name="check" size={17} />
+            You’re invited. Complete these details to respond.
+          </p>
+        )}
+        <nav className="registration-step-nav" aria-label="Registration steps">
+          <ol>
+            {labels.map((label, index) => (
+              <li key={`${index}-${label}`}>
+                <button
+                  type="button"
+                  aria-current={step === index ? "step" : undefined}
+                  disabled={loading || index > step}
+                  onClick={() => go(index)}
+                >
+                  <span aria-hidden="true">{index + 1}</span>
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div id="registration-step" className="registration-step" tabIndex={-1}>
+          <p className="registration-step-count">
+            Step {step + 1} of {labels.length}
+          </p>
+          <h2>{labels[step]}</h2>
+          {error && (
+            <div
+              className="form-alert"
+              role="alert"
+              ref={feedback}
+              tabIndex={-1}
+            >
+              <Icon name="alert" size={19} />
+              <p>{error}</p>
+            </div>
+          )}
+          {needsReload && (
+            <button
+              className="app-button app-button-outline"
+              type="button"
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await reload();
+                } catch {
+                  setError(
+                    "The updated questions could not be loaded. Try again.",
+                  );
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              Load updated questions
+            </button>
+          )}
+          {step === 0 ? (
+            <RegistrationIdentityStep
+              user={user}
+              name={name}
+              email={email}
+              nameRequired={form.name_required}
+              loading={loading}
+              fieldErrors={fieldErrors}
+              setName={setName}
+              setEmail={setEmail}
+            />
+          ) : step <= sections.length ? (
+            <>
+              {sections[step - 1].description && (
+                <p className="registration-section-description">
+                  {sections[step - 1].description}
+                </p>
+              )}
+              <RegistrationQuestions
+                questions={sections[step - 1].questions}
+                answers={answers}
+                errors={fieldErrors}
+                disabled={loading}
+                onChange={(answer) => {
+                  setAnswers((current) => ({
+                    ...current,
+                    [answer.code]: answer,
+                  }));
+                  setFieldErrors((current) => ({
+                    ...current,
+                    [answer.code]: "",
+                  }));
+                }}
+              />
+            </>
+          ) : (
+            <RegistrationReview
+              user={user}
+              name={name}
+              email={email}
+              sections={sections}
+              answers={answers}
+              notes={notes}
+              setNotes={setNotes}
+              loading={loading}
+              go={go}
+              approval={event.registration_mode === "approval"}
+            />
+          )}
+        </div>
+        <div className="registration-actions">
+          {step > 0 ? (
+            <button
+              className="app-button app-button-outline"
+              type="button"
+              disabled={loading}
+              onClick={() => go(step - 1)}
+            >
+              Back
+            </button>
+          ) : (
+            <Link className="quiet-link" href={eventPath(event)}>
+              Back to event
+            </Link>
+          )}
+          <button
+            className="app-button app-button-primary"
+            disabled={loading || needsReload}
+          >
+            {loading
+              ? "Submitting..."
+              : step < reviewStep
+                ? "Continue"
+                : invited
+                  ? "Accept invitation"
+                  : form.settings?.submit_label ||
+                    (joiningWaitlist
+                      ? "Join waiting list"
+                      : event.registration_mode === "approval"
+                        ? "Submit application"
+                        : "Confirm registration")}
+            <Icon name="arrow" size={17} />
+          </button>
+        </div>
+      </form>
+    </>
+  );
 }
