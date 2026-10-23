@@ -14,7 +14,7 @@ Go applies the reply policy when serializing the [ACS send request](https://lear
 
 ## Admin workflow
 
-`/campaigns` lists real saved campaigns. `/campaigns/new` creates a draft; `/campaigns/details/{numeric-reference}` edits and previews the saved version, sends a test only to the current verified admin email, reviews the audience, launches and cancels. The interface reuses platform admin authentication, network isolation, Hugeicons and shared controls. Creation has a stable idempotency key; edits use revisions; send/cancel replays cannot enqueue a duplicate campaign. Every mutation records the acting administrator and action in the audit log. Draft creation/editing and campaign actions no longer ask for a typed reason; supplied legacy reasons are still validated. The editor saves plain-text content and structured heading/paragraph/image/button/divider blocks. Go validates the bounded design configuration and escapes all content before producing email HTML.
+`/campaigns` lists real saved campaigns. `/campaigns/new` creates a draft; `/campaigns/details/{numeric-reference}` edits and previews the saved version, sends a test only to the current verified admin email, reviews the audience, launches and cancels. The interface reuses platform admin authentication, daily OTP, Hugeicons and shared controls. Creation has a stable idempotency key; edits use revisions; send/cancel replays cannot enqueue a duplicate campaign. Every mutation records the acting administrator and action in the audit log. Draft creation/editing and campaign actions no longer ask for a typed reason; supplied legacy reasons are still validated. The editor saves plain-text content and structured heading/paragraph/image/button/divider blocks. Go validates the bounded design configuration and escapes all content before producing email HTML.
 
 Campaigns are bounded to 1,000 recipients per send. Sending requires explicit confirmation and a matching reviewed audience count. A single database transaction locks the campaign, snapshots eligible contacts, enqueues outbox records and recipient unsubscribe proofs, and marks the campaign queued. A changed count rolls back. Before provider dispatch, current campaign state and subscription are checked again. Cancellation/unsubscribe suppress future attempts; messages already accepted or in flight cannot be recalled. No campaign audience was launched during implementation verification.
 
@@ -28,7 +28,7 @@ Every delivered promotional email has a random recipient-specific unsubscribe li
 
 ## API and storage
 
-All admin routes are under `/api/v1/admin/global`, require the dedicated admin session and are protected by the existing Nginx IP/VPN gate:
+All admin routes are under `/api/v1/admin/global`, require the dedicated admin session, explicit platform grant and daily OTP. Admin sign-in accepts any network under the operator-approved policy; Nginx retains TLS and rate limiting:
 
 - `GET/POST /campaigns`
 - `GET /campaigns/{reference}`

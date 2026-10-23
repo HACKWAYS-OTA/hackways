@@ -45,7 +45,7 @@ graph TD
 | **`public-web`** | `packages/api-client`, Global Backend | Public Users, Edge CDN | Next.js SSG/ISR Port 3000 (`hackways.in`) |
 | **`core-web`** | `packages/api-client`, Core Backend, Global Backend | Attendee Users, Nginx | Next.js App Router Port 3001 (`app.hackways.in`) |
 | **`organizer-web`**| `packages/api-client`, Core Backend, Global Backend | Organizers, Nginx | Next.js App Router Port 3002 (`organizer.hackways.in`) |
-| **`admin-web`** | `packages/api-client`, Global Backend, Core Backend | Admins (VPN/IP Restricted) | Next.js App Router Port 3003 (`admin.hackways.in`) |
+| **`admin-web`** | `packages/api-client`, Global Backend, Core Backend | Admins (dedicated session, platform grant, daily OTP) | Next.js App Router Port 3003 (`admin.hackways.in`) |
 | **Nginx Ingress** | Docker network, All 6 services | Cloudflare Edge CDN | Ports 80/443, SSL termination, reverse proxy |
 
 ---

@@ -125,7 +125,7 @@ hackways/
 │   ├── public-web/           # Next.js 14 SSG/ISR (hackways.in - landing, marketing & SEO)
 │   ├── core-web/             # Next.js 14 App Router (app.hackways.in - attendee discovery & RSVP)
 │   ├── organizer-web/        # Next.js 14 App Router (organizer.hackways.in - event studio & roster)
-│   └── admin-web/            # Next.js 14 App Router (admin.hackways.in - network-isolated admin)
+│   └── admin-web/            # Next.js 14 App Router (admin.hackways.in - authenticated admin)
 ├── services/
 │   ├── core-backend/         # Go 1.23+ Engine (core-backend:8081 - events & RSVP capacity locking)
 │   └── global-backend/       # Go 1.23+ Engine (global-backend:8082 - auth, storage SAS & ACS email)
@@ -144,7 +144,7 @@ hackways/
 | **Public Web** | Next.js 14 SSG/ISR | `hackways.in` | Public landing pages, marketing, SEO metadata, pre-rendered catalogs. |
 | **Core Web** | Next.js 14 App Router | `app.hackways.in` | Attendee event discovery, details, tickets, and interactive RSVP flows. |
 | **Organizer Web** | Next.js 14 App Router | `organizer.hackways.in` | Event creation studio, ticket tier controls, attendee roster, CSV exports. |
-| **Admin Web** | Next.js 14 App Router | `admin.hackways.in` *(VPN/IP only)* | Platform auditing, user moderation, event controls, health overview. |
+| **Admin Web** | Next.js 14 App Router | `admin.hackways.in` *(admin session + daily OTP)* | Platform auditing, user moderation, event controls, health overview. |
 | **Core Backend** | Go 1.23+ (`chi` + `pgx/v5`) | `core-backend:8081` | Event lifecycle, ticket inventory, transactional RSVP capacity engine. |
 | **Global Backend**| Go 1.23+ (`chi` + `pgx/v5`) | `global-backend:8082`| Sessions, RBAC, Azure Blob SAS signing, ACS Email outbox worker. |
 
@@ -240,7 +240,7 @@ The central domain invariant of Hackways: **An event with capacity $C$ must NEVE
   - Auth zone: `5r/s` (burst=5 nodelay) on `/api/v1/auth/*`
   - RSVP zone: `10r/s` (burst=5 nodelay) on `/api/v1/rsvps/*`
   - General zone: `30r/s` (burst=20 nodelay) on all other paths
-- **Admin Isolation:** `admin.hackways.in` MUST be restricted at the Nginx layer to approved office static IPs and VPN subnets (`allow <subnet>; deny all;`).
+- **Admin Access (operator decision, 2026-10-22):** `admin.hackways.in` accepts connections from any network and device. Console and privileged API access MUST require the dedicated admin session, explicit platform-admin grant and daily OTP. Preserve TLS, rate limits, origin checks and host-scoped cookies. Do not restore an IP/VPN sign-in gate without explicit user approval. Readiness diagnostics remain private at Nginx; internal service ports remain unexposed.
 - **Cryptographic Cookie Scoping:**
   - Public & Attendee Sessions: `__Host-hackways_session` (`Secure; HttpOnly; SameSite=Lax; Path=/`)
   - Platform Admin Sessions: `__Host-hackways_admin_session` (`Secure; HttpOnly; SameSite=Strict; Path=/`)
