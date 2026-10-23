@@ -72,6 +72,10 @@ Do not claim Directory publication without actual submission/approval.
 - https://developers.openai.com/plugins/deploy/app-review
 
 Implementation uses 106 focused tools. Public landing: `https://hackways.in/mcp`.
+Connection reference: `https://hackways.in/mcp/setup`, covering CIMD, DCR and manual
+public-client registration, exact endpoints, connection-specific callbacks, all
+eight scopes, mandatory S256 PKCE and explicitly disabled OIDC. The page uses
+deployed Go metadata as its configuration authority; it creates no credentials.
 Transport/resource: `https://mcp.hackways.in/mcp`; issuer: `https://mcp.hackways.in`.
 Dedicated account/admin consent pages are `/connect/authorize`, action review is
 `/connect/action`, and revocation is `/connect/connections`. Mixed permission

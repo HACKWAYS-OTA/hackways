@@ -1085,3 +1085,32 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   image publication; no application activation has occurred yet.
 
 - Matched the designated OpenAI profile response to its standard top-level persisted ID/name/email schema, and included explanatory parameters in runtime OAuth challenges. Updated mandatory protocol checks for both contracts. Public build remains on its independently verified source.
+
+## 2026-10-23 - MCP activation and connection reference
+
+- Activated immutable CI-built MCP runtimes: five services from 9fc616c6dc34903cd0531da09c472bc5275ce218
+  (Release Candidate 39911338392), global-backend from f20a8d52a943259a3dc998612767d6b268c8e201
+  (exact-head CI 39913620201; image publication 39914832784). Mandatory Linux race
+  suites reported core 62/global 130 passes, zero failures or skips. PR 48 merged
+  as 9e82129 after the exact source passed CI and image publication.
+- Verified private Azure Blob backup with full read-back hash, additive migration
+  24 clean, six runtime identities/readiness/resource limits, unchanged environment
+  and signing identity, and unchanged deferred CDN configuration. Existing Nginx
+  container retained; trusted MCP TLS and three scoped vhosts activated.
+- Production checks passed OAuth discovery, MCP initialize, 106 unique tool/security
+  definitions, real public event search, private authentication challenge, denied
+  origin/invalid OAuth input and account/admin route gates. Engine cgroup memory at
+  that verification was core 8,425,472 bytes/global 17,113,088 bytes; these are one
+  idle snapshot, not load capacity. No real account/message mutations, browser
+  consent or actual ChatGPT linking review was performed.
+- Public footer no longer contains Cookie preferences, support@hackota.com displays
+  lowercase (including Cloudflare email obfuscation), /cookies has Manage cookies
+  and Allow all, and /mcp is live. Verification handles transient ingress recovery
+  and checks the email decoded from data-cfemail where Cloudflare rewrites it.
+- Added /mcp/setup with all requested ChatGPT fields, copyable actual endpoints,
+  minimal scope presets and complete scope reference, CIMD/DCR/manual registration,
+  callback matching, PKCE and explicit unsupported OIDC fields. The setup page
+  inherits public typography/palette, keyboard focus and responsive stacked rows;
+  it generates no account credentials and links from /mcp and the sitemap.
+  Local public-web type-check/lint and tracked source audit passed. Page image
+  publication and production verification remain pending for this new source.
