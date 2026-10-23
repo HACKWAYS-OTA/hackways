@@ -193,7 +193,7 @@ func (q *Queries) AdminListModeration(ctx context.Context, arg AdminListModerati
 }
 
 const adminListRegistrations = `-- name: AdminListRegistrations :many
-SELECT r.id,r.admin_reference AS reference,r.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT r.id,r.admin_reference AS reference,r.public_code,e.title AS event_title,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,r.status::text AS status,r.registered_at
 FROM rsvps r JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE ($1::text='' OR r.public_code ILIKE '%'||$1||'%' OR e.title ILIKE '%'||$1||'%' OR COALESCE(u.email,r.guest_email,'') ILIKE '%'||$1||'%')
@@ -315,7 +315,7 @@ func (q *Queries) AdminListSpaces(ctx context.Context, arg AdminListSpacesParams
 }
 
 const adminListTickets = `-- name: AdminListTickets :many
-SELECT t.id,t.admin_reference AS reference,t.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
+SELECT t.id,t.admin_reference AS reference,t.public_code,e.title AS event_title,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE ($1::text='' OR t.public_code ILIKE '%'||$1||'%' OR e.title ILIKE '%'||$1||'%')
 AND ($2::text='' OR t.status=$2) ORDER BY t.created_at DESC,t.id

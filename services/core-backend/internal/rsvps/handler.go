@@ -6,6 +6,8 @@ import (
 	"net/mail"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/core-backend/db"
@@ -75,11 +77,13 @@ func (h *Handler) CreateRSVP(w http.ResponseWriter, r *http.Request) {
 	req.Answers = body.Answers
 	if user, ok := auth.UserFromContext(r.Context()); ok {
 		req.UserID = user.UserID
-		req.Name = user.DisplayName
+		if req.Name == "" {
+			req.Name = user.DisplayName
+		}
 		req.Email = strings.ToLower(user.Email)
 	}
 	parsed, err := mail.ParseAddress(req.Email)
-	if err != nil || parsed.Address != req.Email || len(req.Email) > 320 || len(req.Name) > 200 || len(req.Notes) > 2000 {
+	if err != nil || parsed.Address != req.Email || len(req.Email) > 320 || len(req.Name) > 200 || !utf8.ValidString(req.Name) || strings.ContainsFunc(req.Name, unicode.IsControl) || len(req.Notes) > 2000 {
 		platform.RespondError(w, 400, "INVALID_DETAILS", "Provide a valid email and keep name/notes within their limits", nil)
 		return
 	}

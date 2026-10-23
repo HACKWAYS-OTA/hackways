@@ -12,7 +12,7 @@ s.status,s.revision,s.created_at,s.updated_at,(SELECT count(*) FROM space_member
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1;
 
 -- name: AdminRegistrationDetail :one
-SELECT r.id,r.admin_reference AS reference,r.public_code,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT r.id,r.admin_reference AS reference,r.public_code,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,r.status::text AS status,r.notes,r.registered_at,r.updated_at,r.offer_expires_at,
 r.approval_expires_at,r.transfer_count,t.id AS ticket_id,t.admin_reference AS ticket_reference,t.status AS ticket_status,
 (e.status='published' AND e.starts_at>clock_timestamp())::boolean AS editable,
@@ -21,7 +21,7 @@ r.approval_expires_at,r.transfer_count,t.id AS ticket_id,t.admin_reference AS ti
 FROM rsvps r JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id LEFT JOIN tickets t ON t.rsvp_id=r.id WHERE r.id=$1;
 
 -- name: AdminTicketDetail :one
-SELECT t.id,t.admin_reference AS reference,t.public_code,t.rsvp_id,r.admin_reference AS rsvp_reference,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT t.id,t.admin_reference AS reference,t.public_code,t.rsvp_id,r.admin_reference AS rsvp_reference,r.event_id,e.admin_reference AS event_reference,e.title AS event_title,r.user_id,u.admin_reference AS user_reference,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,t.status,t.checked_in_at,t.checked_in_by,checked_actor.admin_reference AS checked_in_by_reference,t.created_at,t.updated_at,
 (e.status='published' AND r.status='confirmed' AND t.status='issued' AND clock_timestamp()>=e.starts_at-INTERVAL '24 hours' AND clock_timestamp()<=e.ends_at)::boolean AS can_check_in
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id LEFT JOIN users checked_actor ON checked_actor.id=t.checked_in_by WHERE t.id=$1;
@@ -36,11 +36,11 @@ SELECT a.id::text AS id,a.id::text AS reference,a.action AS label,COALESCE(u.dis
 FROM audit_log a LEFT JOIN users u ON u.id=a.actor_user_id WHERE a.entity_id=$1 ORDER BY a.id DESC LIMIT $2 OFFSET $3;
 
 -- name: AdminEventRegistrations :many
-SELECT r.id::text AS id,r.admin_reference::text AS reference,r.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
+SELECT r.id::text AS id,r.admin_reference::text AS reference,r.public_code AS label,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS detail,'registrations'::text AS resource,r.status::text AS status,r.registered_at AS occurred_at
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=$1 ORDER BY r.registered_at DESC,r.id LIMIT $2 OFFSET $3;
 
 -- name: AdminEventTickets :many
-SELECT t.id::text AS id,t.admin_reference::text AS reference,t.public_code AS label,COALESCE(u.display_name,r.guest_name,'')::text AS detail,'tickets'::text AS resource,t.status,t.created_at AS occurred_at
+SELECT t.id::text AS id,t.admin_reference::text AS reference,t.public_code AS label,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS detail,'tickets'::text AS resource,t.status,t.created_at AS occurred_at
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id=$1 ORDER BY t.created_at DESC,t.id LIMIT $2 OFFSET $3;
 
 -- name: AdminEventHistory :many

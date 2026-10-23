@@ -221,7 +221,7 @@ func (q *Queries) EditRegistrationNotes(ctx context.Context, arg EditRegistratio
 
 const enqueueEventNotification = `-- name: EnqueueEventNotification :exec
 INSERT INTO email_outbox(rsvp_id,event_id,recipient_email,recipient_name,template_type,payload_json)
-SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(u.display_name,r.guest_name),$1::text,$2::jsonb
+SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(NULLIF(r.guest_name,''),u.display_name),$1::text,$2::jsonb
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id
 WHERE r.event_id=$3 AND r.status IN ('confirmed','offered','pending_approval','waitlisted')
 AND COALESCE(u.email,r.guest_email) IS NOT NULL
@@ -240,7 +240,7 @@ func (q *Queries) EnqueueEventNotification(ctx context.Context, arg EnqueueEvent
 
 const enqueueRegistrationNotification = `-- name: EnqueueRegistrationNotification :execrows
 INSERT INTO email_outbox(rsvp_id,event_id,recipient_email,recipient_name,template_type,payload_json)
-SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(u.display_name,r.guest_name),$1::text,$2::jsonb
+SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(NULLIF(r.guest_name,''),u.display_name),$1::text,$2::jsonb
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.id=$3
 AND COALESCE(u.email,r.guest_email) IS NOT NULL
 `

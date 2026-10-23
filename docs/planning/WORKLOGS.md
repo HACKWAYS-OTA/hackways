@@ -980,3 +980,10 @@ Verification so far: admin npm test (type check/lint), global go build/vet and f
 The user clarified that Apply to join must arrive at the Your details step, not the event header. Registration route navigation now uses the existing registration-step focus/scroll target; sign-in, closed and already-registered states fall back to the form region. The banner and summary remain above the form for ordinary scrolling. Clean URLs, native Back/Forward restoration and refresh/query behavior remain unchanged. No API, authentication, form state or database change is required.
 
 The user also requested simpler registration terms. Platform event and final submission buttons now say Register, pending submissions say Registration submitted, and helper text uses registration consistently. Invitation and waiting-list labels and organizer-defined button text remain meaningful and compatible; approval/capacity behavior is unchanged.
+
+
+## 2026-10-23 ? Registration arrival and editable attendee name
+
+- Corrected the arrival anchor to event summary text below the banner, preserving the title/short description above Your details and retaining browser history restoration. Registration-only ambient opacity/saturation are slightly reduced.
+- Signed-in attendees can edit their registration name; email remains read-only and authoritative from the backend session. Review, organizer/admin roster and notification names prefer the registration snapshot. Account profile names stay unchanged.
+- Extended the existing sectioned-registration integration check to exercise the authenticated HTTP path, name persistence, email/ownership binding and unchanged account profile. Core-web type check/lint passed; existing core events/RSVP PostgreSQL suites passed against the isolated test database, and core `go vet ./...` passed. Interactive browser verification remains unavailable (no connected browser).

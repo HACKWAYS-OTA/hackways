@@ -35,7 +35,7 @@ AND (sqlc.arg(state)::text='' OR s.status=sqlc.arg(state)) ORDER BY s.created_at
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: AdminListRegistrations :many
-SELECT r.id,r.admin_reference AS reference,r.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,
+SELECT r.id,r.admin_reference AS reference,r.public_code,e.title AS event_title,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
 COALESCE(u.email,r.guest_email,'')::text AS email,r.status::text AS status,r.registered_at
 FROM rsvps r JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE (sqlc.arg(q)::text='' OR r.public_code ILIKE '%'||sqlc.arg(q)||'%' OR e.title ILIKE '%'||sqlc.arg(q)||'%' OR COALESCE(u.email,r.guest_email,'') ILIKE '%'||sqlc.arg(q)||'%')
@@ -43,7 +43,7 @@ AND (sqlc.arg(state)::text='' OR r.status::text=sqlc.arg(state)) ORDER BY r.regi
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: AdminListTickets :many
-SELECT t.id,t.admin_reference AS reference,t.public_code,e.title AS event_title,COALESCE(u.display_name,r.guest_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
+SELECT t.id,t.admin_reference AS reference,t.public_code,e.title AS event_title,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,t.status,t.checked_in_at,t.created_at
 FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
 WHERE (sqlc.arg(q)::text='' OR t.public_code ILIKE '%'||sqlc.arg(q)||'%' OR e.title ILIKE '%'||sqlc.arg(q)||'%')
 AND (sqlc.arg(state)::text='' OR t.status=sqlc.arg(state)) ORDER BY t.created_at DESC,t.id

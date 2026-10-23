@@ -131,7 +131,7 @@ UPDATE tickets SET status='revoked',updated_at=clock_timestamp() WHERE rsvp_id I
 
 -- name: EnqueueEventNotification :exec
 INSERT INTO email_outbox(rsvp_id,event_id,recipient_email,recipient_name,template_type,payload_json)
-SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(u.display_name,r.guest_name),sqlc.arg(template_type)::text,sqlc.arg(payload_json)::jsonb
+SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(NULLIF(r.guest_name,''),u.display_name),sqlc.arg(template_type)::text,sqlc.arg(payload_json)::jsonb
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id
 WHERE r.event_id=sqlc.arg(event_id) AND r.status IN ('confirmed','offered','pending_approval','waitlisted')
 AND COALESCE(u.email,r.guest_email) IS NOT NULL;
@@ -146,7 +146,7 @@ approval_expires_at=$4, registered_at=clock_timestamp(), updated_at=clock_timest
 
 -- name: EnqueueRegistrationNotification :execrows
 INSERT INTO email_outbox(rsvp_id,event_id,recipient_email,recipient_name,template_type,payload_json)
-SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(u.display_name,r.guest_name),sqlc.arg(template_type)::text,sqlc.arg(payload_json)::jsonb
+SELECT r.id,r.event_id,COALESCE(u.email,r.guest_email),COALESCE(NULLIF(r.guest_name,''),u.display_name),sqlc.arg(template_type)::text,sqlc.arg(payload_json)::jsonb
 FROM rsvps r LEFT JOIN users u ON u.id=r.user_id WHERE r.id=sqlc.arg(rsvp_id)
 AND COALESCE(u.email,r.guest_email) IS NOT NULL;
 

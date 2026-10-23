@@ -29,7 +29,7 @@ export function RegistrationReview({
       <dl className="registration-review-identity">
         <div>
           <dt>Name</dt>
-          <dd>{user?.display_name || name || "Not provided"}</dd>
+          <dd>{name.trim() || "Not provided"}</dd>
         </div>
         <div>
           <dt>Email</dt>

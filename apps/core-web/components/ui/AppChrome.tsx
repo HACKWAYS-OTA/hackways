@@ -32,7 +32,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
       if (/\/register\/?$/.test(pathname)) {
         // Wait for the new route's DOM; Next's scroll heuristic runs during commit.
         const frame = requestAnimationFrame(() => {
-          if (!scrollToSection('registration-step', 'instant')) scrollToSection('registration-form-start', 'instant');
+          if (!scrollToSection('registration-entry', 'instant')) scrollToSection('registration-form-start', 'instant');
         });
         return () => cancelAnimationFrame(frame);
       }
