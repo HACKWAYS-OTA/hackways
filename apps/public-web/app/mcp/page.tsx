@@ -15,7 +15,7 @@ const workflows = [
 export default function MCPPage() {
   return <div className="mcp-page site-container">
     <section className="mcp-intro" aria-labelledby="mcp-title">
-      <div><h1 id="mcp-title">Your events.<br />In the conversation.</h1><p>Connect your AI workspace to Hackways. Find a gathering, manage your guests and keep the details moving with the Model Context Protocol.</p><a className="button button-primary" href="https://developers.openai.com/plugins">Read the OpenAI guide</a></div>
+      <div><h1 id="mcp-title">Your events.<br />In the conversation.</h1><p>Connect your AI workspace to Hackways. Find a gathering, manage your guests and keep the details moving with the Model Context Protocol.</p><Link className="button button-primary" href="/mcp/setup">Set up your connection</Link></div>
       <div className="mcp-endpoint"><h2>Connect to Hackways</h2><p>Add this remote server URL in an MCP-compatible client.</p><code>https://mcp.hackways.in/mcp</code><CopyEndpoint /><p className="mcp-endpoint-note">Streamable HTTP · OAuth authorization</p></div>
     </section>
     <section className="mcp-workflows" aria-labelledby="mcp-workflows-title"><h2 id="mcp-workflows-title">From discovery to the door.</h2>{workflows.map(workflow => <article key={workflow.title}><div><h3>{workflow.title}</h3><p>{workflow.text}</p></div><blockquote>{workflow.example}</blockquote></article>)}</section>
