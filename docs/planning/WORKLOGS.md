@@ -1112,5 +1112,18 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   callback matching, PKCE and explicit unsupported OIDC fields. The setup page
   inherits public typography/palette, keyboard focus and responsive stacked rows;
   it generates no account credentials and links from /mcp and the sitemap.
-  Local public-web type-check/lint and tracked source audit passed. Page image
-  publication and production verification remain pending for this new source.
+  Local public-web type-check/lint and tracked source audit passed. Source-only
+  finish review returned ship with no material findings; documentation review
+  reconciled the earlier activation status. No rendered approval is claimed.
+- Published only public-web from f60aac33dbae771acfc4cbc8094d3e2480d333cf after exact
+  source PR CI 39916153964 succeeded and the public image job 120291272588 in
+  release 39916156774 completed its image publication and immutable identity
+  artifact. Unrelated image jobs were not required for this public-only change.
+  Digest: sha256:4bd800ab8fc9c64febb6f27b0901757759e3caec1c1ef6828acb0840c29bb9b0.
+- Production /mcp/setup returned trusted HTTPS 200 with every requested field;
+  /mcp links to it. Both VM-side and independent Windows requests verified the
+  published content. Cookie controls, lowercase support footer, OAuth discovery,
+  schema 24, environment, resource limits, ingress and the other five container
+  identities were preserved. Active Compose pin:
+  /opt/hackways/releases/mcp-setup-f60aac33dbae/images.compose.json.
+  PR 49 merged as 4533307. Actual ChatGPT browser linking remains unreviewed.

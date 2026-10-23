@@ -116,9 +116,14 @@ Activated MCP release: five services from
 schema 24 clean. Mandatory Linux race suites passed core 62/global 130 with no
 failures/skips. Private Azure backup read-back, environment/signing identity,
 resource limits, admin daily verification and unrelated configuration were
-preserved. Activation evidence is recorded in WORKLOGS.md. The subsequent public
-setup-page image has its own publication evidence. CDN and Apple Wallet remain
-deferred.
+preserved. Subsequently only public-web advanced to
+`f60aac33dbae771acfc4cbc8094d3e2480d333cf` for the live `/mcp/setup` reference;
+exact-source PR CI 39916153964 and public image job 120291272588 (release
+39916156774) verified its publication. Other five containers were preserved.
+Active pin: `/opt/hackways/releases/mcp-setup-f60aac33dbae/images.compose.json`;
+retain this full pin on later operations so MCP flags and immutable sources remain
+consistent. Activation evidence is recorded in WORKLOGS.md. CDN and Apple Wallet
+remain deferred.
 
 ### ChatGPT client metadata negotiation
 
