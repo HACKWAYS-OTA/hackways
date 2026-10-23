@@ -973,3 +973,25 @@ Verification so far: admin npm test (type check/lint), global go build/vet and f
 - A bounded release operator waited for the exact successful candidate, verified all immutable artifact/image identities, captured protected runtime/configuration hashes, streamed a consistent private Azure Blob database backup with committed-size verification, and activated both Go engines before the four frontends. No build ran on the VM. Schema 21 remained clean; no new migration or administrative data change was needed. All six runtime revisions and embedded source identities match the tested commit.
 - The live manifest is `/opt/hackways/releases/admin-overview-d16a26d2960c/images.compose.json`. Fifteen origin HTTPS route/auth checks passed. Both Go engines are healthy; protected environment, pass signing identity, existing sessions, Nginx container/routing and approved any-network admin policy were preserved. No campaign or custom-recipient message was sent by this release.
 - Additional live checks confirmed compiled admin assets contain the bento stylesheet and no Reason for this change prompt, while a real public event registration route includes the new entry marker with its event summary before the form. This verifies shipped markup/assets, not visual layout or interactive browser history/focus behavior: no connected browser was available. Existing no-reason save, audit, revision, origin, authorization and replay regressions passed against real isolated PostgreSQL. Isolated previews remain on 3101/3102/3103 with the daily-admin-OTP-only email filter.
+
+
+## 2026-10-23 - Correct registration entry target to Your details
+
+The user clarified that Apply to join must arrive at the Your details step, not the event header. Registration route navigation now uses the existing registration-step focus/scroll target; sign-in, closed and already-registered states fall back to the form region. The banner and summary remain above the form for ordinary scrolling. Clean URLs, native Back/Forward restoration and refresh/query behavior remain unchanged. No API, authentication, form state or database change is required.
+
+The user also requested simpler registration terms. Platform event and final submission buttons now say Register, pending submissions say Registration submitted, and helper text uses registration consistently. Invitation and waiting-list labels and organizer-defined button text remain meaningful and compatible; approval/capacity behavior is unchanged.
+
+
+## 2026-10-23 - Registration arrival and editable attendee name
+
+- Corrected the arrival anchor to event summary text below the banner, preserving the title/short description above Your details and retaining browser history restoration. Registration-only ambient opacity/saturation are slightly reduced.
+- Signed-in attendees can edit their registration name; email remains read-only and authoritative from the backend session. Review, organizer/admin roster and notification names prefer the registration snapshot. Account profile names stay unchanged.
+- Extended the existing sectioned-registration integration check to exercise the authenticated HTTP path, name persistence, email/ownership binding and unchanged account profile. Core-web type check/lint passed; existing core events/RSVP PostgreSQL suites passed against the isolated test database, and core `go vet ./...` passed. Interactive browser verification remains unavailable (no connected browser).
+
+
+## 2026-10-23 - Confirmation email QR and calendar
+
+- Confirmed-registration emails now derive an inline signed QR and My pass link from the real eligible ticket, and attach an escaped UTF-8 calendar export. Current recipient, registration, ticket and event state are checked before rendering; revoked/cancelled/transferred tickets remain invalid at core check-in.
+- Reused the existing approved QR encoder and Ed25519 admission format in the global worker; protected Compose forwards the existing seed to both engines without rotating it. No schema migration or media persistence is introduced.
+- ACS stable API is 2025-09-01 for content-ID inline images, retaining operation identity/reconciliation and sender/Reply-To rules. Apple Wallet was withdrawn by the user due to missing Apple signing credentials; no Wallet code or file is shipped.
+- Existing mandatory tests now cover encoded attachment/CID transport, PNG dimensions, QR signature/claim contract, calendar dates/Unicode folding/injection escaping, real PostgreSQL eligibility and recipient binding. Full local core/global Go suites passed against isolated test databases; vet, formatting, SQL compilation, source audit and core-web type check/lint passed. Linux CI race checks and compiled image publication are pending. Inbox rendering and live delivery remain unverified.

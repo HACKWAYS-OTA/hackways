@@ -29,7 +29,7 @@ export function RegistrationReview({
       <dl className="registration-review-identity">
         <div>
           <dt>Name</dt>
-          <dd>{user?.display_name || name || "Not provided"}</dd>
+          <dd>{name.trim() || "Not provided"}</dd>
         </div>
         <div>
           <dt>Email</dt>
@@ -84,7 +84,7 @@ export function RegistrationReview({
       </div>
       <p className="registration-note">
         {approval
-          ? "The organizer reviews applications before confirming a place."
+          ? "The organizer must approve your registration before your place is confirmed."
           : "Availability is checked when you submit."}
       </p>
     </div>

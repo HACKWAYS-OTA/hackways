@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/skip2/go-qrcode"
 	"io"
 	"net/http"
 	"strings"
@@ -41,7 +42,7 @@ func testACSMessage() EmailMessage {
 
 func checkACSPost(t *testing.T, request *http.Request, message EmailMessage) {
 	t.Helper()
-	if request.Method != http.MethodPost || request.URL.RequestURI() != "/emails:send?api-version=2023-03-31" {
+	if request.Method != http.MethodPost || request.URL.RequestURI() != "/emails:send?api-version=2025-09-01" {
 		t.Fatalf("expected first request to submit the email, got %s %s", request.Method, request.URL.RequestURI())
 	}
 	if request.Header.Get("Operation-Id") != message.OperationID || request.Header.Get("Repeatability-Request-Id") != message.OperationID || request.Header.Get("Repeatability-First-Sent") != message.FirstSentAt.Format(http.TimeFormat) {
@@ -51,8 +52,9 @@ func checkACSPost(t *testing.T, request *http.Request, message EmailMessage) {
 		t.Fatal("authenticated request identity is missing")
 	}
 	var payload struct {
-		Sender     string `json:"senderAddress"`
-		Recipients struct {
+		Sender      string            `json:"senderAddress"`
+		Attachments []EmailAttachment `json:"attachments"`
+		Recipients  struct {
 			To []struct {
 				Address string `json:"address"`
 			} `json:"to"`
@@ -61,17 +63,31 @@ func checkACSPost(t *testing.T, request *http.Request, message EmailMessage) {
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Sender != "sender@example.invalid" || len(payload.Recipients.To) != 1 || payload.Recipients.To[0].Address != message.Recipient {
 		t.Fatal("send payload lost its sender or recipient")
 	}
+	if len(payload.Attachments) != len(message.Attachments) {
+		t.Fatal("attachment count changed")
+	}
+	for i, part := range payload.Attachments {
+		if part != message.Attachments[i] {
+			t.Fatal("attachment content or inline CID changed")
+		}
+	}
 }
 
 func checkACSGet(t *testing.T, request *http.Request, message EmailMessage) {
 	t.Helper()
-	if request.Method != http.MethodGet || request.URL.RequestURI() != "/emails/operations/"+message.OperationID+"?api-version=2023-03-31" {
+	if request.Method != http.MethodGet || request.URL.RequestURI() != "/emails/operations/"+message.OperationID+"?api-version=2025-09-01" {
 		t.Fatalf("retry must reconcile the same operation: %s %s", request.Method, request.URL.RequestURI())
 	}
 }
 
 func TestACSFirstSendDoesNotLookupUnknownOperation(t *testing.T) {
 	message := testACSMessage()
+	icon, iconErr := qrcode.Encode("isolated-ci-message", qrcode.Medium, 128)
+	if iconErr != nil {
+		t.Fatal(iconErr)
+	}
+	message.Attachments = []EmailAttachment{attachment("entry-qr.png", "image/png", "hackways-entry-qr", icon), attachment("event.ics", "text/calendar", "", []byte("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n"))}
+	message.BodyHTML += `<img src="cid:hackways-entry-qr" alt="Event QR">`
 	calls := 0
 	sender := testACSSender(t, func(request *http.Request) (*http.Response, error) {
 		calls++

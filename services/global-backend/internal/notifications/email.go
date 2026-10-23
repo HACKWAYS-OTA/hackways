@@ -9,6 +9,14 @@ import (
 var ErrEmptyRecipient = errors.New("recipient email address cannot be empty")
 var ErrEmailProviderUnavailable = errors.New("transactional email provider is unavailable")
 
+// ContentID marks an embedded image; ordinary file attachments omit it.
+type EmailAttachment struct {
+	Name            string `json:"name"`
+	ContentType     string `json:"contentType"`
+	ContentInBase64 string `json:"contentInBase64"`
+	ContentID       string `json:"contentId,omitempty"`
+}
+
 type EmailMessage struct {
 	SenderClass string // account, event, or promotion; assigned by server template catalog.
 	OperationID string
@@ -20,6 +28,7 @@ type EmailMessage struct {
 	Subject      string
 	BodyText     string
 	BodyHTML     string
+	Attachments  []EmailAttachment
 }
 type EmailSender interface {
 	Send(context.Context, EmailMessage) error

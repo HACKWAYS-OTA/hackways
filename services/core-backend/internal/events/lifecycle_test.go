@@ -874,9 +874,24 @@ func TestSectionedRegistration_ValidationInvitationAndSnapshot(t *testing.T) {
 		t.Fatal("minimum length bypassed")
 	}
 	inputs[3].Text = "Building together"
-	result, _, err := engine.Register(ctx, req)
-	if err != nil || result.Data.Status != db.RegistrationStatusPendingApproval {
-		t.Fatalf("invited registration bypassed approval or failed: %v", err)
+	req.Name = "Attendee registration name"
+	registrationBody, _ := json.Marshal(rsvps.CreateRSVPRequest{EventID: idString(f.event.ID), GuestName: req.Name, GuestEmail: "different@example.invalid", FormRevision: &revision, Answers: inputs})
+	registrationRequest := httptest.NewRequest("POST", "/", bytes.NewReader(registrationBody))
+	registrationRequest.Header.Set("Content-Type", "application/json")
+	registrationRequest.Header.Set("Idempotency-Key", req.Key)
+	registrationRequest.AddCookie(guest.cookie)
+	w = httptest.NewRecorder()
+	rsvps.NewHandler(f.pool).Routes().ServeHTTP(w, registrationRequest)
+	var result workflows.Reply
+	if w.Code != http.StatusCreated || json.Unmarshal(w.Body.Bytes(), &result) != nil || result.Data.Status != db.RegistrationStatusPendingApproval {
+		t.Fatalf("invited registration bypassed approval or failed: %d %s", w.Code, w.Body.String())
+	}
+	if result.Data.GuestName.String != req.Name || result.Data.GuestEmail.String != guest.owner.Email || result.Data.UserID != guest.owner.ID {
+		t.Fatal("registration name edit lost or session email/ownership overridden")
+	}
+	profile, err := guest.q.GetUserByID(ctx, guest.owner.ID)
+	if err != nil || profile.DisplayName != guest.owner.DisplayName {
+		t.Fatal("registration changed the account profile")
 	}
 	if replay, yes, err := engine.Register(ctx, req); err != nil || !yes || replay.Data.ID != result.Data.ID {
 		t.Fatal("section submission did not replay safely")

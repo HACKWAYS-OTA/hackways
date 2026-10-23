@@ -117,13 +117,13 @@ func (q *Queries) EventInvitationSummary(ctx context.Context, eventID pgtype.UUI
 const listEventInvitations = `-- name: ListEventInvitations :many
 SELECT o.recipient_email,o.status,o.created_at,o.sent_at,o.retry_count,
  COALESCE(r.public_code,'')::text AS registration_code,COALESCE(r.status::text,'')::text AS registration_status,t.checked_in_at,
- COALESCE(u.display_name,r.guest_name,'')::text AS guest_name
+ COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS guest_name
 FROM email_outbox o
 LEFT JOIN users u ON lower(u.email)=lower(o.recipient_email) AND u.deleted_at IS NULL
 LEFT JOIN LATERAL (SELECT rr.public_code,rr.status,rr.id,rr.guest_name FROM rsvps rr WHERE rr.event_id=o.event_id AND (rr.user_id=u.id OR rr.user_id IS NULL AND lower(rr.guest_email)=lower(o.recipient_email)) ORDER BY (rr.status IN ('confirmed','pending_approval','waitlisted','offered')) DESC,rr.registered_at DESC,rr.id LIMIT 1) r ON true
 LEFT JOIN tickets t ON t.rsvp_id=r.id
 WHERE o.event_id=$1 AND o.template_type='event_invitation'
-AND ($2::text='' OR lower(o.recipient_email) LIKE '%' || lower($2::text) || '%' OR lower(COALESCE(u.display_name,r.guest_name,'')) LIKE '%' || lower($2::text) || '%')
+AND ($2::text='' OR lower(o.recipient_email) LIKE '%' || lower($2::text) || '%' OR lower(COALESCE(NULLIF(r.guest_name,''),u.display_name,'')) LIKE '%' || lower($2::text) || '%')
 AND ($3::text='all' OR $3::text='awaiting' AND r.id IS NULL OR $3::text='responded' AND r.status IN ('confirmed','pending_approval','waitlisted','offered') OR $3::text IN ('sent','failed') AND o.status::text=$3::text OR $3::text='queued' AND o.status='pending')
 ORDER BY o.created_at DESC,o.id LIMIT $5 OFFSET $4
 `

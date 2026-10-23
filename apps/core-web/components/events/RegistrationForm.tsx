@@ -45,7 +45,7 @@ export function RegistrationForm({
   const [form, setForm] = useState(initialForm),
     [answers, setAnswers] = useState<Record<string, RegistrationAnswer>>({}),
     [step, setStep] = useState(0),
-    [name, setName] = useState(""),
+    [name, setName] = useState(user?.display_name || ""),
     [email, setEmail] = useState(""),
     [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false),
@@ -68,7 +68,7 @@ export function RegistrationForm({
   useEffect(() => {
     if (
       confirmed ||
-      (!Object.keys(answers).length && !name && !email && !notes)
+      (!Object.keys(answers).length && name === (user?.display_name || "") && !email && !notes)
     )
       return;
     const leave = (event: BeforeUnloadEvent) => {
@@ -77,7 +77,7 @@ export function RegistrationForm({
     };
     window.addEventListener("beforeunload", leave);
     return () => window.removeEventListener("beforeunload", leave);
-  }, [answers, name, email, notes, confirmed]);
+  }, [answers, name, email, notes, confirmed, user?.display_name]);
   function go(next: number) {
     setStep(next);
     setFieldErrors({});
@@ -87,7 +87,7 @@ export function RegistrationForm({
   function validate(index: number): Record<string, string> {
     const errors: Record<string, string> = {};
     if (index === 0) {
-      if (form.name_required && !(user?.display_name || name).trim())
+      if ((form.name_required || !!user) && !name.trim())
         errors.name = "Your name is required.";
       if (!user && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
         errors.email = "Enter a valid email address.";
@@ -162,7 +162,7 @@ export function RegistrationForm({
     try {
       const payload = JSON.stringify({
         event_id: event.id,
-        guest_name: user?.display_name || name.trim(),
+        guest_name: name.trim(),
         guest_email: user?.email || email.trim(),
         notes: notes.trim(),
         form_revision: form.revision,
@@ -240,7 +240,7 @@ export function RegistrationForm({
             ? "You’re registered"
             : confirmed.status === "waitlisted"
               ? "You’re on the waiting list"
-              : "Application submitted"
+              : "Registration submitted"
           : form.settings?.title ||
             (invited ? "Accept your invitation" : "Register for this event")}
       </h2>
@@ -528,9 +528,7 @@ export function RegistrationForm({
                   : form.settings?.submit_label ||
                     (joiningWaitlist
                       ? "Join waiting list"
-                      : event.registration_mode === "approval"
-                        ? "Submit application"
-                        : "Confirm registration")}
+                      : "Register")}
             <Icon name="arrow" size={17} />
           </button>
         </div>

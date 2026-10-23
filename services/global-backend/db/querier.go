@@ -133,6 +133,7 @@ type Querier interface {
 	QueueAdminCustomMessages(ctx context.Context, arg QueueAdminCustomMessagesParams) ([]int64, error)
 	QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error)
 	ReadAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) (AdminSessionChallenges, error)
+	ReadConfirmationPass(ctx context.Context, id pgtype.UUID) (ReadConfirmationPassRow, error)
 	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
 	ReadOAuthExchangeUser(ctx context.Context, arg ReadOAuthExchangeUserParams) (pgtype.UUID, error)
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
