@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/hackways/global-backend/db"
+	"github.com/hackways/global-backend/internal/platform"
 	"github.com/hackways/global-backend/internal/testsupport"
+	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,6 +24,197 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// Extends the mandatory PostgreSQL CI suite; all records live in its isolated
+// database. This does not send email or touch production identities.
+func TestMCPOAuthAndApprovedProfileWrite(t *testing.T) {
+	t.Setenv("MCP_ENABLED", "true")
+	ctx := context.Background()
+	pool, e := pgxpool.New(ctx, testsupport.DatabaseURL(t))
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer pool.Close()
+	q := db.New(pool)
+	nonce, e := GenerateToken()
+	if e != nil {
+		t.Fatal(e)
+	}
+	user, e := q.CreateUser(ctx, db.CreateUserParams{Email: "mcp-" + nonce + "@example.invalid", PasswordHash: "unusable-isolated-fixture", DisplayName: "MCP account"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = q.MarkUserEmailVerified(ctx, user.ID); e != nil {
+		t.Fatal(e)
+	}
+	h := NewHandler(pool, false)
+	session, _, e := h.sm.CreateSession(ctx, user.ID, "MCP CI", "", time.Hour)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM users WHERE id=$1", user.ID) }()
+	router := chi.NewRouter()
+	router.Use(platform.RequestProtection(24))
+	router.Mount("/api/v1/auth", h.Routes())
+	request := func(method, path, body, content, origin, bearer string, cookie bool) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		if content != "" {
+			req.Header.Set("Content-Type", content)
+		}
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		if bearer != "" {
+			req.Header.Set("Authorization", "Bearer "+bearer)
+		}
+		if cookie {
+			req.AddCookie(&http.Cookie{Name: DefaultSessionCookie, Value: session})
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+	registration := request("POST", "/api/v1/auth/mcp/register", `{"client_name":"Isolated MCP client","redirect_uris":["http://127.0.0.1:49123/callback"],"token_endpoint_auth_method":"none"}`, "application/json", "", "", false)
+	if registration.Code != 201 {
+		t.Fatalf("registration: %d %s", registration.Code, registration.Body.String())
+	}
+	var client mcpClientMetadata
+	if json.Unmarshal(registration.Body.Bytes(), &client) != nil || client.ClientID == "" {
+		t.Fatal("missing client ID")
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM mcp_oauth_requests WHERE client_id=$1", client.ClientID)
+		_, _ = pool.Exec(ctx, "DELETE FROM mcp_oauth_grants WHERE client_id=$1", client.ClientID)
+		_, _ = pool.Exec(ctx, "DELETE FROM mcp_oauth_clients WHERE id=$1", client.ClientID)
+	}()
+	verifier := strings.Repeat("x", 64)
+	digest := sha256.Sum256([]byte(verifier))
+	challenge := base64.RawURLEncoding.EncodeToString(digest[:])
+	values := url.Values{"client_id": {client.ClientID}, "redirect_uri": {client.Redirects[0]}, "response_type": {"code"}, "resource": {MCPResource()}, "code_challenge_method": {"S256"}, "code_challenge": {challenge}, "scope": {"profile:read profile:write admin:read"}, "state": {"state-check"}}
+	values.Set("redirect_uri", "https://unregistered.example.invalid/callback")
+	if got := request("GET", "/api/v1/auth/mcp/authorize?"+values.Encode(), "", "", "", "", false).Code; got != 400 {
+		t.Fatalf("redirect mismatch accepted: %d", got)
+	}
+	values.Set("redirect_uri", client.Redirects[0])
+	authorization := request("GET", "/api/v1/auth/mcp/authorize?"+values.Encode(), "", "", "", "", false)
+	if authorization.Code != 303 {
+		t.Fatalf("authorize: %d %s", authorization.Code, authorization.Body.String())
+	}
+	destination, _ := url.Parse(authorization.Header().Get("Location"))
+	if destination.Host != "hackways.in" {
+		t.Fatal("ordinary account was forced into admin login")
+	}
+	id := destination.Query().Get("request")
+	consent := request("GET", "/api/v1/auth/mcp/requests/"+id, "", "", "", "", true)
+	if consent.Code != 200 {
+		t.Fatalf("consent: %d", consent.Code)
+	}
+	var view mcpConsentView
+	_ = json.Unmarshal(consent.Body.Bytes(), &view)
+	if mcpAdmin(view.Scopes) || view.AdminURL == "" {
+		t.Fatal("ordinary consent must omit admin scopes and offer a separate admin entry")
+	}
+	if got := request("POST", "/api/v1/auth/mcp/requests/"+id+"/decision", `{"allow":true}`, "application/json", "https://evil.example.invalid", "", true).Code; got != 403 {
+		t.Fatalf("cross-origin approval accepted: %d", got)
+	}
+	decision := request("POST", "/api/v1/auth/mcp/requests/"+id+"/decision", `{"allow":true}`, "application/json", "https://hackways.in", "", true)
+	if decision.Code != 200 {
+		t.Fatalf("decision: %d %s", decision.Code, decision.Body.String())
+	}
+	var returned struct {
+		URL string `json:"redirect_url"`
+	}
+	_ = json.Unmarshal(decision.Body.Bytes(), &returned)
+	callback, _ := url.Parse(returned.URL)
+	if callback.Query().Get("iss") != MCPIssuer() || callback.Query().Get("state") != "state-check" {
+		t.Fatal("callback must bind issuer and preserve state")
+	}
+	form := url.Values{"grant_type": {"authorization_code"}, "client_id": {client.ClientID}, "redirect_uri": {client.Redirects[0]}, "resource": {MCPResource()}, "code": {callback.Query().Get("code")}, "code_verifier": {strings.Repeat("z", 64)}}
+	if got := request("POST", "/api/v1/auth/mcp/token", form.Encode(), "application/x-www-form-urlencoded", "", "", false).Code; got != 400 {
+		t.Fatalf("bad PKCE accepted: %d", got)
+	}
+	form.Set("code_verifier", verifier)
+	exchanged := request("POST", "/api/v1/auth/mcp/token", form.Encode(), "application/x-www-form-urlencoded", "", "", false)
+	if exchanged.Code != 200 {
+		t.Fatalf("token: %d %s", exchanged.Code, exchanged.Body.String())
+	}
+	var tokens struct {
+		Access  string `json:"access_token"`
+		Refresh string `json:"refresh_token"`
+		Scope   string `json:"scope"`
+	}
+	_ = json.Unmarshal(exchanged.Body.Bytes(), &tokens)
+	if strings.Contains(tokens.Scope, "admin:") {
+		t.Fatal("ordinary consent escalated scopes")
+	}
+	if got := request("POST", "/api/v1/auth/mcp/token", form.Encode(), "application/x-www-form-urlencoded", "", "", false).Code; got != 400 {
+		t.Fatalf("code replay accepted: %d", got)
+	}
+	if got := request("GET", "/api/v1/auth/me", "", "", "", tokens.Access, false).Code; got != 200 {
+		t.Fatalf("real profile API denied credential: %d", got)
+	}
+	body := `{"display_name":"Approved MCP name"}`
+	if got := request("PATCH", "/api/v1/auth/me", body, "application/json", "", tokens.Access, false).Code; got != 403 {
+		t.Fatalf("unapproved write accepted: %d", got)
+	}
+	if got := request("GET", "/api/v1/auth/mcp/connections", "", "", "", tokens.Access, false).Code; got != 401 {
+		t.Fatalf("OAuth credential substituted for browser cookie: %d", got)
+	}
+	identity, e := MCPIdentity(ctx, q, "Bearer "+tokens.Access)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var intentID pgtype.UUID
+	if e = intentID.Scan(nonce[:8] + "-" + nonce[8:12] + "-" + nonce[12:16] + "-" + nonce[16:20] + "-" + nonce[20:32]); e != nil {
+		t.Fatal(e)
+	}
+	_, e = q.MCPCreateActionIntent(ctx, db.MCPCreateActionIntentParams{ID: intentID, GrantID: identity.GrantID, ToolName: "update_my_name", ApiService: "global", Method: "PATCH", ApiPath: "/api/v1/auth/me", PayloadJson: []byte(body), RequestHash: HashToken(body)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	approve := request("POST", "/api/v1/auth/mcp/actions/"+mcpIDString(intentID)+"/decision", `{"allow":true}`, "application/json", "https://hackways.in", "", true)
+	if approve.Code != 200 {
+		t.Fatalf("action approval: %d", approve.Code)
+	}
+	lease, e := GenerateToken()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = q.MCPClaimActionIntent(ctx, db.MCPClaimActionIntentParams{ID: intentID, GrantID: identity.GrantID, LeaseHash: mcpText(HashToken(lease))}); e != nil {
+		t.Fatal(e)
+	}
+	execute := func(payload string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("PATCH", "/api/v1/auth/me", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+tokens.Access)
+		req.Header.Set("X-MCP-Intent", mcpIDString(intentID))
+		req.Header.Set("X-MCP-Lease", lease)
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+		return rr
+	}
+	if got := execute(`{"display_name":"Changed by model after approval"}`).Code; got != 403 {
+		t.Fatalf("changed approved fields accepted: %d", got)
+	}
+	if got := execute(body); got.Code != 200 {
+		t.Fatalf("approved real write: %d %s", got.Code, got.Body.String())
+	}
+	saved, e := q.GetUserByEmail(ctx, user.Email)
+	if e != nil || saved.DisplayName != "Approved MCP name" {
+		t.Fatal("confirmed operation was not persisted")
+	}
+	refresh := url.Values{"grant_type": {"refresh_token"}, "client_id": {client.ClientID}, "resource": {MCPResource()}, "refresh_token": {tokens.Refresh}}
+	first := request("POST", "/api/v1/auth/mcp/token", refresh.Encode(), "application/x-www-form-urlencoded", "", "", false)
+	if first.Code != 200 {
+		t.Fatalf("refresh: %d %s", first.Code, first.Body.String())
+	}
+	if got := request("POST", "/api/v1/auth/mcp/token", refresh.Encode(), "application/x-www-form-urlencoded", "", "", false).Code; got != 400 {
+		t.Fatalf("refresh reuse accepted: %d", got)
+	}
+	if got := request("GET", "/api/v1/auth/me", "", "", "", tokens.Access, false).Code; got != 401 {
+		t.Fatalf("refresh reuse did not revoke grant: %d", got)
+	}
+}
 
 func TestAuthHandler_LivePostgres(t *testing.T) {
 	dbURL := testsupport.DatabaseURL(t)

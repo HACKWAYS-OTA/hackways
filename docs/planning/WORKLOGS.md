@@ -1026,3 +1026,46 @@ The user also requested simpler registration terms. Platform event and final sub
 - Extended existing mandatory isolated lifecycle/admin regressions for metadata edits after start/cancellation, admin closure, attendee identity, duplicate errors, undo persistence/retry/audit, cross-owner/anonymous denial and stale undo after rescan. Verification and final combined release evidence will be appended after commands/CI finish. Previous release candidates were cancelled before activation to include this user steering; production remains on the prior verified release.
 
 - Combined local verification: 62 core and 127 global PostgreSQL cases passed with no failed/skipped cases; all workspace type checks and lint, both Go vet/build, source/whitespace checks and scoped UI detector passed. Migration 23 applied to isolated test databases and the copied preview; rebuilt isolated backends include the closure and scan/undo APIs. No connected browser is available, so visual theme, camera and focus interaction checks remain unperformed. Full Linux race/image CI and production activation remain pending for the final combined source.
+
+
+## 2026-10-23 - Analytics/manage release verified live
+
+All six services at source 1e898be5e702b5a48e12135f333ba68117839b26 passed CI
+39901702575 and were activated with schema 23 clean; PR 46 merged as
+c0f66191d77ab4218518a14c02286f4d88255088. Eleven readiness/auth/negative-consent
+checks passed. Protected environment, sessions, ticket identity, Nginx container
+and the approved any-network admin policy were preserved. CDN stayed unchanged.
+
+## 2026-10-23 - MCP service, consent and public entry
+
+- Added 106 focused discovery/account/registration/organizer/admin tools through
+  the official Go MCP SDK in global-backend. Existing Go HTTP APIs retain actual
+  authorization, ownership, capacity locking, revisions and transactions. No new
+  runtime, TS business backend, generic API/SQL tool or simulated outcome.
+- Additive SQLc migration 24 stores hashed OAuth codes/access/rotating refresh
+  credentials, session-bound scopes, revocable connections and exact approved
+  action intents. PKCE S256, issuer/resource/redirect binding, known ChatGPT CIMD,
+  bounded public client registration and replay rejection are enforced. Every
+  write requires actual browser approval plus a private execution lease; ambiguous
+  outcomes never retry automatically. Admin grants and daily OTP remain required.
+- Dedicated server-fetched account/admin approval and connection pages use shared
+  UI; public landing is /mcp. Mixed-scope requests allow a normal account connection
+  without admin permissions. Global's build baseline is Go 1.25 for SDK 1.8.0;
+  existing six-service hard limits and pools remain.
+- Fixed mcp.hackways.in HTTPS immediately with a dedicated trusted certificate;
+  external hostname/chain validation passed. The temporary preparation response
+  stays until the actual MCP runtime release. Existing site/CDN unchanged.
+- User steering: cookie choice now says Allow all; removed public-footer Cookie
+  preferences and added Manage cookies on /cookies. Existing consent choices and
+  essential authentication remain intact. Added the landing link to Resources.
+- Local real PostgreSQL core/global suites and vet/build passed. Added mandatory
+  CI coverage for PKCE, code/refresh reuse, ordinary scope narrowing, API approval
+  binding, actual persisted profile writes, SDK discovery/runtime challenges,
+  schema validation, saved-result replay, admin grant/session/daily OTP expiry and
+  session revocation. Frontend/shared type checks and lint passed; scoped design
+  detector passed. Final CI/image/deployment evidence remains pending. No connected
+  browser is available; no visual/client OAuth/Directory review is claimed.
+
+- Final MCP review requires explicit fields for full-record replacements, so omitted capacity, windows, membership details or campaign actions cannot silently clear saved settings. HTTP transport replay is disabled for writes, and server-side ambiguous write outcomes require state inspection.
+
+- User clarified the public support address casing: public site defaults to support@hackota.com and normalizes configured display addresses to lowercase.

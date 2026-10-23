@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -72,7 +73,8 @@ func CORS(origins []string) func(http.Handler) http.Handler {
 			w.Header().Add("Vary", "Origin")
 			origin := r.Header.Get("Origin")
 			unsafe := r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions
-			if origin != "" && !allowed[origin] && !allowed["*"] {
+			mcpOrigin := os.Getenv("MCP_ENABLED") == "true" && (r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/api/v1/auth/mcp/")) && (origin == "https://chatgpt.com" || origin == "https://mcp.hackways.in")
+			if origin != "" && !allowed[origin] && !allowed["*"] && !mcpOrigin {
 				RespondError(w, 403, "ORIGIN_DENIED", "This origin is not allowed", nil)
 				return
 			}
@@ -84,8 +86,8 @@ func CORS(origins []string) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Request-ID, Idempotency-Key, If-Match")
-				w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID, Retry-After, ETag, Idempotency-Replayed")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Request-ID, Idempotency-Key, If-Match, MCP-Protocol-Version, MCP-Session-Id")
+				w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID, Retry-After, ETag, Idempotency-Replayed, MCP-Session-Id")
 			}
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(204)
@@ -121,7 +123,8 @@ func RequestProtection(maxConcurrent int) func(http.Handler) http.Handler {
 			if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
 				if r.ContentLength != 0 {
 					media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-					if err != nil || media != "application/json" {
+					oauthForm := os.Getenv("MCP_ENABLED") == "true" && r.Method == "POST" && (r.URL.Path == "/api/v1/auth/mcp/token" || r.URL.Path == "/api/v1/auth/mcp/revoke") && media == "application/x-www-form-urlencoded"
+					if err != nil || (media != "application/json" && !oauthForm) {
 						RespondError(w, 415, "JSON_REQUIRED", "Use application/json", nil)
 						return
 					}

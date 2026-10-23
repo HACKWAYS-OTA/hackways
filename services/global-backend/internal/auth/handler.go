@@ -65,6 +65,9 @@ func (h *Handler) Routes() chi.Router {
 		})
 	})
 
+	if MCPEnabled() {
+		r.Mount("/mcp", h.MCPRoutes())
+	}
 	r.Post("/register", h.Register)
 	if h.rollouts != nil {
 		r.Get("/runtime", h.rollouts.ServeHTTP)

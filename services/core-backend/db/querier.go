@@ -126,6 +126,8 @@ type Querier interface {
 	LockPromotionEvent(ctx context.Context, adminReference int64) (Events, error)
 	LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error)
 	LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWorkflowEventRow, error)
+	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
+	MCPExecutionAllowed(ctx context.Context, arg MCPExecutionAllowedParams) (bool, error)
 	ManagedGuestDetail(ctx context.Context, arg ManagedGuestDetailParams) (ManagedGuestDetailRow, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error

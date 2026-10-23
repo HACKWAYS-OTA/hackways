@@ -131,6 +131,41 @@ type Querier interface {
 	LockAuthenticationUser(ctx context.Context, id pgtype.UUID) (LockAuthenticationUserRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
 	LockRuntimeRollout(ctx context.Context) (RuntimeRolloutControl, error)
+	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
+	MCPAppendAudit(ctx context.Context, arg MCPAppendAuditParams) error
+	MCPApproveActionIntent(ctx context.Context, arg MCPApproveActionIntentParams) (int64, error)
+	MCPApproveAuthorizationRequest(ctx context.Context, arg MCPApproveAuthorizationRequestParams) (McpOauthRequests, error)
+	MCPAuthorizationRequest(ctx context.Context, id pgtype.UUID) (MCPAuthorizationRequestRow, error)
+	MCPClaimActionIntent(ctx context.Context, arg MCPClaimActionIntentParams) (McpActionIntents, error)
+	MCPCleanupAccessTokens(ctx context.Context) error
+	MCPCleanupActions(ctx context.Context) error
+	MCPCleanupClients(ctx context.Context) error
+	MCPCleanupGrants(ctx context.Context) error
+	MCPCleanupRequests(ctx context.Context) error
+	MCPConsumeAuthorizationCode(ctx context.Context, id pgtype.UUID) error
+	MCPConsumeRefreshToken(ctx context.Context, tokenHash string) error
+	MCPCreateActionIntent(ctx context.Context, arg MCPCreateActionIntentParams) (McpActionIntents, error)
+	MCPCreateAuthorizationRequest(ctx context.Context, arg MCPCreateAuthorizationRequestParams) (McpOauthRequests, error)
+	MCPCreateGrant(ctx context.Context, arg MCPCreateGrantParams) (McpOauthGrants, error)
+	MCPDenyActionIntent(ctx context.Context, arg MCPDenyActionIntentParams) (int64, error)
+	MCPDenyAuthorizationRequest(ctx context.Context, id pgtype.UUID) (int64, error)
+	MCPExecutionAllowed(ctx context.Context, arg MCPExecutionAllowedParams) (bool, error)
+	MCPFinishActionIntent(ctx context.Context, arg MCPFinishActionIntentParams) (int64, error)
+	MCPGetClient(ctx context.Context, id string) (McpOauthClients, error)
+	MCPGrantForToken(ctx context.Context, tokenHash string) (MCPGrantForTokenRow, error)
+	MCPInsertAccessToken(ctx context.Context, arg MCPInsertAccessTokenParams) (McpAccessTokens, error)
+	MCPInsertRefreshToken(ctx context.Context, arg MCPInsertRefreshTokenParams) error
+	MCPListConnections(ctx context.Context, userID pgtype.UUID) ([]MCPListConnectionsRow, error)
+	MCPLockAccountGrants(ctx context.Context, userID pgtype.UUID) error
+	MCPLockAuthorizationCode(ctx context.Context, codeHash pgtype.Text) (MCPLockAuthorizationCodeRow, error)
+	MCPLockAuthorizationRequest(ctx context.Context, id pgtype.UUID) (McpOauthRequests, error)
+	MCPLockClientRegistry(ctx context.Context) error
+	MCPLockGrant(ctx context.Context, id pgtype.UUID) (McpOauthGrants, error)
+	MCPLockRefreshToken(ctx context.Context, tokenHash string) (MCPLockRefreshTokenRow, error)
+	MCPReadActionIntent(ctx context.Context, id pgtype.UUID) (MCPReadActionIntentRow, error)
+	MCPRegisterClient(ctx context.Context, arg MCPRegisterClientParams) (McpOauthClients, error)
+	MCPRevokeGrant(ctx context.Context, arg MCPRevokeGrantParams) (int64, error)
+	MCPRevokeOwnedGrant(ctx context.Context, arg MCPRevokeOwnedGrantParams) (int64, error)
 	MarkAdminSessionVerified(ctx context.Context, sessionID pgtype.UUID) error
 	MarkClaimedOutboxFailed(ctx context.Context, arg MarkClaimedOutboxFailedParams) (int64, error)
 	MarkClaimedOutboxSent(ctx context.Context, arg MarkClaimedOutboxSentParams) (int64, error)

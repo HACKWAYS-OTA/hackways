@@ -34,6 +34,14 @@ func OrganizerFromContext(ctx context.Context) (*db.Organizers, bool) {
 func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "" {
+				user, ok := mcpRequestUser(w, r, sm)
+				if !ok {
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
+				return
+			}
 			token := GetSessionToken(r, DefaultSessionCookie)
 
 			if token == "" {
@@ -62,6 +70,14 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 func OptionalAuth(sm *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "" {
+				user, ok := mcpRequestUser(w, r, sm)
+				if !ok {
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userContextKey, user)))
+				return
+			}
 			token := GetSessionToken(r, DefaultSessionCookie)
 			if token == "" {
 				next.ServeHTTP(w, r)

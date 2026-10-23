@@ -25,14 +25,30 @@ func requireAdminSession(sm *SessionManager, queries *db.Queries, allowVerificat
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "private, no-store")
+			var oauthUser *SessionUser
+			if r.Header.Get("Authorization") != "" {
+				if allowVerification {
+					platform.RespondError(w, 403, "BROWSER_REQUIRED", "Admin verification requires a browser", nil)
+					return
+				}
+				var ok bool
+				oauthUser, ok = mcpRequestUser(w, r, sm)
+				if !ok {
+					return
+				}
+			}
 			token := GetSessionToken(r, AdminSessionCookie)
-			if token == "" {
+			if token == "" && oauthUser == nil {
 				platform.RespondError(w, 401, "ADMIN_AUTH_REQUIRED", "Admin sign in required", nil)
 				return
 			}
 			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 			defer cancel()
-			user, err := sm.GetSession(ctx, token)
+			user := oauthUser
+			var err error
+			if user == nil {
+				user, err = sm.GetSession(ctx, token)
+			}
 			if err != nil {
 				if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrInvalidToken) {
 					platform.RespondError(w, 401, "ADMIN_AUTH_REQUIRED", "Admin sign in required", nil)

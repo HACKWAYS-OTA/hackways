@@ -35,8 +35,8 @@ export function recordAnalyticsEvent(name: ProductEvent, step?: number) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(productEvent, { detail: { name, step } }));
 }
 
-export function CookiePreferencesButton() {
-  return <button type="button" className="hw-cookie-preferences" onClick={() => window.dispatchEvent(new Event(preferencesEvent))}>Cookie preferences</button>;
+export function CookiePreferencesButton({ label = 'Cookie preferences' }: { label?: string } = {}) {
+  return <button type="button" className="hw-cookie-preferences" onClick={() => window.dispatchEvent(new Event(preferencesEvent))}>{label}</button>;
 }
 
 export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }: { path: string; endpoint?: string }) {
@@ -123,6 +123,6 @@ export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }
   if (!open) return null;
   return <section className="hw-analytics-consent" aria-labelledby="hw-analytics-heading">
     <div><h2 id="hw-analytics-heading" ref={heading} tabIndex={-1}>Your cookie choices</h2><p>Essential cookies keep you signed in. Optional analytics cookies help us understand visits and improve Hackways.</p><a href="/privacy">Privacy policy</a>{error && <p role="alert">{error}</p>}</div>
-    <div className="hw-analytics-choices"><button type="button" onClick={() => choose(true)}>Allow analytics</button><button type="button" onClick={() => choose(false)}>Essential only</button></div>
+    <div className="hw-analytics-choices"><button type="button" onClick={() => choose(true)}>Allow all</button><button type="button" onClick={() => choose(false)}>Essential only</button></div>
   </section>;
 }

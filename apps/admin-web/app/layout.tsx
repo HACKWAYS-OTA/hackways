@@ -1,3 +1,4 @@
+import '@hackways/ui/mcp.css';
 import { UIProvider } from '@hackways/ui/provider';
 import '@hackways/ui/styles.css';
 import type { Metadata } from 'next';

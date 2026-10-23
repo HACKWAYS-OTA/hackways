@@ -13,7 +13,7 @@ export const site = {
   organizer: environmentOrigin("NEXT_PUBLIC_ORGANIZER_URL", process.env.NEXT_PUBLIC_ORGANIZER_URL, "http://localhost:3002", true),
 };
 
-const configuredEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim();
+const configuredEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim().toLowerCase();
 export const supportEmail = configuredEmail && /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(configuredEmail)
   ? configuredEmail
-  : 'SUPPORT@hackota.com';
+  : 'support@hackota.com';

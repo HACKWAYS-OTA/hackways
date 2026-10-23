@@ -1,3 +1,4 @@
+import '@hackways/ui/mcp.css';
 import { SessionRefresh } from '@hackways/ui/session-refresh';
 import { UIProvider } from '@hackways/ui/provider';
 import '@hackways/ui/styles.css';
