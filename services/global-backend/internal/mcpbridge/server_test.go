@@ -169,7 +169,7 @@ func TestMCPProtocolAndConfirmedWrite(t *testing.T) {
 	if e != nil || after.UpdatedAt != saved.UpdatedAt {
 		t.Fatal("confirmed repeat executed the API again")
 	}
-	adminGrant, e := q.MCPCreateGrant(ctx, db.MCPCreateGrantParams{ID: session.ID, ClientID: client.ID, Resource: auth.MCPResource(), Scopes: []string{"admin:read"}})
+	adminGrant, e := q.MCPCreateGrant(ctx, db.MCPCreateGrantParams{ID: session.ID, ClientID: client.ID, Resource: auth.MCPResource(), Scopes: []string{"admin:read", "profile:write"}})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -203,6 +203,15 @@ func TestMCPProtocolAndConfirmedWrite(t *testing.T) {
 	if adminRead() != 200 {
 		t.Fatal("verified actual admin could not read real overview")
 	}
+	_, adminPrepared := rpc(`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"update_my_name","arguments":{"display_name":"Review only"}}}`, adminAccess)
+	var adminApproval struct {
+		Structured Output `json:"structuredContent"`
+	}
+	_ = json.Unmarshal(adminPrepared["result"], &adminApproval)
+	if adminApproval.Structured.Status != "approval_required" || !strings.HasPrefix(adminApproval.Structured.ApprovalURL, "https://admin.hackways.in/connect/action?") {
+		t.Fatal("an admin connection must review all its actions on the admin cookie origin")
+	}
+
 	if _, e = pool.Exec(ctx, "UPDATE platform_admin_sessions SET otp_verified_at=clock_timestamp()-INTERVAL '25 hours' WHERE session_id=$1", session.ID); e != nil {
 		t.Fatal(e)
 	}

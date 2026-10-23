@@ -431,7 +431,7 @@ func (s *Server) prepare(ctx context.Context, d definition, identity db.MCPAcces
 		return failure("Approval was not saved")
 	}
 	origin := "https://hackways.in"
-	if strings.HasPrefix(d.Scope, "admin:") {
+	if slices.Contains(identity.Scopes, "admin:read") || slices.Contains(identity.Scopes, "admin:write") {
 		origin = "https://admin.hackways.in"
 	}
 	idText, _ := row.ID.Value()
