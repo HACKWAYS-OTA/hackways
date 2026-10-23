@@ -123,7 +123,7 @@ func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
 	if msg.OperationID == "" || msg.FirstSentAt.IsZero() {
 		return errors.New("persisted email operation identity is required")
 	}
-	path := "/emails/operations/" + url.PathEscape(msg.OperationID) + "?api-version=2023-03-31"
+	path := "/emails/operations/" + url.PathEscape(msg.OperationID) + "?api-version=2025-09-01"
 	var result providerResult
 	var status int
 	var delay time.Duration
@@ -157,16 +157,20 @@ func (s *ACSEmailSender) Send(ctx context.Context, msg EmailMessage) error {
 			replyTo = []address{{"hello@hackways.in"}}
 		}
 		payload, marshalErr := json.Marshal(struct {
-			Sender          string     `json:"senderAddress"`
-			Content         content    `json:"content"`
-			Recipients      recipients `json:"recipients"`
-			ReplyTo         []address  `json:"replyTo,omitempty"`
-			DisableTracking bool       `json:"userEngagementTrackingDisabled"`
-		}{from, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, replyTo, true})
+			Sender          string            `json:"senderAddress"`
+			Content         content           `json:"content"`
+			Recipients      recipients        `json:"recipients"`
+			ReplyTo         []address         `json:"replyTo,omitempty"`
+			DisableTracking bool              `json:"userEngagementTrackingDisabled"`
+			Attachments     []EmailAttachment `json:"attachments,omitempty"`
+		}{from, content{msg.Subject, msg.BodyText, msg.BodyHTML}, recipients{[]address{{msg.Recipient}}}, replyTo, true, msg.Attachments})
 		if marshalErr != nil {
 			return marshalErr
 		}
-		result, status, delay, err = s.request(ctx, "POST", "/emails:send?api-version=2023-03-31", payload, msg.OperationID, msg.FirstSentAt)
+		if len(payload) > 9<<20 {
+			return errors.New("email exceeds the bounded attachment size")
+		}
+		result, status, delay, err = s.request(ctx, "POST", "/emails:send?api-version=2025-09-01", payload, msg.OperationID, msg.FirstSentAt)
 		if err != nil {
 			return err
 		}

@@ -103,6 +103,7 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
+	PassQR           bool               `json:"-"`
 	CampaignDesign   *CampaignDesign    `json:"campaign_design,omitempty"`
 	PromotionSubject string             `json:"promotion_subject"`
 	PromotionBody    string             `json:"promotion_body"`
@@ -205,6 +206,10 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 	}
 	actionURL = safeHTTPSURL(actionURL)
 	action := ""
+	passQR := ""
+	if payload.PassQR {
+		passQR = `<div style="margin:28px 0;text-align:center;"><img src="cid:hackways-entry-qr" width="240" height="240" alt="Your event entry QR code" style="display:block;width:240px;max-width:100%;height:auto;margin:0 auto;padding:12px;background:#ffffff;"><p style="margin:12px 0 0;font-size:14px;color:#655d70;">Show this code at check-in. Keep your pass private.</p></div>`
+	}
 	if actionURL != "" {
 		label := "Open in Hackways"
 		if template.ID == "admin_promotion" && payload.ActionLabel != "" {
@@ -212,6 +217,9 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		}
 		if template.ID == "password_reset_requested" {
 			label = "Reset password"
+		}
+		if isConfirmation(template.ID) {
+			label = "My pass"
 		}
 		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="display:inline-block;padding:11px 18px;background:#201a2b;color:#ffffff;text-decoration:none;font-weight:600;">` + label + `</a></p>`
 	}
@@ -254,7 +262,7 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		`<h1 style="margin:0 0 22px;font-size:28px;line-height:1.2;font-weight:600;color:#201a2b;">` + html.EscapeString(subject) + `</h1>` +
 		byline +
 		`<p style="margin:0 0 18px;line-height:1.65;color:#3f3648;">` + content.String() + `</p>` +
-		action + unsubscribe +
+		passQR + action + unsubscribe +
 		`<div style="height:1px;background:#e8e1ed;margin:34px 0 18px;"></div>` +
 		`<p style="margin:0;font-size:13px;line-height:1.55;color:#766b7f;">` + html.EscapeString(footer) + `</p>` +
 		`</div></div>`
@@ -380,6 +388,9 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 	msg, err := render(e)
 	if err == nil {
 		err = w.current(ctx, e)
+	}
+	if err == nil && isConfirmation(e.TemplateType) && e.RsvpID.Valid {
+		msg, err = w.confirmationPass(ctx, e)
 	}
 	if err == nil {
 		// Configuration failures must not create a fictitious provider attempt.

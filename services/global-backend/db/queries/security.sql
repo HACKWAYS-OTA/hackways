@@ -80,3 +80,14 @@ FROM email_outbox o LEFT JOIN rsvps r ON r.id=o.rsvp_id LEFT JOIN events e ON e.
 
 -- name: VerificationCodeActive :one
 SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash=$1 AND consumed_at IS NULL AND attempts<5 AND expires_at>clock_timestamp());
+
+-- name: ReadConfirmationPass :one
+SELECT t.id AS ticket_id, t.public_code AS ticket_code, r.event_id,
+ r.public_code AS registration_code, COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS recipient_name,
+ e.title,e.slug,e.description,e.starts_at,e.ends_at,e.timezone,e.banner_url,
+ e.location_name,e.location_address,e.online_url,e.revision,o.created_at AS queued_at
+FROM email_outbox o JOIN rsvps r ON r.id=o.rsvp_id JOIN tickets t ON t.rsvp_id=r.id
+JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
+WHERE o.id=$1 AND r.status='confirmed' AND t.status IN ('issued','scanned')
+AND e.status='published' AND e.deleted_at IS NULL AND e.ends_at>clock_timestamp()-INTERVAL '24 hours'
+AND lower(o.recipient_email)=lower(COALESCE(u.email,r.guest_email));

@@ -357,6 +357,63 @@ func (q *Queries) MarkClaimedOutboxSent(ctx context.Context, arg MarkClaimedOutb
 	return result.RowsAffected(), nil
 }
 
+const readConfirmationPass = `-- name: ReadConfirmationPass :one
+SELECT t.id AS ticket_id, t.public_code AS ticket_code, r.event_id,
+ r.public_code AS registration_code, COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS recipient_name,
+ e.title,e.slug,e.description,e.starts_at,e.ends_at,e.timezone,e.banner_url,
+ e.location_name,e.location_address,e.online_url,e.revision,o.created_at AS queued_at
+FROM email_outbox o JOIN rsvps r ON r.id=o.rsvp_id JOIN tickets t ON t.rsvp_id=r.id
+JOIN events e ON e.id=r.event_id LEFT JOIN users u ON u.id=r.user_id
+WHERE o.id=$1 AND r.status='confirmed' AND t.status IN ('issued','scanned')
+AND e.status='published' AND e.deleted_at IS NULL AND e.ends_at>clock_timestamp()-INTERVAL '24 hours'
+AND lower(o.recipient_email)=lower(COALESCE(u.email,r.guest_email))
+`
+
+type ReadConfirmationPassRow struct {
+	TicketID         pgtype.UUID        `json:"ticket_id"`
+	TicketCode       string             `json:"ticket_code"`
+	EventID          pgtype.UUID        `json:"event_id"`
+	RegistrationCode string             `json:"registration_code"`
+	RecipientName    string             `json:"recipient_name"`
+	Title            string             `json:"title"`
+	Slug             string             `json:"slug"`
+	Description      string             `json:"description"`
+	StartsAt         pgtype.Timestamptz `json:"starts_at"`
+	EndsAt           pgtype.Timestamptz `json:"ends_at"`
+	Timezone         string             `json:"timezone"`
+	BannerUrl        pgtype.Text        `json:"banner_url"`
+	LocationName     pgtype.Text        `json:"location_name"`
+	LocationAddress  pgtype.Text        `json:"location_address"`
+	OnlineUrl        pgtype.Text        `json:"online_url"`
+	Revision         int64              `json:"revision"`
+	QueuedAt         pgtype.Timestamptz `json:"queued_at"`
+}
+
+func (q *Queries) ReadConfirmationPass(ctx context.Context, id pgtype.UUID) (ReadConfirmationPassRow, error) {
+	row := q.db.QueryRow(ctx, readConfirmationPass, id)
+	var i ReadConfirmationPassRow
+	err := row.Scan(
+		&i.TicketID,
+		&i.TicketCode,
+		&i.EventID,
+		&i.RegistrationCode,
+		&i.RecipientName,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.Timezone,
+		&i.BannerUrl,
+		&i.LocationName,
+		&i.LocationAddress,
+		&i.OnlineUrl,
+		&i.Revision,
+		&i.QueuedAt,
+	)
+	return i, err
+}
+
 const readOutboxCurrentState = `-- name: ReadOutboxCurrentState :one
 SELECT r.status AS registration_status,r.offer_expires_at,e.status AS event_status
 FROM email_outbox o LEFT JOIN rsvps r ON r.id=o.rsvp_id LEFT JOIN events e ON e.id=o.event_id WHERE o.id=$1
