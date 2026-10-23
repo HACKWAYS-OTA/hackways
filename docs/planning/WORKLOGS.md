@@ -1069,3 +1069,17 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Final MCP review requires explicit fields for full-record replacements, so omitted capacity, windows, membership details or campaign actions cannot silently clear saved settings. HTTP transport replay is disabled for writes, and server-side ambiguous write outcomes require state inspection.
 
 - User clarified the public support address casing: public site defaults to support@hackota.com and normalizes configured display addresses to lowercase.
+
+
+## 2026-10-23 - ChatGPT CIMD method intersection
+
+- Read the current official authentication guidance and fetched the actual public
+  metadata from the production VM: HTTP 200, supported methods none/private_key_jwt,
+  singular preference private_key_jwt. Corrected selection to use the plural
+  intersection with this server's advertised none method. Kept strict DCR public
+  registration and rejected unsupported token assertions/secrets.
+- Added mandatory compatibility cases for the production transition, unsupported
+  and empty method arrays and legacy public metadata. This correction is a narrow
+  global-backend/docs change after PR 47 merged as e512e25767e12cfaa09c608b0961a81108999a9a.
+  Public-web source 9fc616c6dc34903cd0531da09c472bc5275ce218 continues its independent
+  image publication; no application activation has occurred yet.

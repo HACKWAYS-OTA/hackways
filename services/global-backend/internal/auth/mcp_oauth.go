@@ -124,12 +124,13 @@ func (h *Handler) MCPRoutes() chi.Router {
 }
 
 type mcpClientMetadata struct {
-	ClientID  string   `json:"client_id"`
-	Name      string   `json:"client_name"`
-	Redirects []string `json:"redirect_uris"`
-	Method    string   `json:"token_endpoint_auth_method"`
-	Grants    []string `json:"grant_types"`
-	Responses []string `json:"response_types"`
+	MethodsSupported []string `json:"token_endpoint_auth_methods_supported,omitempty"`
+	ClientID         string   `json:"client_id"`
+	Name             string   `json:"client_name"`
+	Redirects        []string `json:"redirect_uris"`
+	Method           string   `json:"token_endpoint_auth_method"`
+	Grants           []string `json:"grant_types"`
+	Responses        []string `json:"response_types"`
 }
 
 func validMCPRedirect(raw string) bool {
@@ -146,6 +147,19 @@ func validMCPRedirect(raw string) bool {
 	ip := net.ParseIP(u.Hostname())
 	return u.Scheme == "http" && (u.Hostname() == "localhost" || (ip != nil && ip.IsLoopback()))
 }
+
+// ChatGPT's plural CIMD field lists supported methods, while the legacy
+// singular field is only a preference (SEP-3149). Our AS accepts only none.
+func validMCPCIMDClient(c *mcpClientMetadata) bool {
+	if c.MethodsSupported != nil {
+		if !slices.Contains(c.MethodsSupported, "none") {
+			return false
+		}
+		c.Method = "none"
+	}
+	return validMCPClient(*c)
+}
+
 func validMCPClient(c mcpClientMetadata) bool {
 	if len(strings.TrimSpace(c.Name)) < 1 || len(c.Name) > 100 || len(c.Redirects) < 1 || len(c.Redirects) > 10 || c.Method != "none" {
 		return false
@@ -197,6 +211,7 @@ func (h *Handler) mcpRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.ClientID = "mcp_client_" + token
+	c.MethodsSupported = nil
 	if _, e = h.mcpSaveClient(r.Context(), c, "", false); e != nil {
 		mcpOAuthError(w, 503, "temporarily_unavailable", "Client registry unavailable")
 		return
@@ -233,7 +248,7 @@ func (h *Handler) mcpClient(ctx context.Context, id string) (db.McpOauthClients,
 		return db.McpOauthClients{}, pgx.ErrNoRows
 	}
 	var c mcpClientMetadata
-	if json.Unmarshal(raw, &c) != nil || c.ClientID != id || !validMCPClient(c) {
+	if json.Unmarshal(raw, &c) != nil || c.ClientID != id || !validMCPCIMDClient(&c) {
 		return db.McpOauthClients{}, pgx.ErrNoRows
 	}
 	for _, redirect := range c.Redirects {
@@ -448,7 +463,7 @@ func (h *Handler) mcpDecision(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) mcpToken(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-	if r.ParseForm() != nil || r.Form.Get("resource") != MCPResource() || r.Header.Get("Authorization") != "" {
+	if r.ParseForm() != nil || r.Form.Get("resource") != MCPResource() || r.Header.Get("Authorization") != "" || r.Form.Get("client_secret") != "" || r.Form.Get("client_assertion") != "" || r.Form.Get("client_assertion_type") != "" {
 		mcpOAuthError(w, 400, "invalid_request", "Resource and public client credentials are required")
 		return
 	}
