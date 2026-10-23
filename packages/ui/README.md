@@ -67,3 +67,10 @@ Run affected app checks as well when shared behavior changes. Type and lint chec
 ## Event fonts
 
 `@hackways/ui/event-fonts` exports the presentation-only font options and family mapping shared by Create and event management. The Go appearance validator and migration 000020 independently enforce accepted saved values. The original Futurist and Google Sans choices remain valid; ten additional fonts are selectable. Font files are self-hosted, and only the selected face is requested by the browser. Core/public assets share `/fonts`; management uses `/manage/fonts`.
+
+## Optional analytics
+
+`@hackways/ui/analytics` exports the shared consent panel, footer preferences button
+and bounded first-party collector used by public/core web. Collection starts only
+after visitor consent. It accepts named registration events without form answers
+or account identity; see [the service contract](../../docs/backend/ANALYTICS.md).

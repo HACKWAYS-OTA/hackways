@@ -19,6 +19,7 @@ import {
   registrationState,
 } from "@/lib/events";
 import { registrationSteps, answerError } from "@/lib/registration-form";
+import { recordAnalyticsEvent } from '@hackways/ui/analytics';
 import { RegistrationIdentityStep } from "./RegistrationIdentityStep";
 import { RegistrationReview } from "./RegistrationReview";
 import { RegistrationQuestions } from "./RegistrationQuestions";
@@ -80,6 +81,7 @@ export function RegistrationForm({
   }, [answers, name, email, notes, confirmed, user?.display_name]);
   function go(next: number) {
     setStep(next);
+    recordAnalyticsEvent("registration_step", next);
     setFieldErrors({});
     setError("");
     requestAnimationFrame(() => scrollToSection("registration-step"));
@@ -196,6 +198,7 @@ export function RegistrationForm({
           "The registration could not be confirmed. Check My events before retrying.",
         );
       setConfirmed(response.data);
+      recordAnalyticsEvent("registration_complete");
       router.refresh();
     } catch (failure) {
       setError(

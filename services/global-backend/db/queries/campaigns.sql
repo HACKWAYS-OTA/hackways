@@ -112,3 +112,22 @@ SELECT c.reference,c.email,c.display_name,c.source,c.consented_at FROM promotion
 AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
 AND (sqlc.arg(audience_source)::text='all' OR c.source=sqlc.arg(audience_source)) AND (coalesce(cardinality(sqlc.arg(recipient_emails)::text[]),0)=0 OR c.email=ANY(sqlc.arg(recipient_emails)::text[]))
 ORDER BY c.reference LIMIT 20;
+
+
+-- name: SetNewAccountPromotionPreference :exec
+INSERT INTO promotion_contacts AS contact(email,display_name,user_id,source,consent_source,consented_at,subscribed,unsubscribed_at)
+SELECT lower(u.email),u.display_name,u.id,'account','New account email preference',clock_timestamp(),sqlc.arg(subscribed)::boolean,
+ CASE WHEN sqlc.arg(subscribed)::boolean THEN NULL ELSE clock_timestamp() END
+FROM users u WHERE u.id=sqlc.arg(user_id)
+ON CONFLICT(email) DO UPDATE SET user_id=EXCLUDED.user_id,display_name=EXCLUDED.display_name,source='account',
+ subscribed=contact.subscribed AND EXCLUDED.subscribed,
+ unsubscribed_at=CASE WHEN NOT EXCLUDED.subscribed THEN clock_timestamp() ELSE contact.unsubscribed_at END,
+ updated_at=clock_timestamp();
+
+
+-- name: CampaignRecipientSearch :many
+SELECT c.reference,c.email,c.display_name,c.source FROM promotion_contacts c
+WHERE c.subscribed AND (sqlc.arg(source)::text='all' OR c.source=sqlc.arg(source))
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND (sqlc.arg(q)::text='' OR c.email ILIKE sqlc.arg(q)||'%' OR c.display_name ILIKE sqlc.arg(q)||'%')
+ORDER BY c.email,c.reference LIMIT 21;

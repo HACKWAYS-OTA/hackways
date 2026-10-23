@@ -25,6 +25,12 @@ func Housekeeping(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) 
 			if err := q.CleanupExpiredRecognizedDevices(job); err != nil {
 				logger.Warn("expired device cleanup failed", "error", err)
 			}
+			if err := q.CleanupAnalyticsEvents(job); err != nil {
+				logger.Warn("analytics retention cleanup failed", "error", err)
+			}
+			if err := q.CleanupAnalyticsBudget(job); err != nil {
+				logger.Warn("analytics quota cleanup failed", "error", err)
+			}
 			cancel()
 		}
 	}

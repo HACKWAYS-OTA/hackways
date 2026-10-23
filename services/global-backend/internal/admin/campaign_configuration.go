@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,10 +16,11 @@ import (
 )
 
 type campaignConfiguration struct {
-	Design      notifications.CampaignDesign `json:"design"`
-	Audience    string                       `json:"audience"`
-	Recipients  []string                     `json:"recipients"`
-	ScheduledAt *time.Time                   `json:"scheduled_at"`
+	Design        notifications.CampaignDesign `json:"design"`
+	RecipientMode string                       `json:"recipient_mode"`
+	Audience      string                       `json:"audience"`
+	Recipients    []string                     `json:"recipients"`
+	ScheduledAt   *time.Time                   `json:"scheduled_at"`
 }
 
 func (c *campaignConfiguration) normalize() error {
@@ -30,6 +32,22 @@ func (c *campaignConfiguration) normalize() error {
 	}
 	if c.Audience != "all" && c.Audience != "account" && c.Audience != "import" {
 		return fmt.Errorf("Choose all subscribers, verified account subscribers or imported contacts")
+	}
+	if c.RecipientMode == "" {
+		if len(c.Recipients) > 0 {
+			c.RecipientMode = "selected"
+		} else {
+			c.RecipientMode = "all"
+		}
+	}
+	if c.RecipientMode != "all" && c.RecipientMode != "selected" {
+		return fmt.Errorf("Choose the whole audience or specific recipients")
+	}
+	if c.RecipientMode == "all" {
+		c.Recipients = nil
+	}
+	if c.RecipientMode == "selected" && len(c.Recipients) == 0 {
+		return fmt.Errorf("Choose at least one specific recipient")
 	}
 	if len(c.Recipients) > 200 {
 		return fmt.Errorf("Choose up to 200 specific recipients")
@@ -71,6 +89,19 @@ func readCampaignConfiguration(raw []byte) (campaignConfiguration, error) {
 	if c.Recipients == nil {
 		c.Recipients = []string{}
 	}
+	if c.RecipientMode == "" {
+		if len(c.Recipients) > 0 {
+			c.RecipientMode = "selected"
+		} else {
+			c.RecipientMode = "all"
+		}
+	}
+	if (c.Audience != "all" && c.Audience != "account" && c.Audience != "import") || (c.RecipientMode != "all" && c.RecipientMode != "selected") || (c.RecipientMode == "selected" && len(c.Recipients) == 0) {
+		return c, fmt.Errorf("The saved audience is invalid; edit the campaign before sending")
+	}
+	if c.RecipientMode == "all" {
+		c.Recipients = []string{}
+	}
 	return c, nil
 }
 
@@ -110,4 +141,33 @@ func (h *Handler) CampaignPreview(w http.ResponseWriter, r *http.Request) {
 func campaignOriginAllowed(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	return origin == "https://admin.hackways.in" || os.Getenv("APP_ENV") == "development" && (origin == "http://localhost:3003" || origin == "http://localhost:3103" || origin == "http://127.0.0.1:3103")
+}
+
+func (h *Handler) CampaignRecipients(w http.ResponseWriter, r *http.Request) {
+	q, source := strings.TrimSpace(r.URL.Query().Get("q")), r.URL.Query().Get("source")
+	if source == "" {
+		source = "all"
+	}
+	if len(q) > 200 || (source != "all" && source != "account" && source != "import") {
+		platform.RespondError(w, 400, "INVALID_SEARCH", "Check the recipient search and audience", nil)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	rows, err := h.queries.CampaignRecipientSearch(ctx, db.CampaignRecipientSearchParams{Source: source, Q: q})
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	more := len(rows) > 20
+	if more {
+		rows = rows[:20]
+	}
+	if rows == nil {
+		rows = []db.CampaignRecipientSearchRow{}
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data []db.CampaignRecipientSearchRow `json:"data"`
+		More bool                            `json:"more"`
+	}{rows, more})
 }

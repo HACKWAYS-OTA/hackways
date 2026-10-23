@@ -26,10 +26,10 @@ WITH inserted AS (
     ON CONFLICT (lower(email)) WHERE deleted_at IS NULL DO NOTHING
     RETURNING id, email, display_name, avatar_url, email_verified, created_at, updated_at
 )
-SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at, TRUE AS was_created
 FROM inserted
 UNION ALL
-SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at, FALSE AS was_created
 FROM users
 WHERE lower(email) = lower($1) AND deleted_at IS NULL
 LIMIT 1;

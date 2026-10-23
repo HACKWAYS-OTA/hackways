@@ -190,3 +190,10 @@ Question `validation` accepts `enabled?: boolean` and `allowed_domain?: string`,
 For Website questions, an organizer may configure any ASCII DNS domain (for example `linkedin.com`, `vercel.app`, or their own domain), without scheme, port or path. It is trimmed and lowercased. The URL hostname must equal the domain or end with a dot followed by that domain; subdomains are allowed. A final hostname dot is normalized. URL credentials, HTTP links, unrelated hosts and domain text appearing only in a path/query do not qualify. Empty domain permits any otherwise-valid HTTPS URL. Save conflicts retain the existing form revision contract.
 
 Event `theme_font` additionally accepts `dm-sans`, `manrope`, `space-grotesk`, `outfit`, `sora`, `fraunces`, `playfair-display`, `lora`, `dm-mono` and `bebas-neue`. Migration 000020 is required before deploying writers. The down migration refuses to run while new fonts are in use rather than rewriting saved event appearance.
+
+## Analytics and campaign audiences
+
+See [the current analytics and audience contract](backend/ANALYTICS.md) for admin
+reports/CSV, optional public ingestion, recipient search and selected-audience
+configuration. New signup requests accept optional `promotional_email` (default
+true for new identities); default initialization preserves existing unsubscribes.

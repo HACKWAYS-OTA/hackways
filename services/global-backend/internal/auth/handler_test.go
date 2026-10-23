@@ -72,6 +72,63 @@ func TestAuthHandler_LivePostgres(t *testing.T) {
 		}
 	})
 
+	t.Run("New account promotion defaults preserve an unsubscribe", func(t *testing.T) {
+		q := db.New(pool)
+		user, err := q.GetUserByEmail(ctx, uniqueEmail)
+		if err != nil {
+			t.Fatal(err)
+		}
+		subscribed, err := q.ReadPromotionPreference(ctx, uniqueEmail)
+		if err != nil || !subscribed {
+			t.Fatal("new account promotional email did not default on")
+		}
+		if err = q.SetPromotionPreference(ctx, db.SetPromotionPreferenceParams{UserID: user.ID, Email: user.Email, DisplayName: user.DisplayName, Subscribed: false}); err != nil {
+			t.Fatal(err)
+		}
+		if err = q.SetNewAccountPromotionPreference(ctx, db.SetNewAccountPromotionPreferenceParams{UserID: user.ID, Subscribed: true}); err != nil {
+			t.Fatal(err)
+		}
+		if subscribed, err = q.ReadPromotionPreference(ctx, uniqueEmail); err != nil || subscribed {
+			t.Fatal("default preference resubscribed an existing unsubscribe")
+		}
+	})
+	t.Run("Signup can turn promotional email off", func(t *testing.T) {
+		email := "off-" + uniqueEmail
+		defer func() { _, _ = pool.Exec(ctx, "DELETE FROM email_outbox WHERE recipient_email=$1", email) }()
+		off := false
+		raw, _ := json.Marshal(RegisterRequest{Email: email, Password: password, DisplayName: displayName, PromotionalEmail: &off})
+		request := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(raw))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		handler.Routes().ServeHTTP(response, request)
+		if response.Code != 201 {
+			t.Fatalf("signup opt-out: %d", response.Code)
+		}
+		if subscribed, err := db.New(pool).ReadPromotionPreference(ctx, email); err != nil || subscribed {
+			t.Fatal("signup opt-out ignored")
+		}
+	})
+	t.Run("Google defaults only apply to newly created accounts", func(t *testing.T) {
+		q := db.New(pool)
+		email := "google-" + uniqueEmail
+		info := googleUserInfo{Sub: "ci-google-" + uniqueEmail, Email: email, VerifiedEmail: true, Name: displayName}
+		id, err := handler.upsertGoogleIdentity(ctx, info)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if subscribed, err := q.ReadPromotionPreference(ctx, email); err != nil || !subscribed {
+			t.Fatal("new Google account missing default promotion preference")
+		}
+		if err = q.SetPromotionPreference(ctx, db.SetPromotionPreferenceParams{UserID: id, Email: email, DisplayName: displayName, Subscribed: false}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = handler.upsertGoogleIdentity(ctx, info); err != nil {
+			t.Fatal(err)
+		}
+		if subscribed, err := q.ReadPromotionPreference(ctx, email); err != nil || subscribed {
+			t.Fatal("Google login resubscribed an unsubscribe")
+		}
+	})
 	t.Run("Duplicate email returns 409", func(t *testing.T) {
 		body, _ := json.Marshal(RegisterRequest{
 			Email:       uniqueEmail,

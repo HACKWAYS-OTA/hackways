@@ -9,6 +9,7 @@ import { AppNavigation } from '@/components/ui/AppNavigation';
 import { site } from '@/lib/site';
 import type { User } from '@/types/api';
 import { Avatar as ProfileAvatar } from '@hackways/ui/avatar';
+import { AnalyticsTracker, CookiePreferencesButton } from '@hackways/ui/analytics';
 import { scrollToSection } from '@hackways/ui/section-jump';
 
 export function AppChrome({ children, user }: { children: ReactNode; user: User | null }) {
@@ -46,7 +47,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
       <AppNavigation />
       <div className="header-actions"><Link className="header-create" href="/create"><Icon name="add" size={17} />Create event</Link><Link className="header-account" href="/account" aria-label={user ? `Your profile, ${user.display_name}` : 'Sign in to your account'} title={user ? 'Your profile' : 'Sign in'} aria-current={pathname === '/account' ? 'page' : undefined}><ProfileAvatar name={user?.display_name} image={user?.avatar_url} /></Link></div>
     </div></header>}
-    <main className="app-main" id="main-content" tabIndex={-1}>{children}</main>
-    {!isAuthPage && <footer className="app-footer app-container"><p>© {new Date().getFullYear()} Hackways</p><div><a href={`${site.public}/about`}>About</a><a href={`${site.public}/privacy`}>Privacy</a><a href={`${site.public}/help`}>Help & FAQs</a></div></footer>}
+    <AnalyticsTracker path={pathname} endpoint={`${(process.env.NEXT_PUBLIC_GLOBAL_API_URL || "/api/v1").replace(/\/$/, "")}/analytics/events`} /><main className="app-main" id="main-content" tabIndex={-1}>{children}</main>
+    {!isAuthPage && <footer className="app-footer app-container"><p>© {new Date().getFullYear()} Hackways</p><div><CookiePreferencesButton /><a href={`${site.public}/about`}>About</a><a href={`${site.public}/privacy`}>Privacy</a><a href={`${site.public}/help`}>Help & FAQs</a></div></footer>}
   </>;
 }

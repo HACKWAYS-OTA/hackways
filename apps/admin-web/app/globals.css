@@ -330,3 +330,15 @@ svg { flex-shrink: 0; }
 
 .message-purpose { display:grid; gap:10px; width:min(100%,380px); margin-bottom:28px; }
 .message-purpose-panel[hidden] { display:none; }
+
+.campaign-recipient-results { max-height:340px; overflow:auto; overscroll-behavior:contain; border-block:1px solid var(--line); }
+.campaign-recipient-option { display:flex; align-items:center; gap:12px; padding:13px 0; cursor:pointer; }
+.campaign-recipient-option + .campaign-recipient-option { border-top:1px solid var(--line); }
+.campaign-recipient-option > span { display:grid; gap:3px; min-width:0; flex:1; }
+.campaign-recipient-option strong { font-size:14px; font-weight:500; overflow-wrap:anywhere; }
+.campaign-recipient-option small { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.campaign-recipient-option:hover { background:var(--soft); }
+.campaign-selected-recipients { display:flex; flex-wrap:wrap; gap:8px; }
+.campaign-selected-recipients > span { display:flex; align-items:center; gap:4px; padding-inline-start:10px; border:1px solid var(--line); border-radius:8px; font-size:12px; overflow-wrap:anywhere; max-width:100%; }
+.campaign-address-entry summary { cursor:pointer; padding-block:10px; }
+.campaign-address-entry .field { margin-top:12px; }

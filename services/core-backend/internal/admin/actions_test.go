@@ -111,6 +111,21 @@ func TestAdminDetailActions(t *testing.T) {
 			t.Fatalf("expected %d got %d: %s", status, w.Code, w.Body.String())
 		}
 	}
+
+	check(request("GET", "/analytics", "", "", "", "", ""), 401)
+	for _, path := range []string{"/analytics?from=bad", "/analytics?from=2000-01-01", "/analytics?to=2999-01-01"} {
+		check(call("GET", path, "", ""), 400)
+	}
+	analyticsRead := call("GET", "/analytics", "", "")
+	check(analyticsRead, 200)
+	if analyticsRead.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(analyticsRead.Body.String(), `"top_events"`) {
+		t.Fatal("analytics output or cache policy invalid")
+	}
+	export := call("GET", "/analytics?format=csv", "", "")
+	check(export, 200)
+	if !strings.HasPrefix(export.Header().Get("Content-Type"), "text/csv") || len(strings.Split(strings.TrimSpace(export.Body.String()), "\n")) != 31 {
+		t.Fatal("analytics CSV range invalid")
+	}
 	eventPath := "/events/" + strconv.FormatInt(event.AdminReference, 10)
 	edit := fmt.Sprintf(`{"title":"Reviewed event","description":"Reviewed description","capacity":2,"visibility":"private","revision":%d}`, event.Revision)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "https://attacker.invalid", "reason", auth.AdminSessionCookie), 403)

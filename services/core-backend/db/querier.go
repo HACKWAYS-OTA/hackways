@@ -36,6 +36,10 @@ type Querier interface {
 	AdminSpaceEvents(ctx context.Context, arg AdminSpaceEventsParams) ([]AdminSpaceEventsRow, error)
 	AdminSpaceMembers(ctx context.Context, arg AdminSpaceMembersParams) ([]AdminSpaceMembersRow, error)
 	AdminTicketDetail(ctx context.Context, id pgtype.UUID) (AdminTicketDetailRow, error)
+	AnalyticsEventSummary(ctx context.Context, arg AnalyticsEventSummaryParams) (AnalyticsEventSummaryRow, error)
+	AnalyticsRegistrationDaily(ctx context.Context, arg AnalyticsRegistrationDailyParams) ([]AnalyticsRegistrationDailyRow, error)
+	AnalyticsRegistrationSummary(ctx context.Context, arg AnalyticsRegistrationSummaryParams) (AnalyticsRegistrationSummaryRow, error)
+	AnalyticsTopEvents(ctx context.Context, arg AnalyticsTopEventsParams) ([]AnalyticsTopEventsRow, error)
 	AppendWorkflowAudit(ctx context.Context, arg AppendWorkflowAuditParams) error
 	CancelEventRegistrations(ctx context.Context, eventID pgtype.UUID) error
 	CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflowTicketParams) (Tickets, error)

@@ -4,7 +4,7 @@ import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
 export const metadata: Metadata = { title: 'Privacy', description: 'How Hackways uses account, event, registration, ticket and session information, who can access it, and how to raise a privacy request.', alternates: { canonical: '/privacy' } };
 export default function PrivacyPage() {
-  return <Article title="Privacy" intro="Understand what information is used when you browse, register, host an event or sign in to Hackways, and how to ask about your records." updated="20 October 2026">
+  return <Article title="Privacy" intro="Understand what information is used when you browse, register, host an event or sign in to Hackways, and how to ask about your records." updated="23 October 2026">
     <Section id="scope" title="What this notice covers">
       <p>This notice describes the current Hackways public website, attendee app and organizer workspace. It covers information handled through those services. An event organizer or an external website may handle information separately under its own arrangements.</p>
       <p>You can read public event information without creating an account. Registration and hosting require additional information, and some events require you to sign in. The relevant form shows which details are required.</p>
@@ -25,8 +25,12 @@ export default function PrivacyPage() {
     </Section>
     <Section id="providers" title="Infrastructure, email and external sites">
       <p>Hosting, database, media storage and email services process information needed to operate Hackways. Event cover media uses Azure Blob Storage, and transactional email uses Azure Communication Services. Configured infrastructure and service delivery may involve processing outside your immediate location; this notice does not promise a particular data-residency region.</p>
-      <p>The public site does not currently integrate advertising or analytics trackers. Signed-in apps use essential session cookies, explained in the <Link href="/cookies">cookie notice</Link>.</p>
+      <p>Optional first-party analytics collects approved public page paths, viewport category, referring hostname and registration progress only after you allow analytics. Browser identifiers are hashed before storage; these events do not include account identifiers, IP addresses, form answers, query strings or full referring URLs. Infrastructure and security logs remain separate. Signed-in apps also use essential session cookies, explained in the <Link href="/cookies">cookie notice</Link>.</p>
       <p>Event pages may link to venues, video meetings, organizer contact pages or other external services. Opening those links is subject to the destination service and its privacy practices. Check the destination before submitting additional personal or payment information.</p>
+    </Section>
+    <Section id="analytics-choices" title="Analytics and promotional email choices">
+      <p>Use Cookie preferences in the footer to allow optional analytics or choose Essential only. Analytics browser identifiers last up to ninety days, visit identifiers up to thirty minutes of inactivity, and your choice up to one year. Raw analytics events are removed after ninety days by a bounded cleanup job. Visitor charts cover only collected activity; saved account and registration totals come from business records.</p>
+      <p>Promotional email starts enabled for new accounts. The email signup form lets you turn it off before creating your account. Existing unsubscribes are preserved. You can change promotional email in your account or use the unsubscribe link included in promotional messages. Essential account and event messages are handled separately.</p>
     </Section>
     <Section id="storage" title="Security and retention">
       <p>Access to account and event-management actions is checked by the service. Passwords are hashed, and session cookies use HTTP-only and secure attributes. These measures reduce risk but are not a promise that every device, account or transmission is free of security risk.</p>

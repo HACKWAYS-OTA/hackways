@@ -55,6 +55,7 @@ func (h *Handler) mountCampaigns(r chi.Router) {
 	r.Get("/campaigns", h.CampaignList)
 	r.Post("/campaigns", h.CampaignCreate)
 	r.Post("/campaigns/preview", h.CampaignPreview)
+	r.Get("/campaigns/recipients", h.CampaignRecipients)
 	r.Get("/campaigns/{id}", h.CampaignDetail)
 	r.Post("/campaigns/{id}/{action}", h.CampaignChange)
 	r.Get("/campaign-contacts", h.PromotionContacts)

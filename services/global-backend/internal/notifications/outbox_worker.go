@@ -249,7 +249,7 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 	}
 	footer := "You are receiving this message because it relates to your Hackways account or registration."
 	if template.ID == "admin_promotion" {
-		footer = "You are receiving Hackways news and offers because you opted in. Unsubscribe at any time."
+		footer = "You are receiving Hackways news and offers because promotional email is enabled for your account or contact. Unsubscribe at any time."
 		if payload.IsTest {
 			footer = "This preview email was requested by an administrator. No subscription was added."
 		}
