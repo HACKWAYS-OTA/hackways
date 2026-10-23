@@ -84,7 +84,7 @@ export function RegistrationReview({
       </div>
       <p className="registration-note">
         {approval
-          ? "The organizer reviews applications before confirming a place."
+          ? "The organizer must approve your registration before your place is confirmed."
           : "Availability is checked when you submit."}
       </p>
     </div>

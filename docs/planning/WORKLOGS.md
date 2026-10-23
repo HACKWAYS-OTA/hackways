@@ -978,3 +978,5 @@ Verification so far: admin npm test (type check/lint), global go build/vet and f
 ## 2026-10-23 - Correct registration entry target to Your details
 
 The user clarified that Apply to join must arrive at the Your details step, not the event header. Registration route navigation now uses the existing registration-step focus/scroll target; sign-in, closed and already-registered states fall back to the form region. The banner and summary remain above the form for ordinary scrolling. Clean URLs, native Back/Forward restoration and refresh/query behavior remain unchanged. No API, authentication, form state or database change is required.
+
+The user also requested simpler registration terms. Platform event and final submission buttons now say Register, pending submissions say Registration submitted, and helper text uses registration consistently. Invitation and waiting-list labels and organizer-defined button text remain meaningful and compatible; approval/capacity behavior is unchanged.

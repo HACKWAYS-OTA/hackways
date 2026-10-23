@@ -240,7 +240,7 @@ export function RegistrationForm({
             ? "You’re registered"
             : confirmed.status === "waitlisted"
               ? "You’re on the waiting list"
-              : "Application submitted"
+              : "Registration submitted"
           : form.settings?.title ||
             (invited ? "Accept your invitation" : "Register for this event")}
       </h2>
@@ -528,9 +528,7 @@ export function RegistrationForm({
                   : form.settings?.submit_label ||
                     (joiningWaitlist
                       ? "Join waiting list"
-                      : event.registration_mode === "approval"
-                        ? "Submit application"
-                        : "Confirm registration")}
+                      : "Register")}
             <Icon name="arrow" size={17} />
           </button>
         </div>
