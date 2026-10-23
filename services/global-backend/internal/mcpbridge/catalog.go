@@ -1,9 +1,12 @@
 package mcpbridge
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"slices"
+)
 
 func catalog() []definition {
-	return []definition{
+	tools := []definition{
 		{Name: "create_organizer_profile", Title: "Set up my organizer profile", Description: "Create the connected account's organizer profile before creating its first event or Space. Existing profiles are returned unchanged. Requires browser approval.", Service: "core", Method: "POST", Path: "/api/v1/events/organizer/profile", Scope: "organizer:write", Fields: []field{{Name: "display_name", Schema: json.RawMessage(`{"type":"string","minLength":1,"maxLength":150}`), Required: true}}},
 		{Name: "admin_edit_space", Title: "Edit a platform Space", Description: "Update a Space using its latest revision. Requires browser approval and current admin verification.", Service: "core", Method: "PUT", Path: "/api/v1/admin/core/spaces/{id}", Scope: "admin:write", Destructive: true, Fields: []field{{Name: "id", Schema: json.RawMessage(`{"type":"string","pattern":"^[A-Za-z0-9-]{1,80}$"}`), Location: "path", Required: true}, {Name: "revision", Schema: json.RawMessage(`{"type":"integer","minimum":1}`), Required: true}, {Name: "name", Schema: json.RawMessage(`{"type":"string","maxLength":160}`), Required: true}, {Name: "description", Schema: json.RawMessage(`{"type":"string","maxLength":5000}`)}, {Name: "guidelines", Schema: json.RawMessage(`{"type":"string","maxLength":5000}`)}, {Name: "website_url", Schema: json.RawMessage(`{"type":"string","maxLength":2000}`)}}},
 		{Name: "admin_change_space_status", Title: "Change a platform Space status", Description: "Activate or archive a Space at its current revision. Requires browser approval and current admin verification.", Service: "core", Method: "POST", Path: "/api/v1/admin/core/spaces/{id}/status", Scope: "admin:write", Destructive: true, Fields: []field{{Name: "id", Schema: json.RawMessage(`{"type":"string","pattern":"^[A-Za-z0-9-]{1,80}$"}`), Location: "path", Required: true}, {Name: "revision", Schema: json.RawMessage(`{"type":"integer","minimum":1}`), Required: true}, {Name: "status", Schema: json.RawMessage(`{"type":"string","enum":["active","archived"]}`), Required: true}}},
@@ -111,4 +114,45 @@ func catalog() []definition {
 		{Name: "get_my_pass_link", Title: "Open my event pass", Description: "Read the connected account registration and return its authenticated My events page. Does not expose signed QR credentials.", Service: "core", Method: "GET", Path: "/api/v1/rsvps/{id}", Scope: "registrations:read", Read: true, Fields: []field{{Name: "id", Schema: json.RawMessage(`{"type":"string","format":"uuid"}`), Location: "path", Required: true}}},
 		{Name: "admin_import_opted_in_contacts", Title: "Import opted-in promotional contacts", Description: "Import up to 200 contacts from CSV with email,name headers. Requires explicit consent source, date and browser approval. Existing unsubscribes are preserved.", Service: "global", Method: "POST", Path: "/api/v1/admin/global/campaign-contacts/import", Scope: "admin:write", Fields: []field{{Name: "csv", Schema: json.RawMessage(`{"type":"string","maxLength":65536}`), Required: true}, {Name: "consent_source", Schema: json.RawMessage(`{"type":"string","minLength":1,"maxLength":1000}`), Required: true}, {Name: "consented_at", Schema: json.RawMessage(`{"type":"string","format":"date-time"}`), Required: true}, {Name: "confirmed", Schema: json.RawMessage(`{"type":"boolean","const":true}`), Required: true}}},
 	}
+	// These APIs replace complete records. Requiring their resetting fields prevents
+	// a partial tool request from silently clearing capacity, windows or settings.
+	for i := range tools {
+		var required []string
+		switch tools[i].Name {
+		case "update_event":
+			required = []string{"capacity", "location_name", "location_address", "online_url", "registration_opens_at", "registration_closes_at", "registration_mode", "allow_guest", "waitlist_enabled", "offer_minutes", "acknowledge_attendees", "visibility"}
+		case "admin_edit_event":
+			required = []string{"capacity"}
+		case "update_space", "admin_edit_space":
+			required = []string{"description", "guidelines", "website_url"}
+		case "admin_edit_campaign":
+			required = []string{"action_label", "action_url"}
+		}
+		if len(required) > 0 {
+			tools[i].Description += " This replaces the complete record fields; read the current record and preserve every setting that should stay unchanged. Explicitly provide empty or null values only to clear them."
+		}
+		for j := range tools[i].Fields {
+			field := &tools[i].Fields[j]
+			if slices.Contains(required, field.Name) {
+				field.Required = true
+			}
+			if tools[i].Name == "update_event" && field.Name == "offer_minutes" {
+				field.Schema = json.RawMessage(`{"type":"integer","minimum":5,"maximum":60}`)
+			}
+			if tools[i].Name == "save_registration_questions" && field.Name == "settings" {
+				var object map[string]json.RawMessage
+				if err := json.Unmarshal(field.Schema, &object); err != nil {
+					panic(err)
+				}
+				object["required"] = json.RawMessage(`["title","description","submit_label","success_message"]`)
+				raw, err := json.Marshal(object)
+				if err != nil {
+					panic(err)
+				}
+				field.Schema = raw
+			}
+		}
+	}
+	return tools
+
 }

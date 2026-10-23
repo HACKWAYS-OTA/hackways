@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,22 @@ import (
 // HTTP handler. No HTTP response or business operation is mocked.
 func TestMCPProtocolAndConfirmedWrite(t *testing.T) {
 	t.Setenv("MCP_ENABLED", "true")
+	for _, tool := range catalog() {
+		if tool.Name == "update_event" {
+			var schema struct {
+				Required []string `json:"required"`
+			}
+			if json.Unmarshal(inputSchema(tool), &schema) != nil {
+				t.Fatal("invalid event schema")
+			}
+			for _, key := range []string{"capacity", "registration_mode", "waitlist_enabled", "registration_opens_at", "registration_closes_at"} {
+				if !slices.Contains(schema.Required, key) {
+					t.Fatal("replacement update could silently reset " + key)
+				}
+			}
+		}
+	}
+
 	ctx := context.Background()
 	pool, e := pgxpool.New(ctx, testsupport.DatabaseURL(t))
 	if e != nil {
