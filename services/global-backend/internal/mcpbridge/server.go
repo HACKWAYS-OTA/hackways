@@ -310,6 +310,10 @@ func (s *Server) call(ctx context.Context, req *mcp.CallToolRequest, d definitio
 		upstream.Header.Set("Origin", "https://admin.hackways.in")
 	}
 	if !d.Read {
+		// A Go Transport may replay an idempotency-keyed request on a reused
+		// connection. Native domain keys remain, but an ambiguous write must
+		// never be automatically sent again by this bridge.
+		upstream.GetBody = nil
 		upstream.Header.Set("X-MCP-Intent", stringArg(args, "approval_id"))
 		upstream.Header.Set("X-MCP-Lease", lease)
 		upstream.Header.Set("Idempotency-Key", stringArg(args, "approval_id"))
@@ -330,6 +334,10 @@ func (s *Server) call(ctx context.Context, req *mcp.CallToolRequest, d definitio
 				output = Output{Status: "success", HTTPStatus: resp.StatusCode, Data: redact(data)}
 				if resp.StatusCode >= 400 {
 					output.Status = "error"
+				}
+				if !d.Read && resp.StatusCode >= 500 {
+					output.Status = "uncertain"
+					output.Message = "The server could not confirm this write. Check the saved record in Hackways before taking another action."
 				}
 			}
 		}
