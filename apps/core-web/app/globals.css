@@ -173,7 +173,7 @@ svg { flex-shrink: 0; }
 .form-alert { display: flex; align-items: flex-start; gap: 9px; padding: 13px 15px; border-radius: 10px; background: #fcf0f3; color: #92374f; font-size: 13px; line-height: 22px; }
 .form-alert svg { margin-top: 1px; }
 .registration-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding-top: 22px; border-top: 1px solid var(--line); }
-.registration-note { color: var(--muted); font-size: 11px; line-height: 19px; text-align: right; margin-top: -8px; }
+.registration-note { color: var(--muted); font-size: 13px; line-height: 1.6; text-align: left; margin: 24px 0 0; }
 .registration-success { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-block: 12px; text-align: center; }
 .success-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #e7f1eb; color: #3c7354; }
 .registration-success h3 { max-width: 30ch; font-size: 23px; line-height: 32px; }
@@ -256,7 +256,6 @@ svg { flex-shrink: 0; }
   .dialog-body { padding-top: 22px; }
   .registration-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); }
   .registration-actions .app-button { width: 100%; padding-inline: 16px; font-size: 12px; }
-  .registration-note { text-align: center; }
 }
 @media (max-width: 380px) {
   .app-container, .feed-container, .app-header-inner { width: calc(100% - 32px); }
