@@ -16,9 +16,9 @@ UPDATE events e SET banner_url=$3,
 revision=CASE WHEN e.banner_url=$3 THEN e.revision ELSE e.revision+1 END,
 updated_at=CASE WHEN e.banner_url=$3 THEN e.updated_at ELSE clock_timestamp() END
 FROM organizers o WHERE e.organizer_id=o.id AND e.id=$1 AND o.user_id=$2
-AND e.deleted_at IS NULL AND e.status IN ('draft','unpublished','published') AND e.starts_at>clock_timestamp()
+AND e.deleted_at IS NULL AND NOT e.management_closed
 AND (e.revision=$4 OR (e.banner_url=$3 AND e.revision=$4+1))
-RETURNING e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings
+RETURNING e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings, e.management_closed
 `
 
 type AttachOwnedEventBannerParams struct {
@@ -83,6 +83,7 @@ func (q *Queries) AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEve
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
@@ -434,7 +435,7 @@ func (q *Queries) ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (R
 
 const readOwnedUploadEvent = `-- name: ReadOwnedUploadEvent :one
 SELECT e.id FROM events e JOIN organizers o ON o.id=e.organizer_id
-WHERE e.id=$1 AND o.user_id=$2 AND e.deleted_at IS NULL AND e.status!='cancelled' AND e.starts_at>clock_timestamp()
+WHERE e.id=$1 AND o.user_id=$2 AND e.deleted_at IS NULL AND NOT e.management_closed
 `
 
 type ReadOwnedUploadEventParams struct {

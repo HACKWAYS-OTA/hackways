@@ -1,0 +1,3 @@
+.checkin-undo-action { display:inline-flex; flex-direction:column; align-items:flex-start; gap:8px; }
+.checkin-undo-action > [role=status] { color:var(--muted); font-size:13px; }
+.checkin-undo-action .journey-error { font-size:13px; max-width:38ch; }

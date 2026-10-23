@@ -440,6 +440,7 @@ type Events struct {
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
 	RegistrationFormSettings []byte             `json:"registration_form_settings"`
+	ManagementClosed         bool               `json:"management_closed"`
 }
 
 type IdempotencyRecords struct {

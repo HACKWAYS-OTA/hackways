@@ -81,3 +81,31 @@ identity, admin ingress policy and independent service boundaries. Keep a privat
 database backup and previous immutable runtime manifest. Runtime rollback can
 retain the additive schema; the down migration deliberately refuses to discard
 collected analytics. CDN activation is separately deferred by the operator.
+
+
+## Event management and arrival corrections
+
+Migration 23 adds `events.management_closed`, default false. Existing current
+administrator cancellations/unpublishes are initialized from the most recent
+recorded lifecycle audit action. Administrator cancellation/unpublish closes
+owner metadata editing; administrator publication clears that closure. Owners
+cannot clear it through details, appearance, questions, Space, banner or status
+requests. Ownership, revision checks and transactional event locking remain in Go.
+Starting or owner-cancelling an event no longer closes its metadata editor. A past
+start can be retained while correcting details; changing the start still requires
+a future date. Cancellation remains terminal and never restores tickets or RSVPs.
+Registration/invitation/check-in eligibility windows remain separate.
+
+Successful `POST /events/{id}/check-in` retains its ticket `data` and adds an
+`attendee` object: ticket ID, name, email, registration code and checked-in time.
+Repeat admission returns 409 `ALREADY_CHECKED_IN` with the same scoped attendee in
+error details. Private information is returned only after organizer authorization
+and event scoping; responses are private/no-store.
+
+`POST /events/{id}/check-in/undo` requires the ticket ID and exact recorded
+`checked_in_at`. It runs under the same event lock, changes a confirmed scanned
+ticket back to issued, clears its arrival fields and records actor/time in audit.
+An already-undone retry succeeds without another audit entry; an old timestamp
+cannot undo a subsequent admission. Cancelled, revoked, unrelated or administrator-
+closed admissions are not eligible. Corrections remain available after the event
+ends while it is published. Scanner, roster and guest details share the action.

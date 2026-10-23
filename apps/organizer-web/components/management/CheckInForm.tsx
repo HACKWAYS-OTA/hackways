@@ -2,9 +2,15 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { ManagedEvent } from "@/lib/management";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, ApiClientError } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { PassScanner } from "./PassScanner";
+import { UndoCheckInButton } from "./UndoCheckInButton";
+type Attendee = { ticket_id:string; name:string; email:string; registration_code:string; checked_in_at:string|null };
+function scannedAttendee(value:unknown): Attendee|null {
+ if(!value || typeof value!=="object" || !("ticket_id" in value) || typeof value.ticket_id!=="string" || !("name" in value) || typeof value.name!=="string" || !("email" in value) || typeof value.email!=="string" || !("registration_code" in value) || typeof value.registration_code!=="string" || !("checked_in_at" in value) || !(typeof value.checked_in_at==="string" || value.checked_in_at===null)) return null;
+ return {ticket_id:value.ticket_id,name:value.name,email:value.email,registration_code:value.registration_code,checked_in_at:value.checked_in_at};
+}
 export function CheckInForm({
   event,
   open,
@@ -17,7 +23,8 @@ export function CheckInForm({
     result = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [attendee,setAttendee] = useState<Attendee|null>(null);
   async function scan(code: string) {
     if (lock.current || !open) return false;
     if (!code.trim() || code.length > 2048) {
@@ -28,15 +35,18 @@ export function CheckInForm({
     setBusy(true);
     setError("");
     setMessage("");
+    setAttendee(null);
     try {
-      await fetchApi(`/events/${event.id}/check-in`, {
+      const response = await fetchApi<{attendee:Attendee}>(`/events/${event.id}/check-in`, {
         method: "POST",
         body: JSON.stringify({ code: code.trim() }),
       });
-      setMessage("Guest checked in. This pass is now marked as used.");
+      setAttendee(scannedAttendee(response.attendee));
+      setMessage("Checked in successfully.");
       router.refresh();
       return true;
     } catch (err) {
+      if(err instanceof ApiClientError && err.code==="ALREADY_CHECKED_IN") setAttendee(scannedAttendee(err.details?.attendee));
       setError(
         err instanceof Error
           ? err.message
@@ -86,6 +96,7 @@ export function CheckInForm({
             {message}
           </p>
         )}
+        {attendee && <section className="checkin-attendee" aria-label="Scanned attendee"><h3>{attendee.name || 'Attendee'}</h3><p>{attendee.email}</p><p className="field-help">{attendee.registration_code}</p>{attendee.checked_in_at && <><p className="field-help">Checked in {new Date(attendee.checked_in_at).toLocaleString('en-IN',{timeZone:event.timezone})}</p><UndoCheckInButton key={`${attendee.ticket_id}:${attendee.checked_in_at}`} eventId={event.id} ticketId={attendee.ticket_id} checkedInAt={attendee.checked_in_at} name={attendee.name || attendee.email} disabled={event.management_closed} onBusy={setBusy} onUndone={()=>{setAttendee(current=>current?{...current,checked_in_at:null}:null);setError('');setMessage('Check-in undone. The attendee can be scanned again.');}} /></>}</section>}
       </div>
       <details className="manual-pass-entry">
         <summary>Enter a pass reference instead</summary>

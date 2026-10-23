@@ -12,7 +12,7 @@ import (
 )
 
 const activeDiscoverPromotions = `-- name: ActiveDiscoverPromotions :many
-SELECT e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings,p.slot,LEAST(p.ends_at,e.starts_at)::timestamptz AS visible_until
+SELECT e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings, e.management_closed,p.slot,LEAST(p.ends_at,e.starts_at)::timestamptz AS visible_until
 FROM discover_promotions p JOIN events e ON e.id=p.event_id
 WHERE p.starts_at<=$1::timestamptz AND p.ends_at>$1::timestamptz
 AND e.status='published' AND e.visibility='public' AND e.deleted_at IS NULL AND e.starts_at>$1::timestamptz
@@ -81,6 +81,7 @@ func (q *Queries) ActiveDiscoverPromotions(ctx context.Context, at pgtype.Timest
 			&i.Events.RegistrationNameRequired,
 			&i.Events.AdminReference,
 			&i.Events.RegistrationFormSettings,
+			&i.Events.ManagementClosed,
 			&i.Slot,
 			&i.VisibleUntil,
 		); err != nil {
@@ -232,7 +233,7 @@ func (q *Queries) LockPromotionActor(ctx context.Context, id pgtype.UUID) (pgtyp
 }
 
 const lockPromotionEvent = `-- name: LockPromotionEvent :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events WHERE admin_reference=$1 AND deleted_at IS NULL FOR UPDATE
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events WHERE admin_reference=$1 AND deleted_at IS NULL FOR UPDATE
 `
 
 func (q *Queries) LockPromotionEvent(ctx context.Context, adminReference int64) (Events, error) {
@@ -285,6 +286,7 @@ func (q *Queries) LockPromotionEvent(ctx context.Context, adminReference int64) 
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }

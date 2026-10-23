@@ -27,7 +27,7 @@ VALUES (
     COALESCE(NULLIF($16::text,''),'futurist'),COALESCE(NULLIF($17::text,''),'soft'),
     COALESCE(NULLIF($18::text,''),'light'),COALESCE(NULLIF($19::text,''),'public')
 )
-RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type CreateEventRecordParams struct {
@@ -122,12 +122,13 @@ func (q *Queries) CreateEventRecord(ctx context.Context, arg CreateEventRecordPa
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
 
 const getEventByID = `-- name: GetEventByID :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -181,12 +182,13 @@ func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (Events, err
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
 
 const getEventByIDAndOrganizer = `-- name: GetEventByIDAndOrganizer :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE id = $1 AND organizer_id = $2 AND deleted_at IS NULL
 `
 
@@ -245,12 +247,13 @@ func (q *Queries) GetEventByIDAndOrganizer(ctx context.Context, arg GetEventByID
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
 
 const getEventBySlugAndOrganizer = `-- name: GetEventBySlugAndOrganizer :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events WHERE slug=$1 AND organizer_id=$2 AND deleted_at IS NULL
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events WHERE slug=$1 AND organizer_id=$2 AND deleted_at IS NULL
 `
 
 type GetEventBySlugAndOrganizerParams struct {
@@ -308,12 +311,13 @@ func (q *Queries) GetEventBySlugAndOrganizer(ctx context.Context, arg GetEventBy
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
 
 const getPublishedEventByID = `-- name: GetPublishedEventByID :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE id = $1 AND (status = 'published' OR (status = 'cancelled' AND published_at IS NOT NULL)) AND deleted_at IS NULL
 `
 
@@ -367,12 +371,13 @@ func (q *Queries) GetPublishedEventByID(ctx context.Context, id pgtype.UUID) (Ev
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
 
 const getPublishedEventBySlug = `-- name: GetPublishedEventBySlug :one
-SELECT e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings, o.display_name AS organizer_name, o.bio AS organizer_bio,
+SELECT e.id, e.organizer_id, e.category_id, e.status, e.format, e.title, e.slug, e.description, e.short_description, e.banner_url, e.location_name, e.location_address, e.online_url, e.starts_at, e.ends_at, e.timezone, e.capacity, e.current_rsvp_count, e.registration_opens_at, e.registration_closes_at, e.tags, e.published_at, e.cancelled_at, e.created_at, e.updated_at, e.deleted_at, e.revision, e.held_rsvp_count, e.registration_mode, e.allow_guest, e.waitlist_enabled, e.offer_minutes, e.space_id, e.theme, e.theme_color, e.theme_font, e.theme_style, e.faq_text, e.contact_url, e.rewards, e.theme_display, e.visibility, e.registration_form_revision, e.registration_name_required, e.admin_reference, e.registration_form_settings, e.management_closed, o.display_name AS organizer_name, o.bio AS organizer_bio,
        o.website_url AS organizer_website, o.verified AS organizer_verified,
        s.name AS space_name,s.slug AS space_slug
 FROM events e
@@ -428,6 +433,7 @@ type GetPublishedEventBySlugRow struct {
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
 	RegistrationFormSettings []byte             `json:"registration_form_settings"`
+	ManagementClosed         bool               `json:"management_closed"`
 	OrganizerName            string             `json:"organizer_name"`
 	OrganizerBio             pgtype.Text        `json:"organizer_bio"`
 	OrganizerWebsite         pgtype.Text        `json:"organizer_website"`
@@ -486,6 +492,7 @@ func (q *Queries) GetPublishedEventBySlug(ctx context.Context, slug string) (Get
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 		&i.OrganizerName,
 		&i.OrganizerBio,
 		&i.OrganizerWebsite,
@@ -497,7 +504,7 @@ func (q *Queries) GetPublishedEventBySlug(ctx context.Context, slug string) (Get
 }
 
 const listOrganizerEvents = `-- name: ListOrganizerEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE organizer_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -565,6 +572,7 @@ func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEven
 			&i.RegistrationNameRequired,
 			&i.AdminReference,
 			&i.RegistrationFormSettings,
+			&i.ManagementClosed,
 		); err != nil {
 			return nil, err
 		}
@@ -577,7 +585,7 @@ func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEven
 }
 
 const listPublishedEvents = `-- name: ListPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE status = 'published'
   AND visibility = 'public'
   AND deleted_at IS NULL
@@ -647,6 +655,7 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 			&i.RegistrationNameRequired,
 			&i.AdminReference,
 			&i.RegistrationFormSettings,
+			&i.ManagementClosed,
 		); err != nil {
 			return nil, err
 		}
@@ -659,7 +668,7 @@ func (q *Queries) ListPublishedEvents(ctx context.Context, arg ListPublishedEven
 }
 
 const searchPublishedEvents = `-- name: SearchPublishedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE status = 'published'
   AND visibility = 'public'
   AND deleted_at IS NULL
@@ -730,6 +739,7 @@ func (q *Queries) SearchPublishedEvents(ctx context.Context, arg SearchPublished
 			&i.RegistrationNameRequired,
 			&i.AdminReference,
 			&i.RegistrationFormSettings,
+			&i.ManagementClosed,
 		); err != nil {
 			return nil, err
 		}

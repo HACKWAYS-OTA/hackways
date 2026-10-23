@@ -38,6 +38,7 @@ func (h *Handler) mountManagement(r chi.Router) {
 		owner.Get("/{id}/summary", h.GuestSummary)
 		owner.Get("/{id}/audit", h.AuditTrail)
 		owner.Post("/{id}/check-in", h.CheckIn)
+		owner.Post("/{id}/check-in/undo", h.UndoCheckIn)
 	})
 }
 func eventID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
@@ -217,12 +218,12 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed; reload before saving", nil)
 		return
 	}
-	if current.Status == db.EventStatusCancelled || !current.StartsAt.Time.After(current.DatabaseNow.Time) {
-		platform.RespondError(w, 409, "EDIT_CLOSED", "Cancelled or started events cannot be edited here", nil)
+	if current.ManagementClosed {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
 		return
 	}
-	if !body.StartsAt.After(current.DatabaseNow.Time) {
-		platform.RespondError(w, 422, "INVALID_START", "Start time must remain in the future", nil)
+	if !body.StartsAt.After(current.DatabaseNow.Time) && !body.StartsAt.Equal(current.StartsAt.Time) {
+		platform.RespondError(w, 422, "INVALID_START", "Choose a future start time when changing the schedule", nil)
 		return
 	}
 	if body.Capacity != nil && int64(*body.Capacity) < int64(current.CurrentRsvpCount)+int64(current.HeldRsvpCount) {
@@ -327,7 +328,13 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 		lifecycleError(w, workflows.NotFound())
 		return
 	}
-	if event.Status == body.Status {
+	_, isAdmin := auth.AdminMutationFromContext(r.Context())
+	if event.ManagementClosed && !isAdmin {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
+		return
+	}
+	adminClosingSame := isAdmin && !event.ManagementClosed && event.Status == body.Status && body.Status != db.EventStatusPublished
+	if event.Status == body.Status && !adminClosingSame {
 		current, readErr := q.GetEventByID(r.Context(), id)
 		if readErr != nil {
 			lifecycleError(w, readErr)
@@ -342,7 +349,7 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed; reload before updating its status", nil)
 		return
 	}
-	allowed := event.Status != db.EventStatusCancelled && (body.Status == db.EventStatusCancelled || body.Status == db.EventStatusPublished && (event.Status == db.EventStatusDraft || event.Status == db.EventStatusUnpublished) || body.Status == db.EventStatusUnpublished && event.Status == db.EventStatusPublished)
+	allowed := adminClosingSame || event.Status != db.EventStatusCancelled && (body.Status == db.EventStatusCancelled || body.Status == db.EventStatusPublished && (event.Status == db.EventStatusDraft || event.Status == db.EventStatusUnpublished) || body.Status == db.EventStatusUnpublished && event.Status == db.EventStatusPublished)
 	if !allowed {
 		platform.RespondError(w, 409, "INVALID_TRANSITION", "This event status transition is not allowed", nil)
 		return
@@ -386,7 +393,7 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	updated, err := q.TransitionWorkflowEvent(r.Context(), db.TransitionWorkflowEventParams{ID: id, Status: body.Status})
+	updated, err := q.TransitionWorkflowEvent(r.Context(), db.TransitionWorkflowEventParams{ID: id, Status: body.Status, IsAdmin: isAdmin})
 	if err != nil {
 		lifecycleError(w, err)
 		return
@@ -408,6 +415,7 @@ func (h *Handler) TransitionEvent(w http.ResponseWriter, r *http.Request) {
 	}{updated})
 }
 func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
 	id, ok := eventID(w, r)
 	if !ok {
 		return
@@ -464,7 +472,7 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := event.DatabaseNow.Time
-	if event.Status != db.EventStatusPublished || now.Before(event.StartsAt.Time.Add(-24*time.Hour)) || now.After(event.EndsAt.Time) {
+	if event.ManagementClosed || event.Status != db.EventStatusPublished || now.Before(event.StartsAt.Time.Add(-24*time.Hour)) || now.After(event.EndsAt.Time) {
 		platform.RespondError(w, 409, "CHECK_IN_CLOSED", "Check-in opens 24 hours before the event and closes when it ends", nil)
 		return
 	}
@@ -473,7 +481,12 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, readErr := q.GetWorkflowTicket(r.Context(), ticketID)
 		if readErr == nil && existing.EventID == id && existing.Status == "scanned" {
-			platform.RespondError(w, 409, "ALREADY_CHECKED_IN", "This ticket has already been checked in", nil)
+			attendee, attendeeErr := q.ReadCheckInAttendee(r.Context(), db.ReadCheckInAttendeeParams{ID: ticketID, EventID: id})
+			if attendeeErr != nil {
+				lifecycleError(w, attendeeErr)
+				return
+			}
+			platform.RespondJSON(w, 409, checkInErrorResponse{checkInError{"ALREADY_CHECKED_IN", "This attendee is already checked in. This scan was not counted again.", checkInDetails{attendee}}})
 			return
 		}
 		lifecycleError(w, workflows.NotFound())
@@ -497,6 +510,11 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		lifecycleError(w, err)
 		return
 	}
+	attendee, err := q.ReadCheckInAttendee(r.Context(), db.ReadCheckInAttendeeParams{ID: ticketID, EventID: id})
+	if err != nil {
+		lifecycleError(w, err)
+		return
+	}
 	if err = workflows.RememberAdminMutation(r.Context(), q, ticket); err != nil {
 		lifecycleError(w, err)
 		return
@@ -506,8 +524,9 @@ func (h *Handler) CheckIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data db.Tickets `json:"data"`
-	}{ticket})
+		Data     db.Tickets                `json:"data"`
+		Attendee db.ReadCheckInAttendeeRow `json:"attendee"`
+	}{ticket, attendee})
 }
 
 // DeleteDraft only hides inactive drafts; registrations and audit history are retained.
@@ -535,6 +554,10 @@ func (h *Handler) DeleteDraft(w http.ResponseWriter, r *http.Request) {
 	}
 	if event.Revision != revision {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed; reload before removing it", nil)
+		return
+	}
+	if event.ManagementClosed {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
 		return
 	}
 	activity, err := q.EventWorkflowActivity(r.Context(), id)

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Event } from '@/types/api';
 import { requireUser, privateApi } from './account';
 import { ApiClientError } from './api';
-export type ManagedEvent = Event & { revision: number; held_rsvp_count: number; registration_opens_at: string | null; registration_closes_at: string | null; registration_mode: 'instant' | 'approval'; allow_guest: boolean; waitlist_enabled: boolean; offer_minutes: number };
+export type ManagedEvent = Event & { management_closed: boolean; revision: number; held_rsvp_count: number; registration_opens_at: string | null; registration_closes_at: string | null; registration_mode: 'instant' | 'approval'; allow_guest: boolean; waitlist_enabled: boolean; offer_minutes: number };
 export const managedEvent = cache(async (slug: string) => {
   if (!/^[a-z0-9-]{1,230}$/.test(slug)) notFound();
   await requireUser(`/events/${slug}`);

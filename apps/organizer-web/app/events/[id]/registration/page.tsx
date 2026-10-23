@@ -7,9 +7,9 @@ import { Icon } from '@/components/ui/Icon';
 export const metadata = { title: 'Event registration' };
 export default async function Registration({ params }: { params: { id: string } }) {
   const event = await managedEvent(params.id);
-  const editable = event.status !== 'cancelled' && Date.parse(event.starts_at) > Date.now();
+  const editable = !event.management_closed;
   return <><RegistrationTabs slug={event.slug} /><div className="host-settings-layout host-registration-layout">
-    <section><h2>Registration settings</h2>{editable ? <EventSettings key={event.revision} event={event} section="registration" /> : <p className="journey-notice">Registration settings are closed for started or cancelled events.</p>}</section>
+    <section><h2>Registration settings</h2>{editable ? <EventSettings key={event.revision} event={event} section="registration" /> : <p className="journey-notice">An administrator has closed editing for this event.</p>}</section>
     <aside className="host-registration-aside" aria-labelledby="registration-overview-heading">
       <h2 id="registration-overview-heading">Registration overview</h2>
       <dl><div><dt>Confirmed places</dt><dd><Link href={`/events/${event.slug}/guests?status=confirmed`} aria-label={`View ${event.current_rsvp_count} confirmed guests`}>{event.current_rsvp_count}{event.capacity ? ` / ${event.capacity}` : ' · no limit'}<Icon name="arrow" size={14} /></Link></dd></div><div><dt>Reserved offers</dt><dd><Link href={`/events/${event.slug}/guests?status=offered`} aria-label={`View ${event.held_rsvp_count} reserved offers`}>{event.held_rsvp_count}<Icon name="arrow" size={14} /></Link></dd></div></dl>

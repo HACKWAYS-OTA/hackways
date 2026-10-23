@@ -134,7 +134,7 @@ func (q *Queries) EventRosterFiltered(ctx context.Context, arg EventRosterFilter
 }
 
 const listManagedEvents = `-- name: ListManagedEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events
 WHERE organizer_id=$1 AND deleted_at IS NULL
 AND ($2::text='' OR strpos(lower(title),lower($2::text))>0)
 AND ($3::text='all'
@@ -216,6 +216,7 @@ func (q *Queries) ListManagedEvents(ctx context.Context, arg ListManagedEventsPa
 			&i.RegistrationNameRequired,
 			&i.AdminReference,
 			&i.RegistrationFormSettings,
+			&i.ManagementClosed,
 		); err != nil {
 			return nil, err
 		}
@@ -231,7 +232,7 @@ const setEventAppearance = `-- name: SetEventAppearance :one
 UPDATE events SET theme=$2,theme_color=$3,theme_font=$4,theme_style=$5,theme_display=$6,
  banner_url=CASE WHEN $7::boolean THEN NULL ELSE banner_url END,
  revision=revision+1,updated_at=clock_timestamp()
-WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type SetEventAppearanceParams struct {
@@ -302,6 +303,7 @@ func (q *Queries) SetEventAppearance(ctx context.Context, arg SetEventAppearance
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }

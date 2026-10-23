@@ -131,6 +131,7 @@ type Querier interface {
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
 	NextDiscoverPromotionChange(ctx context.Context, at pgtype.Timestamptz) (pgtype.Timestamptz, error)
 	PromotionEventChoices(ctx context.Context, arg PromotionEventChoicesParams) ([]PromotionEventChoicesRow, error)
+	ReadCheckInAttendee(ctx context.Context, arg ReadCheckInAttendeeParams) (ReadCheckInAttendeeRow, error)
 	ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error)
 	ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) (Spaces, error)
 	ReadPublicSpace(ctx context.Context, slug string) (ReadPublicSpaceRow, error)
@@ -157,6 +158,7 @@ type Querier interface {
 	SoftDeleteWorkflowEvent(ctx context.Context, id pgtype.UUID) error
 	StoreIdempotentResponse(ctx context.Context, arg StoreIdempotentResponseParams) error
 	TransitionWorkflowEvent(ctx context.Context, arg TransitionWorkflowEventParams) (Events, error)
+	UndoCheckInWorkflowTicket(ctx context.Context, arg UndoCheckInWorkflowTicketParams) (Tickets, error)
 	UpdateDiscoverPromotionSettings(ctx context.Context, updatedBy pgtype.UUID) error
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
 	UpdateRegistrationForm(ctx context.Context, arg UpdateRegistrationFormParams) error

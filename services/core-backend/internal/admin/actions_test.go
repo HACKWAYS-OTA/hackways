@@ -275,7 +275,7 @@ func TestAdminDetailActions(t *testing.T) {
 	check(call("POST", eventPath+"/status", cancelEvent, "admin-event-cancel-key"), 200)
 	check(call("POST", eventPath+"/status", cancelEvent, "admin-event-cancel-key"), 200)
 	current, _ = q.GetEventByID(ctx, event.ID)
-	if current.Status != db.EventStatusCancelled || current.CurrentRsvpCount != 0 {
+	if current.Status != db.EventStatusCancelled || current.CurrentRsvpCount != 0 || !current.ManagementClosed {
 		t.Fatal("event cancellation invariant failed")
 	}
 	if _, err = pool.Exec(ctx, "UPDATE platform_administrators SET revoked_at=clock_timestamp() WHERE user_id=$1", actor.ID); err != nil {

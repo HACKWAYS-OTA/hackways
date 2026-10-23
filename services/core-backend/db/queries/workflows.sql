@@ -118,6 +118,7 @@ WHERE id=$1 RETURNING *;
 
 -- name: TransitionWorkflowEvent :one
 UPDATE events SET status=sqlc.arg(status)::event_status, revision=revision+1, updated_at=clock_timestamp(),
+management_closed=CASE WHEN sqlc.arg(is_admin)::boolean THEN sqlc.arg(status)::event_status<>'published' ELSE management_closed END,
 published_at=CASE WHEN sqlc.arg(status)::event_status='published' THEN clock_timestamp() ELSE published_at END,
 cancelled_at=CASE WHEN sqlc.arg(status)::event_status='cancelled' THEN clock_timestamp() ELSE cancelled_at END
 WHERE id=sqlc.arg(id) RETURNING *;
@@ -190,3 +191,15 @@ VALUES ($1,$2,$3,$4,'confirmed',1,$5) RETURNING *;
 SELECT count(*)::bigint FROM rsvps r JOIN rsvps mine ON mine.id=$1
 WHERE mine.status='waitlisted' AND r.event_id=mine.event_id AND r.status='waitlisted'
 AND (r.registered_at,r.id)<=(mine.registered_at,mine.id);
+
+-- name: ReadCheckInAttendee :one
+SELECT t.id AS ticket_id,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
+COALESCE(NULLIF(r.guest_email,''),u.email,'')::text AS email,r.public_code AS registration_code,t.checked_in_at
+FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id LEFT JOIN users u ON u.id=r.user_id
+WHERE t.id=$1 AND r.event_id=$2 AND r.status='confirmed';
+
+-- name: UndoCheckInWorkflowTicket :one
+UPDATE tickets t SET status='issued',checked_in_at=NULL,checked_in_by=NULL,updated_at=clock_timestamp()
+FROM rsvps r WHERE t.id=sqlc.arg(ticket_id) AND t.rsvp_id=r.id AND r.event_id=sqlc.arg(event_id)
+AND r.status='confirmed' AND t.status='scanned' AND t.checked_in_at=sqlc.arg(checked_in_at)::timestamptz
+RETURNING t.*;

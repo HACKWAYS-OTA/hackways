@@ -604,6 +604,39 @@ func TestOwnerLifecycle_RevisionCancellationAndOwnership(t *testing.T) {
 	if err != nil || public.Status != db.EventStatusCancelled {
 		t.Fatal("public cancellation vanished")
 	}
+
+	// Cancellation or a past start does not close owner metadata editing.
+	update.Revision = current.Revision
+	update.StartsAt = current.StartsAt.Time
+	update.EndsAt = current.EndsAt.Time
+	update.Description = "Cancelled metadata correction"
+	body, _ = json.Marshal(update)
+	if edited := requestJSON(t, handler, "PUT", path, body, f.cookie); edited.Code != 200 {
+		t.Fatalf("owner cancelled metadata edit: %d %s", edited.Code, edited.Body.String())
+	}
+	if _, err = f.pool.Exec(ctx, "UPDATE events SET starts_at=clock_timestamp()-interval '1 hour',ends_at=clock_timestamp()+interval '1 hour' WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	current, err = f.q.GetEventByID(ctx, f.event.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	update.Revision = current.Revision
+	update.StartsAt = current.StartsAt.Time
+	update.EndsAt = current.EndsAt.Time
+	body, _ = json.Marshal(update)
+	if edited := requestJSON(t, handler, "PUT", path, body, f.cookie); edited.Code != 200 {
+		t.Fatalf("past metadata edit: %d %s", edited.Code, edited.Body.String())
+	}
+	current, _ = f.q.GetEventByID(ctx, f.event.ID)
+	update.Revision = current.Revision
+	if _, err = f.pool.Exec(ctx, "UPDATE events SET management_closed=TRUE WHERE id=$1", f.event.ID); err != nil {
+		t.Fatal(err)
+	}
+	body, _ = json.Marshal(update)
+	if edited := requestJSON(t, handler, "PUT", path, body, f.cookie); edited.Code != 409 || !strings.Contains(edited.Body.String(), "EDIT_CLOSED") {
+		t.Fatal("administrator closure bypassed")
+	}
 	other, err := f.q.CreateUser(ctx, db.CreateUserParams{Email: fmt.Sprintf("other-%d@example.invalid", time.Now().UnixNano()), DisplayName: "Other isolated owner", PasswordHash: "not-a-login-credential"})
 	if err != nil {
 		t.Fatal(err)
@@ -697,6 +730,14 @@ func TestOwnerCheckIn_OneUseAndCancellationGuard(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("check-in: %d %s", w.Code, w.Body.String())
 	}
+
+	var first struct {
+		Data     db.Tickets                `json:"data"`
+		Attendee db.ReadCheckInAttendeeRow `json:"attendee"`
+	}
+	if json.Unmarshal(w.Body.Bytes(), &first) != nil || first.Attendee.Name != f.owner.DisplayName || first.Attendee.Email != f.owner.Email || !first.Attendee.CheckedInAt.Valid {
+		t.Fatal("scan response missing real attendee identity")
+	}
 	summaryResponse := requestJSON(t, handler, "GET", "/"+idString(f.event.ID)+"/summary", nil, f.cookie)
 	var summary struct {
 		Data db.EventGuestSummaryRow `json:"data"`
@@ -715,11 +756,50 @@ func TestOwnerCheckIn_OneUseAndCancellationGuard(t *testing.T) {
 	if w.Code != 409 {
 		t.Fatalf("duplicate check-in: %d", w.Code)
 	}
+	if !strings.Contains(w.Body.String(), "ALREADY_CHECKED_IN") || !strings.Contains(w.Body.String(), f.owner.Email) {
+		t.Fatal("repeat scan omitted attendee/error details")
+	}
 	w = requestJSON(t, rsvps.NewHandler(f.pool).Routes(), "POST", "/"+idString(registration.ID)+"/cancel", nil, f.cookie)
 	if w.Code != 409 {
 		t.Fatalf("cancel checked-in registration: %d", w.Code)
 	}
+	undo, _ := json.Marshal(struct {
+		TicketID    string    `json:"ticket_id"`
+		CheckedInAt time.Time `json:"checked_in_at"`
+	}{idString(ticket.ID), first.Attendee.CheckedInAt.Time})
+	if got := requestJSON(t, handler, "POST", path+"/undo", undo, nil); got.Code != 401 {
+		t.Fatal("anonymous undo accepted")
+	}
+	other := ownerSetup(t)
+	if got := requestJSON(t, handler, "POST", path+"/undo", undo, other.cookie); got.Code != 404 {
+		t.Fatal("cross-owner undo accepted")
+	}
+	for i := 0; i < 2; i++ {
+		if got := requestJSON(t, handler, "POST", path+"/undo", undo, f.cookie); got.Code != 200 {
+			t.Fatalf("undo/replay: %d %s", got.Code, got.Body.String())
+		}
+	}
+	corrected, err := f.q.GetTicketByRSVP(context.Background(), registration.ID)
+	if err != nil || corrected.Status != "issued" || corrected.CheckedInAt.Valid {
+		t.Fatal("undo did not persist")
+	}
+	var audits int
+	if err = f.pool.QueryRow(context.Background(), "SELECT count(*) FROM audit_log WHERE event_id=$1 AND action='ticket.check_in_undone'", f.event.ID).Scan(&audits); err != nil || audits != 1 {
+		t.Fatal("undo audit missing or duplicated")
+	}
+	w = requestJSON(t, handler, "POST", path, body, f.cookie)
+	if w.Code != 200 {
+		t.Fatal("rescan after undo failed")
+	}
+	if got := requestJSON(t, handler, "POST", path+"/undo", undo, f.cookie); got.Code != 409 {
+		t.Fatal("stale undo reverted a newer admission")
+	}
+	w = requestJSON(t, handler, "POST", path, body, f.cookie)
+	if w.Code != 409 {
+		t.Fatal("rescan counted a duplicate")
+	}
 }
+
 func TestTransfer_RevokesOldTicketAndSignsRecipientTicket(t *testing.T) {
 	f := ownerSetup(t)
 	ctx := context.Background()
