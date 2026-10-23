@@ -172,6 +172,9 @@ func (h *Handler) campaignMutation(w http.ResponseWriter, r *http.Request) (pgx.
 		if chi.URLParam(r, "action") == "" {
 			reason = "Campaign draft created"
 		}
+		if strings.HasSuffix(r.URL.Path, "/rollouts") {
+			reason = "Feature rollout configuration changed"
+		}
 		if strings.HasSuffix(r.URL.Path, "/campaign-contacts/import") {
 			reason = "Opted-in contacts imported"
 		}

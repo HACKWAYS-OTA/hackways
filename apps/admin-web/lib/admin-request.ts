@@ -20,4 +20,4 @@ export async function adminRequest<T>(path: string, options: RequestInit = {}): 
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', cancel); }
 }
 
-export function mutationHeaders(reason: string, key: string) { return { 'Content-Type': 'application/json', 'X-Admin-Reason': encodeURIComponent(reason.trim()), 'Idempotency-Key': key }; }
+export function mutationHeaders(key: string) { return { 'Content-Type': 'application/json', 'Idempotency-Key': key }; }

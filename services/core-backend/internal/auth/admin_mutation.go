@@ -59,6 +59,9 @@ func RequireAdminMutation(next http.Handler) http.Handler {
 		}
 		reason, err := url.PathUnescape(r.Header.Get("X-Admin-Reason"))
 		reason = strings.TrimSpace(reason)
+		if err == nil && reason == "" {
+			reason = "Administrative change"
+		}
 		if err != nil || !utf8.ValidString(reason) || utf8.RuneCountInString(reason) < 3 || utf8.RuneCountInString(reason) > 1000 || strings.ContainsAny(reason, "\x00\r\n") {
 			platform.RespondError(w, 422, "REASON_REQUIRED", "Provide a reason of 3 to 1000 characters", nil)
 			return

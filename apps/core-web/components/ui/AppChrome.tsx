@@ -9,6 +9,7 @@ import { AppNavigation } from '@/components/ui/AppNavigation';
 import { site } from '@/lib/site';
 import type { User } from '@/types/api';
 import { Avatar as ProfileAvatar } from '@hackways/ui/avatar';
+import { scrollToSection } from '@hackways/ui/section-jump';
 
 export function AppChrome({ children, user }: { children: ReactNode; user: User | null }) {
   const pathname = usePathname();
@@ -28,6 +29,11 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
     // start at the top before paint; history, query updates and refreshes retain position.
     if (changed && !restoringHistory && /^\/events\/[^/]+(?:\/register)?\/?$/.test(pathname)) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (/\/register\/?$/.test(pathname)) {
+        // Wait for the new route's DOM; Next's scroll heuristic runs during commit.
+        const frame = requestAnimationFrame(() => scrollToSection('registration-start', 'instant'));
+        return () => cancelAnimationFrame(frame);
+      }
     }
   }, [pathname]);
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');

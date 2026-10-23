@@ -103,7 +103,7 @@ func TestAdminDetailActions(t *testing.T) {
 		return w
 	}
 	call := func(method, path, body, key string) *httptest.ResponseRecorder {
-		return request(method, path, body, key, "http://localhost:3003", "Review%20requested%20by%20support", auth.AdminSessionCookie)
+		return request(method, path, body, key, "http://localhost:3003", "", auth.AdminSessionCookie)
 	}
 	check := func(w *httptest.ResponseRecorder, status int) {
 		t.Helper()
@@ -114,7 +114,7 @@ func TestAdminDetailActions(t *testing.T) {
 	eventPath := "/events/" + strconv.FormatInt(event.AdminReference, 10)
 	edit := fmt.Sprintf(`{"title":"Reviewed event","description":"Reviewed description","capacity":2,"visibility":"private","revision":%d}`, event.Revision)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "https://attacker.invalid", "reason", auth.AdminSessionCookie), 403)
-	check(request("PUT", eventPath, edit, "admin-event-edit-key", "http://localhost:3003", "", auth.AdminSessionCookie), 422)
+	check(request("PUT", eventPath, edit, "admin-event-edit-key", "http://localhost:3003", "x", auth.AdminSessionCookie), 422)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "http://localhost:3003", "reason", auth.DefaultSessionCookie), 401)
 	check(call("PUT", eventPath, edit, "admin-event-edit-key"), 200)
 	var queuedUpdates int
@@ -196,7 +196,7 @@ func TestAdminDetailActions(t *testing.T) {
 	check(call("GET", fmt.Sprintf("/audit/%d", auditID), "", ""), 200)
 	var auditCount int
 	var metadata string
-	if err = pool.QueryRow(ctx, "SELECT count(*),min(metadata::text) FROM audit_log WHERE actor_user_id=$1 AND entity_id=$2 AND action='admin.event.updated'", actor.ID, event.ID).Scan(&auditCount, &metadata); err != nil || auditCount != 1 || !strings.Contains(metadata, "Review requested by support") {
+	if err = pool.QueryRow(ctx, "SELECT count(*),min(metadata::text) FROM audit_log WHERE actor_user_id=$1 AND entity_id=$2 AND action='admin.event.updated'", actor.ID, event.ID).Scan(&auditCount, &metadata); err != nil || auditCount != 1 || !strings.Contains(metadata, "Administrative change") {
 		t.Fatalf("audit actor/reason or exact once failed: %d %v", auditCount, err)
 	}
 	current, err := q.GetEventByID(ctx, event.ID)

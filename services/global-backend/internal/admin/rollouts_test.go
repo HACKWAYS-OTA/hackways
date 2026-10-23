@@ -58,7 +58,6 @@ func TestRolloutVersionsAuthorizationAndRestore(t *testing.T) {
 			r.AddCookie(&http.Cookie{Name: cookie, Value: token})
 		}
 		r.Header.Set("Origin", origin)
-		r.Header.Set("X-Admin-Reason", "Mandatory%20CI%20configuration%20review")
 		r.Header.Set("Idempotency-Key", key)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, r)

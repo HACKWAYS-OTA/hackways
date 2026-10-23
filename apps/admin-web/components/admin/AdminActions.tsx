@@ -25,10 +25,8 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
     event.preventDefault();
     if (busy) return;
     const values = new FormData(event.currentTarget);
-    const reason = String(values.get('reason') || '').trim();
-    if (reason.length < 3) { setError('Enter a reason of at least 3 characters.'); return; }
     const body = JSON.stringify({ ...payload, ...fields?.(values) });
-    const signature = `${path}\n${body}\n${reason}`;
+    const signature = `${path}\n${body}`;
     if (receipt.current?.signature !== signature) receipt.current = { signature, key: crypto.randomUUID() };
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15000);
@@ -37,7 +35,7 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
       const base = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
       const response = await fetch(`${base}/admin/${path}`, {
         method, credentials: 'include', cache: 'no-store', signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Reason': encodeURIComponent(reason), 'Idempotency-Key': receipt.current.key },
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': receipt.current.key },
         body,
       });
       if (response.status === 401) { window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
@@ -65,7 +63,6 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
     <form onSubmit={submit} className="admin-action-form">
       <fieldset disabled={busy}>
         {children}
-        <Input label="Reason for this change" name="reason" required minLength={3} maxLength={500} autoComplete="off" />
         {error && <p className="field-error" role="alert">{error}</p>}
         {saved && <p className="admin-action-success" role="status">{success}</p>}
         <Button type="submit" isLoading={busy}>{busy ? 'Saving…' : submitLabel}</Button>

@@ -17,7 +17,7 @@ type Result = { reference: number; label: string; message: string; success: bool
 export function BulkActions({ resource, records, onFinished, onClear, onBusyChange }: { resource: AdminModule; records: AdminRecord[]; onFinished: () => void; onClear: () => void; onBusyChange: (busy: boolean) => void }) {
   const options = actions[resource] || [];
   const [action, setAction] = useState(options[0]?.value || '');
-  const [reason, setReason] = useState(''), [confirmed, setConfirmed] = useState(false), [notify, setNotify] = useState(true);
+  const [confirmed, setConfirmed] = useState(false), [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false), [results, setResults] = useState<Result[]>([]), [progress, setProgress] = useState('');
   const receipts = useRef(new Map<string, { path: string; body: string; key: string }>());
   async function submit(event: FormEvent) {
@@ -29,7 +29,7 @@ export function BulkActions({ resource, records, onFinished, onClear, onBusyChan
       const label = String(row.title || row.name || row.public_code || row.recipient_email || row.reference);
       setProgress(`Processing ${index + 1} of ${targets.length}`);
       try {
-        const receiptSignature = JSON.stringify([resource, row.reference, action, reason.trim(), notify]);
+        const receiptSignature = JSON.stringify([resource, row.reference, action, notify]);
         let receipt = receipts.current.get(receiptSignature);
         if (!receipt) {
           const target = resource === 'moderation' ? 'events' : resource;
@@ -40,7 +40,7 @@ export function BulkActions({ resource, records, onFinished, onClear, onBusyChan
           if (receipts.current.size >= 40) receipts.current.clear();
           receipts.current.set(receiptSignature, receipt);
         }
-        await adminRequest(receipt.path, { method: 'POST', headers: mutationHeaders(reason, receipt.key), body: receipt.body });
+        await adminRequest(receipt.path, { method: 'POST', headers: mutationHeaders(receipt.key), body: receipt.body });
         next.push({ reference: row.reference, label, message: 'Completed', success: true });
       } catch (failure) { next.push({ reference: row.reference, label, message: failure instanceof Error ? failure.message : 'The operation failed. Retry this record.', success: false }); }
       setResults([...next]);
@@ -48,5 +48,5 @@ export function BulkActions({ resource, records, onFinished, onClear, onBusyChan
     setBusy(false); onBusyChange(false); setProgress(`${next.filter(row => row.success).length} completed; ${next.filter(row => !row.success).length} need attention.`); setConfirmed(false); onFinished();
   }
   if (!options.length || !records.length && !results.length) return null;
-  return <section className="admin-bulk" aria-labelledby="bulk-actions-heading"><div className="admin-section-heading"><h2 id="bulk-actions-heading">Selected records <span className="admin-secondary-copy">{records.length}/20</span></h2><button type="button" disabled={busy} className="app-button app-button-outline app-button-sm" onClick={() => { onClear(); setResults([]); setProgress(''); }}>Clear selection</button></div><form onSubmit={submit}><fieldset disabled={busy}><RadioGroup label="Bulk action" value={action} onValueChange={value => { setAction(value); setConfirmed(false); }} options={options} disabled={busy} required />{resource === 'registrations' && <label className="campaign-confirm"><Checkbox checked={notify} onCheckedChange={setNotify} disabled={busy} />Notify affected guests by email</label>}<label className="field">Reason for this change<input className="app-input" required minLength={3} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label><label className="campaign-confirm"><Checkbox required checked={confirmed} onCheckedChange={setConfirmed} disabled={busy} />Apply this action to the selected records. Each record is checked separately and changes are audited.</label><button className="app-button app-button-primary" disabled={busy || !records.length || !confirmed}>{busy ? 'Processing…' : `Apply to ${records.length} records`}</button></fieldset></form><p role="status" className="admin-secondary-copy">{progress}</p>{results.length > 0 && <ul className="admin-bulk-results">{results.map(result => <li key={result.reference}><strong>{result.label}</strong><span className={result.success ? 'admin-action-success' : 'field-error'}>{result.message}</span></li>)}</ul>}</section>;
+  return <section className="admin-bulk" aria-labelledby="bulk-actions-heading"><div className="admin-section-heading"><h2 id="bulk-actions-heading">Selected records <span className="admin-secondary-copy">{records.length}/20</span></h2><button type="button" disabled={busy} className="app-button app-button-outline app-button-sm" onClick={() => { onClear(); setResults([]); setProgress(''); }}>Clear selection</button></div><form onSubmit={submit}><fieldset disabled={busy}><RadioGroup label="Bulk action" value={action} onValueChange={value => { setAction(value); setConfirmed(false); }} options={options} disabled={busy} required />{resource === 'registrations' && <label className="campaign-confirm"><Checkbox checked={notify} onCheckedChange={setNotify} disabled={busy} />Notify affected guests by email</label>}<label className="campaign-confirm"><Checkbox required checked={confirmed} onCheckedChange={setConfirmed} disabled={busy} />Apply this action to the selected records. Each record is checked separately and changes are audited.</label><button className="app-button app-button-primary" disabled={busy || !records.length || !confirmed}>{busy ? 'Processing…' : `Apply to ${records.length} records`}</button></fieldset></form><p role="status" className="admin-secondary-copy">{progress}</p>{results.length > 0 && <ul className="admin-bulk-results">{results.map(result => <li key={result.reference}><strong>{result.label}</strong><span className={result.success ? 'admin-action-success' : 'field-error'}>{result.message}</span></li>)}</ul>}</section>;
 }

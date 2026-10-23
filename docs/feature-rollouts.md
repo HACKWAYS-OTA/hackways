@@ -8,7 +8,7 @@ This module versions **feature configuration**, not executable source code. It d
 
 ## Authoritative control plane
 
-Migration 17 adds an append-only application API for `runtime_rollout_versions`, with one locked `runtime_rollout_control` pointer. PostgreSQL holds configuration, the private cohort salt and history. Administrators publish a named version with a reason, current revision, confirmation and idempotency key. A restore copies a prior configuration into a new version; it never rewrites history. Audit records include the old/new version references. Unknown, unimplemented flags and invalid percentages/windows are rejected by Go.
+Migration 17 adds an append-only application API for `runtime_rollout_versions`, with one locked `runtime_rollout_control` pointer. PostgreSQL holds configuration, the private cohort salt and history. Administrators publish a named version with current revision, confirmation and idempotency key; Go automatically records the action description. A restore copies a prior configuration into a new version; it never rewrites history. Audit records include the old/new version references. Unknown, unimplemented flags and invalid percentages/windows are rejected by Go.
 
 The initial configuration preserves the currently implemented behavior at 100%. Shipped flags:
 
