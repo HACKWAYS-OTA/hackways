@@ -1067,3 +1067,5 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   browser is available; no visual/client OAuth/Directory review is claimed.
 
 - Final MCP review requires explicit fields for full-record replacements, so omitted capacity, windows, membership details or campaign actions cannot silently clear saved settings. HTTP transport replay is disabled for writes, and server-side ambiguous write outcomes require state inspection.
+
+- User clarified the public support address casing: public site defaults to support@hackota.com and normalizes configured display addresses to lowercase.
