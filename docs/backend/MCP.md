@@ -121,3 +121,5 @@ and secrets are rejected rather than silently treated as authenticated clients.
 The signed assertion method is not advertised or claimed. This compatibility
 correction is independently built as a global-backend-only candidate so public
 footer publication is not delayed.
+
+The designated profile tool returns the standard top-level persisted account ID, name and email schema. Authentication challenges include both error and error_description as required for the OpenAI linking UI. Other tools retain their actual-operation response envelopes.

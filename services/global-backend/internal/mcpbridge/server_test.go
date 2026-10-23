@@ -139,6 +139,17 @@ func TestMCPProtocolAndConfirmedWrite(t *testing.T) {
 		t.Fatal("missing runtime OAuth challenge")
 	}
 	_, profile := rpc(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_my_profile","arguments":{}}}`, access)
+	var profileResult struct {
+		Structured connectedProfile `json:"structuredContent"`
+	}
+	_ = json.Unmarshal(profile["result"], &profileResult)
+	profileID, _ := user.ID.Value()
+	if profileResult.Structured.ID != profileID {
+		t.Fatal("profile output must expose the stable credential-scoped ID at the top level")
+	}
+	if !strings.Contains(string(unauthorized["result"]), "error_description") {
+		t.Fatal("OAuth challenge must explain the required recovery")
+	}
 	if !strings.Contains(string(profile["result"]), "Protocol account") {
 		t.Fatalf("real API profile not returned: %s", profile["result"])
 	}

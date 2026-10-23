@@ -1083,3 +1083,5 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   global-backend/docs change after PR 47 merged as e512e25767e12cfaa09c608b0961a81108999a9a.
   Public-web source 9fc616c6dc34903cd0531da09c472bc5275ce218 continues its independent
   image publication; no application activation has occurred yet.
+
+- Matched the designated OpenAI profile response to its standard top-level persisted ID/name/email schema, and included explanatory parameters in runtime OAuth challenges. Updated mandatory protocol checks for both contracts. Public build remains on its independently verified source.
