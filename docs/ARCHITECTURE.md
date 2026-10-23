@@ -46,7 +46,7 @@ and server-side upload verification retain the Azure host. Compose forwards
 `AZURE_CDN_DOMAIN` with an empty default. This is prepared configuration, not a live
 cutover: Cloudflare access and HTTPS/content checks are still pending.
 
-Internal backend and database ports must not be published publicly. Admin ingress must be IP/VPN restricted at Nginx. Production credentials belong in Azure Key Vault and runtime environment, never source control.
+Internal backend and database ports must not be published publicly. By explicit operator decision on 2026-10-22, admin sign-in is reachable from any network; dedicated host-scoped admin sessions, explicit database grants, daily OTP and backend authorization protect the console and APIs. Nginx retains TLS/rate limits and restricts readiness diagnostics to internal networks. Production credentials belong in Azure Key Vault and runtime environment, never source control.
 
 ## Data and concurrency
 
