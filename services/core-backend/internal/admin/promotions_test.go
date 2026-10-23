@@ -87,7 +87,6 @@ func TestDiscoverPromotionAdministration(t *testing.T) {
 	call := func(method, body, key, cookie string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, "/discover-promotions", strings.NewReader(body))
 		r.Header.Set("Origin", "https://admin.hackways.in")
-		r.Header.Set("X-Admin-Reason", "Mandatory%20CI%20review")
 		r.Header.Set("Idempotency-Key", key)
 		if cookie != "" {
 			r.AddCookie(&http.Cookie{Name: cookie, Value: token})

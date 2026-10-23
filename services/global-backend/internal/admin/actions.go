@@ -60,6 +60,9 @@ func (h *Handler) action(action string) http.HandlerFunc {
 		}
 		reason, err := url.PathUnescape(r.Header.Get("X-Admin-Reason"))
 		reason = strings.TrimSpace(reason)
+		if err == nil && reason == "" {
+			reason = "Admin " + action
+		}
 		if err != nil || !utf8.ValidString(reason) || utf8.RuneCountInString(reason) < 3 || utf8.RuneCountInString(reason) > 1000 || strings.ContainsAny(reason, "\x00\r\n") {
 			platform.RespondError(w, 400, "REASON_REQUIRED", "Enter a reason between 3 and 1,000 characters", nil)
 			return

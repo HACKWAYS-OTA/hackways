@@ -92,7 +92,7 @@ func TestAdminRecordActions(t *testing.T) {
 		return request("GET", path, actionBody{}, "", "", "", auth.AdminSessionCookie)
 	}
 	post := func(path string, body actionBody, key string) *httptest.ResponseRecorder {
-		return request("POST", path, body, key, "http://localhost:3003", "CI record correction", auth.AdminSessionCookie)
+		return request("POST", path, body, key, "http://localhost:3003", "", auth.AdminSessionCookie)
 	}
 	version := func(id pgtype.UUID) time.Time {
 		t.Helper()
@@ -145,8 +145,8 @@ func TestAdminRecordActions(t *testing.T) {
 	if got := request("POST", path+"/edit", body, key, "https://attacker.example", "CI edit", auth.AdminSessionCookie).Code; got != 403 {
 		t.Fatalf("cross-origin got %d", got)
 	}
-	if got := request("POST", path+"/edit", body, key, "http://localhost:3003", "", auth.AdminSessionCookie).Code; got != 400 {
-		t.Fatalf("missing reason got %d", got)
+	if got := request("POST", path+"/edit", body, key, "http://localhost:3003", "x", auth.AdminSessionCookie).Code; got != 400 {
+		t.Fatalf("invalid legacy reason got %d", got)
 	}
 	if rec := post(path+"/edit", body, key); rec.Code != 200 {
 		t.Fatalf("edit got %d %s", rec.Code, rec.Body.String())
@@ -155,7 +155,7 @@ func TestAdminRecordActions(t *testing.T) {
 		t.Fatalf("safe replay got %d", got)
 	}
 	var auditCount int
-	if err = pool.QueryRow(ctx, "SELECT count(*) FROM audit_log WHERE actor_user_id=$1 AND entity_id=$2 AND action='admin.person.edit'", actor.ID, target.ID).Scan(&auditCount); err != nil || auditCount != 1 {
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM audit_log WHERE actor_user_id=$1 AND entity_id=$2 AND action='admin.person.edit' AND metadata->>'reason'='Admin person.edit'", actor.ID, target.ID).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatal("replay duplicated or omitted audit")
 	}
 	if got := post(path+"/edit", body, "edit-record-key-stale").Code; got != 409 {

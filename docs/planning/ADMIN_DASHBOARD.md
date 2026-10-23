@@ -46,7 +46,7 @@ Core actions edit event title/description/capacity/visibility, apply publish/unp
 
 Global actions edit a person's display name, grant/revoke platform access, revoke a selected account session, retry an eligible failed outbox entry and detach an attached image. Access changes require the user-approved role controls: no self access change, no last-admin removal, verified email before granting and dedicated-session revocation when access is removed. Current-session revocation uses sign-out. Message retry requires failed state with no recorded first provider attempt; it is not arbitrary message replay. Detachment changes event/profile metadata and retains the Azure blob.
 
-Every action requires a recorded reason, allowed admin origin, current version where applicable and idempotency key. Go rechecks authorization, validates the action and commits its audit/receipt with the change. An uncertain request can retry the same key/body/reason; a changed request using that key conflicts. The UI preserves failed input and reports success only after the actual API succeeds. Audit records have no edit/delete route. See [the exact methods, bodies, headers and retry contract](../API.md#reviewed-record-actions).
+Every action records the administrator and action automatically and requires an allowed admin origin, current version where applicable and idempotency key. No form asks for a reason; legacy supplied reasons remain validated. Go rechecks authorization, validates the action and commits its audit/receipt with the change. An uncertain request can retry the same key/body (and optional legacy reason); a changed request using that key conflicts. The UI preserves failed input and reports success only after the actual API succeeds. Audit records have no edit/delete route. See [the exact methods, bodies, headers and retry contract](../API.md#reviewed-record-actions).
 
 ## Local setup and release boundary
 
@@ -88,3 +88,8 @@ The launcher loads the protected local source, starts only the restored local Po
 Postman CLI 1.75.0 verified all nine admin collections with cloud event reporting disabled. The actual local snapshot returned 3 events, 4 accounts, 6 email records, 4 attached media records and 5 audit entries; spaces, registrations and tickets were empty. Moderation returned the 3 draft/unpublished event records. Anonymous requests returned 401, and an ordinary event mutation route returned 404 in preview mode. Private diagnostic responses contain response bodies/status/tests only; credential-bearing request headers, cookies and script logs are removed. Session values stay only in the protected credential environment. No records or credentials were published to a Postman team/workspace.
 
 Copy capture time (UTC): 2026-10-22T04:51:48.3164556Z. This is a point-in-time preview, not a continuous production connection or production disaster-recovery verification.
+
+
+## Platform overview layout
+
+Four responsive bento sections group existing server-fetched event/registration queues, email delivery, account/access counts and publishing controls. Independent engines load concurrently, failures show unavailable states rather than zero counts, and every count/action leads to its existing module. No charts, invented trends or additional polling are introduced.

@@ -14,7 +14,7 @@ Admin APIs under `/api/v1/admin/core`:
 | `GET /discover-promotions/events?q=&offset=` | Twenty eligible published/public/upcoming events plus `has_next` |
 | `PUT /discover-promotions` | `{revision,selections:[{reference,starts_at,ends_at}]}`; up to five unique events; empty selection hides the banner |
 
-Writes require the dedicated admin session, live grant, approved Origin, `X-Admin-Reason` and `Idempotency-Key`. The transaction locks the actor, singleton settings and selected events in numeric-reference order. It validates publication/visibility/deletion and event start, replaces only the saved placement, increments revision and appends an audit. Conflicting revisions return 409 without changing saved configuration. Retries replay the confirmed result.
+Writes require the dedicated admin session, live grant, approved Origin and `Idempotency-Key`; Go supplies an audit description when the optional legacy `X-Admin-Reason` is absent. The transaction locks the actor, singleton settings and selected events in numeric-reference order. It validates publication/visibility/deletion and event start, replaces only the saved placement, increments revision and appends an audit. Conflicting revisions return 409 without changing saved configuration. Retries replay the confirmed result.
 
 Windows use explicit ISO timestamps; the editor displays device-local datetime inputs. The promotion must end after its start, in the future and no later than event start. Expired or newly ineligible selections remain visible to admins for cleanup; public reads omit them.
 

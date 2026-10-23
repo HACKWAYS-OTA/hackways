@@ -117,7 +117,7 @@ Admin web renders `/{resource}/details/{reference}` from a server fetch with a s
 
 ### Reviewed record actions
 
-All paths below are prefixed by `/api/v1/admin/`. The UI supplies numeric record/session references in the `{id}`/`{sessionID}` positions; existing UUID API callers remain compatible. Each write requires the dedicated admin session/current grant, JSON, an allowed admin `Origin`, `X-Admin-Reason` containing a percent-encoded 3-1000 character reason, and a random printable `Idempotency-Key` of 16-128 non-whitespace ASCII characters. Production origin is `https://admin.hackways.in`; development additionally permits localhost/127.0.0.1 on port 3003. The console currently limits its reason field to 500 characters.
+All paths below are prefixed by `/api/v1/admin/`. The UI supplies numeric record/session references in the `{id}`/`{sessionID}` positions; existing UUID API callers remain compatible. Each write requires the dedicated admin session/current grant, JSON, an allowed admin `Origin`, a random printable `Idempotency-Key` of 16-128 non-whitespace ASCII characters. Production origin is `https://admin.hackways.in`; development additionally permits localhost/127.0.0.1 on port 3003. The console does not request a reason. Go records the actor and action automatically. Legacy clients may optionally send a valid percent-encoded 3-1000 character `X-Admin-Reason`; malformed supplied values remain rejected.
 
 | Method and suffix | JSON fields | Persisted action and constraints |
 | --- | --- | --- |
@@ -135,7 +135,7 @@ All paths below are prefixed by `/api/v1/admin/`. The UI supplies numeric record
 
 Use the exact current `revision` or timestamp `updated_at` from detail reads. A stale record/version returns a conflict rather than overwriting newer changes. Core mutations reuse event/space locks and existing lifecycle/inventory rules; event inventory transactions retain `statement_timeout='2000ms'`. Go preserves the administrator as audit actor while scoping delegated management to the resource owner. Mutation, audit and replay receipt commit together. Global actions serialize role changes and action receipts, then recheck the live dedicated session/grant inside the transaction.
 
-Successful global actions return `{data:{id,action}}`; core actions return their workflow data. Exact successful retries return the stored result with `Idempotency-Replayed: true`; changed requests under the same scoped key return 409 `IDEMPOTENCY_CONFLICT`. Reuse the same key, body and reason after an uncertain response. Audit rows remain read-only through these APIs. Queued notifications/retries are not evidence of provider acceptance or inbox delivery.
+Successful global actions return `{data:{id,action}}`; core actions return their workflow data. Exact successful retries return the stored result with `Idempotency-Replayed: true`; changed requests under the same scoped key return 409 `IDEMPOTENCY_CONFLICT`. Reuse the same key and body after an uncertain response; legacy clients supplying a reason must preserve it too. Audit rows remain read-only through these APIs. Queued notifications/retries are not evidence of provider acceptance or inbox delivery.
 
 Migration `000010_admin_detail_indexes` adds reversible entity/actor audit and recipient-message timeline indexes; it adds no privileges or seeded data. It has been applied only to isolated local test databases and the restored local preview, not production.
 
@@ -177,7 +177,7 @@ Platform admin campaign, contact import, test/send/cancel, account opt-in and pu
 
 Core now serves revisioned Discover placement selection, a bounded eligible-event picker and the active public promotion feed. Both engines expose admin-only `/admin/{core|global}/overview` queue totals. See [admin operations](admin-operations.md) for exact promotion contracts and authorization.
 
-Global admin `GET /admin/global/rollouts?offset=` reads current configuration, registry, paginated history and evaluator freshness. `POST /admin/global/rollouts` accepts `{revision,label,flags}` or `{revision,label,restore_version}`, plus approved Origin, reason and idempotency headers. Global `GET /auth/runtime` evaluates the cached snapshot without a database call. See [feature rollouts](feature-rollouts.md) for cohort, scheduling, propagation and fallback contracts.
+Global admin `GET /admin/global/rollouts?offset=` reads current configuration, registry, paginated history and evaluator freshness. `POST /admin/global/rollouts` accepts `{revision,label,flags}` or `{revision,label,restore_version}`, plus approved Origin and idempotency headers. Audit descriptions are assigned by Go; no typed reason is required. Global `GET /auth/runtime` evaluates the cached snapshot without a database call. See [feature rollouts](feature-rollouts.md) for cohort, scheduling, propagation and fallback contracts.
 
 ## Session persistence and daily admin verification (schemas 18-19)
 

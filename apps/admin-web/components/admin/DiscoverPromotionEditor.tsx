@@ -21,7 +21,6 @@ export function DiscoverPromotionEditor({ initial }: { initial: PromotionConfigu
   const [searchError, setSearchError] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const receipt = useRef<{ signature: string; key: string }>();
   useEffect(() => {
@@ -39,10 +38,10 @@ export function DiscoverPromotionEditor({ initial }: { initial: PromotionConfigu
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy) return;
     const payload = { revision: saved.revision, selections: selections.map(({ reference, starts_at, ends_at }) => ({ reference, starts_at, ends_at })) };
-    const body = JSON.stringify(payload), signature = body + reason;
+    const body = JSON.stringify(payload), signature = body;
     if (receipt.current?.signature !== signature) receipt.current = { signature, key: crypto.randomUUID() };
     setBusy(true); setError(''); setMessage('');
-    try { const result = await adminRequest<{ data: PromotionConfiguration }>('core/discover-promotions', { method: 'PUT', headers: mutationHeaders(reason, receipt.current.key), body }); setSaved(result.data); setSelections(result.data.selections); setMessage(result.data.selections.length ? 'Promotion schedule saved.' : 'Banner disabled. Discover will show the regular event list.'); receipt.current = undefined; }
+    try { const result = await adminRequest<{ data: PromotionConfiguration }>('core/discover-promotions', { method: 'PUT', headers: mutationHeaders(receipt.current.key), body }); setSaved(result.data); setSelections(result.data.selections); setMessage(result.data.selections.length ? 'Promotion schedule saved.' : 'Banner disabled. Discover will show the regular event list.'); receipt.current = undefined; }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'The schedule could not be saved. Your selection is preserved.'); }
     finally { setBusy(false); }
   }
@@ -54,7 +53,7 @@ export function DiscoverPromotionEditor({ initial }: { initial: PromotionConfigu
     <form onSubmit={save} aria-labelledby="promotion-schedule"><h2 id="promotion-schedule">Schedule <span className="admin-secondary-copy">{selections.length}/5</span></h2><p className="admin-secondary-copy">Times use your device’s local time. Active events rotate every 7 seconds.</p><fieldset disabled={busy} className="promotion-schedule">
       {!selections.length && <p className="promotion-empty">No promotions selected. Save this selection to hide the banner.</p>}
       {selections.map((row, index) => <section key={row.reference} className="promotion-slot" aria-label={`Promotion ${index + 1}: ${row.title}`}><div className="promotion-slot-heading"><Link className="admin-record-link" href={`/events/details/${row.reference}`}>{row.title}</Link><div className="campaign-actions"><button type="button" className="app-button app-button-outline app-button-sm" disabled={index === 0} aria-label={`Move ${row.title} earlier`} onClick={() => move(index, -1)}>Up</button><button type="button" className="app-button app-button-outline app-button-sm" disabled={index === selections.length - 1} aria-label={`Move ${row.title} later`} onClick={() => move(index, 1)}>Down</button><button type="button" className="app-button app-button-outline app-button-sm" aria-label={`Remove ${row.title}`} onClick={() => setSelections(rows => rows.filter(item => item.reference !== row.reference))}>Remove</button></div></div>{row.eligible === false && <p className="field-error">This selection has expired or is no longer eligible. Remove it before saving.</p>}<div className="campaign-fields"><label className="field">Show from<input className="app-input" type="datetime-local" required value={row.starts_at ? localDate(row.starts_at) : ''} max={localDate(row.event_starts_at)} onChange={event => update(row.reference, { starts_at: utcDate(event.target.value) })} /></label><label className="field">Show until<input className="app-input" type="datetime-local" required value={row.ends_at ? localDate(row.ends_at) : ''} min={row.starts_at ? localDate(row.starts_at) : undefined} max={localDate(row.event_starts_at)} onChange={event => update(row.reference, { ends_at: utcDate(event.target.value) })} /></label></div></section>)}
-      <label className="field">Reason for this change<input className="app-input" value={reason} onChange={event => setReason(event.target.value)} minLength={3} maxLength={500} required /></label>{error && <p className="field-error" role="alert">{error}</p>}{message && <p className="admin-action-success" role="status">{message}</p>}<div className="campaign-actions"><button className="app-button app-button-primary" disabled={busy}>{busy ? 'Saving…' : 'Save schedule'}</button><button type="button" className="app-button app-button-outline" onClick={() => { setSelections(saved.selections); setMessage(''); }}>Discard changes</button></div>
+      {error && <p className="field-error" role="alert">{error}</p>}{message && <p className="admin-action-success" role="status">{message}</p>}<div className="campaign-actions"><button className="app-button app-button-primary" disabled={busy}>{busy ? 'Saving…' : 'Save schedule'}</button><button type="button" className="app-button app-button-outline" onClick={() => { setSelections(saved.selections); setMessage(''); }}>Discard changes</button></div>
     </fieldset></form>
   </div>;
 }
