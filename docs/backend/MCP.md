@@ -74,8 +74,8 @@ Do not claim Directory publication without actual submission/approval.
 Implementation uses 106 focused tools. Public landing: `https://hackways.in/mcp`.
 Connection reference: `https://hackways.in/mcp/setup`, covering CIMD, DCR and manual
 public-client registration, exact endpoints, connection-specific callbacks, all
-eight scopes, mandatory S256 PKCE and explicitly disabled OIDC. The page uses
-deployed Go metadata as its configuration authority; it creates no credentials.
+eight scopes, mandatory S256 PKCE and explicitly disabled OIDC. The static page
+mirrors Go metadata; it does not fetch metadata at runtime or create credentials.
 Transport/resource: `https://mcp.hackways.in/mcp`; issuer: `https://mcp.hackways.in`.
 Dedicated account/admin consent pages are `/connect/authorize`, action review is
 `/connect/action`, and revocation is `/connect/connections`. Mixed permission
@@ -104,15 +104,21 @@ one registration/minute/IP with a small Nginx burst. These are admission limits,
 not measured throughput claims.
 
 The MCP certificate was issued and externally verified with the system trust store
-on 23 October 2026. The temporary HTTPS preparation response remains until the
-verified runtime release. The certificate uses certbot's existing webroot renewal;
-the production vhost retains its HTTP challenge path. Application activation,
-Linux race CI, image publication and actual browser/OpenAI client review remain
+on 23 October 2026. Trusted HTTPS, OAuth metadata, MCP initialize/list, a real public
+event query and private-tool authentication challenges passed production checks.
+The certificate uses certbot's existing webroot renewal; the production vhost
+retains its HTTP challenge path. Actual browser/OpenAI client review remains
 pending. No Directory submission or approval is claimed.
 
-Previous release: analytics/check-in source
-`1e898be5e702b5a48e12135f333ba68117839b26`, schema 23, all six services live;
-CI 39901702575 passed and PR 46 merged. CDN and Apple Wallet remain deferred.
+Activated MCP release: five services from
+`9fc616c6dc34903cd0531da09c472bc5275ce218` (CI 39911338392), global-backend from
+`f20a8d52a943259a3dc998612767d6b268c8e201` (CI 39913620201; image 39914832784),
+schema 24 clean. Mandatory Linux race suites passed core 62/global 130 with no
+failures/skips. Private Azure backup read-back, environment/signing identity,
+resource limits, admin daily verification and unrelated configuration were
+preserved. Activation evidence is recorded in WORKLOGS.md. The subsequent public
+setup-page image has its own publication evidence. CDN and Apple Wallet remain
+deferred.
 
 ### ChatGPT client metadata negotiation
 
