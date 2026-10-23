@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/admin"
+	"github.com/hackways/global-backend/internal/analytics"
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
@@ -176,6 +177,7 @@ func main() {
 			v1.Mount("/auth/admin", authHandler.AdminRoutes())
 		} else {
 			v1.Mount("/auth", authHandler.Routes())
+			v1.Mount("/analytics", analytics.NewHandler(pool, cfg.SessionSecret, cfg.AppEnv == "development").Routes())
 			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
 		}
 		v1.Mount("/admin/global", admin.NewHandler(pool, runtimeCache).Routes())

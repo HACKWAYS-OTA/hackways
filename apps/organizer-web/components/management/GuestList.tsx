@@ -1,4 +1,5 @@
 'use client';
+import { UndoCheckInButton } from './UndoCheckInButton';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { ManagedEvent } from '@/lib/management';
@@ -29,6 +30,7 @@ export function GuestList({ event, guests, checkIn = false, checkinOpen = false 
           <time className="guest-time" dateTime={guest.registered_at} title={`Registered ${dateLabel(guest.registered_at, event.timezone)} (${event.timezone})`}>{dateLabel(guest.registered_at, event.timezone, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time>
         </button>
         {checkIn && guest.status === 'confirmed' && !guest.checked_in_at && <button type="button" className="app-button app-button-outline guest-row-checkin" disabled={!checkinOpen} title={!checkinOpen ? 'Check-in opens 24 hours before the event.' : undefined} onClick={() => select(guest.public_code, 'check-in')}><Icon name="check" size={16} />Check in</button>}
+        {checkIn && guest.status === 'confirmed' && guest.ticket_id && guest.checked_in_at && <UndoCheckInButton eventId={event.id} ticketId={guest.ticket_id} checkedInAt={guest.checked_in_at} name={name} disabled={event.management_closed || event.status !== 'published'} onUndone={() => setNotice(`Check-in undone for ${name}.`)} />}
         {canDecide && <GuestDecisionButtons eventId={event.id} guest={guest} onUpdated={setNotice} />}
       </li>;
     })}</ul>}

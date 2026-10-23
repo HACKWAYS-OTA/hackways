@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import type { Campaign } from '@/lib/campaigns';
 import { campaignConfiguration, type CampaignBlock, type CampaignDesign, type CampaignConfiguration } from '@/lib/campaign-design';
+import { CampaignAudience } from './CampaignAudience';
 import { campaignRequest, type CampaignValues } from '@/lib/campaign-api';
 
 function TextField({ label, value, onChange, max = 180, rows, type = 'text', required = false, placeholder }: {
@@ -42,11 +43,11 @@ export function CampaignComposer({ campaign, onDirtyChange }: { campaign?: Campa
   const [preview, setPreview] = useState(''), [previewError, setPreviewError] = useState(''), [previewBusy, setPreviewBusy] = useState(false), [count, setCount] = useState<number | null>(null);
   const [previewWidth, setPreviewWidth] = useState<'desktop' | 'mobile'>('desktop');
   const design = configuration.design;
-  function change(action: () => void) { action(); setPreview(''); setPreviewError(''); onDirtyChange?.(); }
+  function change(action: () => void) { action(); setCount(null); setPreview(''); setPreviewError(''); onDirtyChange?.(); }
   function config(patch: Partial<CampaignConfiguration>) { change(() => setConfiguration(current => ({ ...current, ...patch }))); }
   function style(patch: Partial<CampaignDesign>) { change(() => setConfiguration(current => ({ ...current, design: { ...current.design, ...patch } }))); }
   function blocks(value: CampaignBlock[]) { style({ blocks: value }); }
-  const values: CampaignValues = { title, subject, body, action_label: actionLabel, action_url: actionURL, configuration: { ...configuration, recipients: recipients.split(/[\s,;]+/).map(value => value.trim()).filter(Boolean) }, ...(campaign ? { revision: campaign.revision } : {}) };
+  const values: CampaignValues = { title, subject, body, action_label: actionLabel, action_url: actionURL, configuration: { ...configuration, recipients: configuration.recipient_mode === 'selected' ? recipients.split(/[\s,;]+/).map(value => value.trim()).filter(Boolean) : [] }, ...(campaign ? { revision: campaign.revision } : {}) };
   const fingerprint = JSON.stringify(values);
   useEffect(() => {
     const input = JSON.parse(fingerprint) as CampaignValues;
@@ -97,13 +98,7 @@ export function CampaignComposer({ campaign, onDirtyChange }: { campaign?: Campa
         <label className="field">Font<Select label="Email font" value={design.font} options={[{ value: 'sans', label: 'Arial · Sans serif' }, { value: 'serif', label: 'Georgia · Serif' }, { value: 'mono', label: 'Courier · Monospace' }] as const} onValueChange={font => style({ font })} /></label>
         <div className="campaign-color-grid">{([['background', 'Page'], ['surface', 'Panel'], ['text', 'Text'], ['accent', 'Buttons'], ['button_text', 'Button text']] as const).map(([key, label]) => <label className="campaign-color" key={key}><span>{label}</span><input type="color" value={design[key]} aria-label={`${label} color`} onChange={event => style({ [key]: event.target.value })} /><input className="app-input" value={design[key]} aria-label={`${label} hex color`} maxLength={7} onChange={event => style({ [key]: event.target.value })} /></label>)}</div>
       </div>}
-      {section === 'recipients' && <div className="campaign-editor-fields">
-        <label className="field">Audience<Select label="Campaign audience" value={configuration.audience} options={[{ value: 'all', label: 'All subscribed contacts' }, { value: 'account', label: 'Verified account subscribers' }, { value: 'import', label: 'Imported opt-in contacts' }] as const} onValueChange={audience => config({ audience })} /></label>
-        <TextField label="Specific email addresses (optional)" value={recipients} rows={8} max={52000} placeholder="One email per line" onChange={value => change(() => setRecipients(value))} />
-        <p className="field-help">Restrict the selected audience to these addresses. Up to 200; only currently subscribed contacts qualify. Leave empty to use the whole selected audience.</p>
-        {count !== null && <p className="campaign-recipient-count">{count} eligible recipients</p>}
-        <a className="app-button app-button-outline" href="/campaigns/contacts">Manage contacts</a>
-      </div>}
+      {section === 'recipients' && <CampaignAudience configuration={configuration} recipients={recipients} setRecipients={value => change(() => setRecipients(value))} update={config} count={count} />}
       {section === 'delivery' && <div className="campaign-editor-fields">
         <label className="field">Send timing<Select label="Send timing" value={configuration.scheduled_at ? 'scheduled' : 'now'} options={[{ value: 'now', label: 'Send when launched' }, { value: 'scheduled', label: 'Schedule a date and time' }] as const} onValueChange={mode => config({ scheduled_at: mode === 'now' ? null : new Date(Date.now() + 3600000).toISOString() })} /></label>
         {configuration.scheduled_at && <label className="field">Send at ({Intl.DateTimeFormat().resolvedOptions().timeZone})<input className="app-input" type="datetime-local" value={new Date(new Date(configuration.scheduled_at).getTime() - new Date(configuration.scheduled_at).getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={event => { const date = new Date(event.target.value); if (!Number.isNaN(date.getTime())) config({ scheduled_at: date.toISOString() }); }} /></label>}

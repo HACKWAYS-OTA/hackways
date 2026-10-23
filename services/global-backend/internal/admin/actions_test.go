@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hackways/global-backend/db"
+	"github.com/hackways/global-backend/internal/analytics"
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
@@ -94,6 +95,66 @@ func TestAdminRecordActions(t *testing.T) {
 	post := func(path string, body actionBody, key string) *httptest.ResponseRecorder {
 		return request("POST", path, body, key, "http://localhost:3003", "", auth.AdminSessionCookie)
 	}
+
+	// Analytics extends this mandatory real-PostgreSQL administration regression.
+	if got := request("GET", "/analytics", actionBody{}, "", "", "", "").Code; got != 401 {
+		t.Fatalf("anonymous analytics access %d", got)
+	}
+	for _, path := range []string{"/analytics?from=not-a-date", "/analytics?from=2000-01-01", "/analytics?to=2999-01-01"} {
+		if got := get(path).Code; got != 400 {
+			t.Fatalf("invalid analytics period %s got %d", path, got)
+		}
+	}
+	if rec := get("/analytics"); rec.Code != 200 || rec.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(rec.Body.String(), `"account_daily"`) {
+		t.Fatalf("analytics read %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := get("/analytics?format=csv"); rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/csv") || len(strings.Split(strings.TrimSpace(rec.Body.String()), "\n")) != 31 {
+		t.Fatalf("analytics export %d %s", rec.Code, rec.Body.String())
+	}
+	t.Run("consented collection and deduplication", func(t *testing.T) {
+		collector := analytics.NewHandler(pool, strings.Repeat("c", 32), true).Routes()
+		payload := fmt.Sprintf(`{"consent":true,"visitor_id":%q,"session_id":%q,"events":[{"id":%q,"event_name":"page_view","route":"/discover","device":"mobile","referrer_host":"search.example"}]}`, uuidText(actor.ID), uuidText(target.ID), uuidText(actor.ID))
+		record := func(body, origin string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest("POST", "/events", strings.NewReader(body))
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			collector.ServeHTTP(rec, req)
+			return rec
+		}
+		defer func() { _, _ = pool.Exec(ctx, "DELETE FROM analytics_events WHERE id=$1", actor.ID) }()
+		for _, invalid := range []string{strings.Replace(payload, `"consent":true`, `"consent":false`, 1), strings.Replace(payload, "/discover", "/reset-password", 1), strings.Replace(payload, "/discover", "/discover?email=private", 1), strings.Replace(payload, `"device":"mobile"`, `"device":"mobile","answer":"private"`, 1)} {
+			if got := record(invalid, "http://localhost:3101").Code; got != 400 {
+				t.Fatalf("private or unconsented event accepted %d", got)
+			}
+		}
+		if got := record(payload, "https://untrusted.example").Code; got != 403 {
+			t.Fatalf("foreign collection origin %d", got)
+		}
+		for i := 0; i < 2; i++ {
+			if rec := record(payload, "http://localhost:3101"); rec.Code != 204 {
+				t.Fatalf("collection %d %s", rec.Code, rec.Body.String())
+			}
+		}
+		var count int
+		var visitor, session string
+		if e := pool.QueryRow(ctx, "SELECT count(*),min(visitor_hash),min(session_hash) FROM analytics_events WHERE id=$1", actor.ID).Scan(&count, &visitor, &session); e != nil || count != 1 || len(visitor) != 64 || len(session) != 64 || visitor == session || strings.Contains(visitor, uuidText(actor.ID)) {
+			t.Fatalf("collection deduplication/hash failure: %d %v", count, e)
+		}
+		var reserved int
+		if e := pool.QueryRow(ctx, "SELECT reserved_events FROM analytics_ingest_days WHERE day=(clock_timestamp() AT TIME ZONE 'UTC')::date").Scan(&reserved); e != nil {
+			t.Fatal(e)
+		}
+		if _, e := pool.Exec(ctx, "UPDATE analytics_ingest_days SET reserved_events=25000 WHERE day=(clock_timestamp() AT TIME ZONE 'UTC')::date"); e != nil {
+			t.Fatal(e)
+		}
+		defer func() {
+			_, _ = pool.Exec(ctx, "UPDATE analytics_ingest_days SET reserved_events=$1 WHERE day=(clock_timestamp() AT TIME ZONE 'UTC')::date", reserved)
+		}()
+		if got := record(payload, "http://localhost:3101").Code; got != 429 {
+			t.Fatalf("collection quota bypass %d", got)
+		}
+	})
 	version := func(id pgtype.UUID) time.Time {
 		t.Helper()
 		row, e := q.AdminPersonDetail(ctx, id)
@@ -379,6 +440,22 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 	if imported.Code != 200 {
 		t.Fatalf("import %d %s", imported.Code, imported.Body.String())
 	}
+
+	searchPath := "/campaigns/recipients?source=import&q=" + url.QueryEscape(contactEmail)
+	if got := call("GET", searchPath, nil, "", false); got.Code != 401 {
+		t.Fatalf("anonymous recipient search %d", got.Code)
+	}
+	if got := call("GET", searchPath, nil, "", true); got.Code != 200 || !strings.Contains(got.Body.String(), contactEmail) || strings.Contains(got.Body.String(), "unsubscribe_hash") {
+		t.Fatalf("recipient search %d %s", got.Code, got.Body.String())
+	}
+	if got := call("GET", strings.Replace(searchPath, "source=import", "source=account", 1), nil, "", true); got.Code != 200 || strings.Contains(got.Body.String(), contactEmail) {
+		t.Fatal("recipient search crossed audience source")
+	}
+	invalidBody := body
+	invalidBody.Configuration = &campaignConfiguration{RecipientMode: "selected", Audience: "all"}
+	if got := call("POST", "/campaigns/preview", marshal(invalidBody), "http://localhost:3103", true); got.Code != 422 {
+		t.Fatalf("empty selected audience accepted %d", got.Code)
+	}
 	selectedCount, selectionErr := q.CampaignAudienceCountSelected(ctx, db.CampaignAudienceCountSelectedParams{AudienceSource: "import", RecipientEmails: []string{contactEmail}})
 	if selectionErr != nil || selectedCount != 1 {
 		t.Fatal("specific imported audience was not selected")
@@ -480,6 +557,9 @@ func TestAdminCampaignLifecycle(t *testing.T) {
 	}
 	if active, e := q.CampaignMessageActive(ctx, outbox); e != nil || active {
 		t.Fatal("unsubscribed recipient still eligible")
+	}
+	if got := call("GET", searchPath, nil, "", true); got.Code != 200 || strings.Contains(got.Body.String(), contactEmail) {
+		t.Fatal("unsubscribed address returned in search")
 	}
 	if got := call("POST", "/campaign-contacts/import", raw, "http://localhost:3103", true); got.Code != 200 {
 		t.Fatal("reimport failed")

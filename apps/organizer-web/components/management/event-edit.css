@@ -9,7 +9,7 @@ body:has(.event-edit-page) { isolation: isolate; }
 .event-edit-toolbar .app-button { white-space: nowrap; }
 .event-edit-studio { --edit-surface: color-mix(in srgb, var(--event-tint, #ddd4e9) 20%, white); --edit-control: #fff; --edit-border: #b9a9c4; --edit-copy: #65536f; --edit-ink: #29222f; --edit-hover: color-mix(in srgb, var(--event-tint, #ddd4e9) 55%, white); --edit-danger: #a3354b; display: grid; grid-template-columns: 340px minmax(0, 1fr); align-items: start; gap: 48px; }
 .event-edit-studio[data-display=dark] { --edit-surface: color-mix(in srgb, var(--event-tint, #ddd4e9) 10%, #231b2a); --edit-control: #231b2a; --edit-border: #8f79a0; --edit-copy: #cfbedb; --edit-ink: #f5eff9; --edit-hover: color-mix(in srgb, var(--event-tint, #ddd4e9) 18%, #2d2236); --edit-danger: #ffadbe; color: var(--edit-ink); }
-body:has(.event-edit-studio[data-display=dark]) { --paper: #1d1822; --ink: #f5eff9; --muted: #c7b9d1; --line: #514258; --soft: #302638; --violet: #d8b9ef; --accent: #e9dced; background-color: #1d1822; color: var(--ink); }
+body:has(.event-edit-studio[data-display=dark]) { --paper: #1d1822; --ink: #f5eff9; --muted: #c7b9d1; --line: #514258; --soft: #302638; --violet: #d8b9ef; --accent: #e9dced; --on-accent: #29222f; --button-surface: #2d2434; --button-ink: #f3eaf8; --button-border: #887194; --button-hover: #493552; --link-ink: #e4c7f3; background-color: #1d1822; color: var(--ink); }
 body:has(.event-edit-studio[data-display=dark]) > .app-header .header-create,
 body:has(.event-edit-studio[data-display=dark]) > .app-header .header-account,
 body:has(.event-edit-studio[data-display=dark]) > .app-footer,
@@ -160,3 +160,6 @@ body:has(.event-edit-studio[data-display=dark]) > .app-footer > p { color: var(-
 .event-feedback[data-kind=error] .event-feedback-icon { color: var(--ink); }
 .event-edit-preview.event-display-dark .app-button-primary { background: #e9dced; color: #29222f; }
 .event-edit-preview.event-display-dark .app-button-primary:hover:not(:disabled) { background: #d8c4e4; color: #29222f; }
+
+.event-edit-preview.event-display-dark .event-edit-toolbar > .quiet-link { background: transparent; color: #f3eaf8; }
+.event-edit-preview.event-display-dark .compose-cover-caption .quiet-link { background: transparent; color: #e4c7f3; }

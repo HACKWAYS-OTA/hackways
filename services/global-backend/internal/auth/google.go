@@ -292,6 +292,11 @@ func (h *Handler) upsertGoogleIdentity(ctx context.Context, info googleUserInfo)
 	if err != nil {
 		return pgtype.UUID{}, err
 	}
+	if user.WasCreated {
+		if err := q.SetNewAccountPromotionPreference(ctx, db.SetNewAccountPromotionPreferenceParams{UserID: user.ID, Subscribed: true}); err != nil {
+			return pgtype.UUID{}, err
+		}
+	}
 	if err := q.MarkUserEmailVerified(ctx, user.ID); err != nil {
 		return pgtype.UUID{}, err
 	}

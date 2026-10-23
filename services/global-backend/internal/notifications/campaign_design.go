@@ -169,7 +169,7 @@ func renderCampaignDesign(subject, body, label, actionURL, unsubscribe string, t
 	if actionURL != "" {
 		plain += "\n\n" + label + ": " + actionURL
 	}
-	footer := "You receive Hackways news because you opted in."
+	footer := "You receive Hackways news because promotional email is enabled for your account or contact."
 	if !promotional {
 		footer = "This is a service message from Hackways. Reply to hello@hackways.in for help."
 		unsubscribe = ""

@@ -27,6 +27,7 @@ export interface Event {
   current_rsvp_count: number;
   held_rsvp_count?: number;
   revision?: number;
+  management_closed?: boolean;
   registration_mode?: "instant" | "approval";
   allow_guest?: boolean;
   waitlist_enabled?: boolean;

@@ -6,8 +6,6 @@ export function RegistrationReview({
   email,
   sections,
   answers,
-  notes,
-  setNotes,
   loading,
   go,
   approval,
@@ -17,8 +15,6 @@ export function RegistrationReview({
   email: string;
   sections: RegistrationStep[];
   answers: Record<string, RegistrationAnswer>;
-  notes: string;
-  setNotes: (value: string) => void;
   loading: boolean;
   go: (step: number) => void;
   approval: boolean;
@@ -68,20 +64,6 @@ export function RegistrationReview({
           </dl>
         </section>
       ))}
-      <div className="field">
-        <label htmlFor="registration-notes">
-          A note for the organizer <span>(optional)</span>
-        </label>
-        <textarea
-          id="registration-notes"
-          className="app-input"
-          rows={3}
-          maxLength={2000}
-          value={notes}
-          disabled={loading}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
       <p className="registration-note">
         {approval
           ? "The organizer must approve your registration before your place is confirmed."

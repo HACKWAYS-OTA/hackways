@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 export function SpaceAssignment({ event, spaces, current }: { event: ManagedEvent; spaces: Space[]; current: Space | null }) {
   const router = useRouter(), menu = useRef<HTMLDetailsElement>(null), lock = useRef(false);
   const [slug, setSlug] = useState(current?.slug || ''), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const editable = event.status !== 'cancelled' && Date.parse(event.starts_at) > Date.now();
+  const editable = !event.management_closed;
   const choices = current?.status === 'active' && !spaces.some(space => space.slug === current.slug) ? [current, ...spaces] : spaces;
   useEffect(() => {
     function close(e: PointerEvent) { if (e.target instanceof Node && !menu.current?.contains(e.target)) menu.current?.removeAttribute('open'); }

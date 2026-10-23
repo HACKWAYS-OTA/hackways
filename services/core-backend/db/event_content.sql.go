@@ -14,7 +14,7 @@ import (
 const setEventContent = `-- name: SetEventContent :one
 UPDATE events SET faq_text=COALESCE($2::text,faq_text),
 contact_url=COALESCE($3::text,contact_url),rewards=COALESCE($4::text,rewards)
-WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type SetEventContentParams struct {
@@ -79,6 +79,7 @@ func (q *Queries) SetEventContent(ctx context.Context, arg SetEventContentParams
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }

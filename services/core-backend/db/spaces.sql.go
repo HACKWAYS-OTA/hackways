@@ -224,7 +224,7 @@ func (q *Queries) ListPublicSpaces(ctx context.Context, arg ListPublicSpacesPara
 }
 
 const listSpaceEvents = `-- name: ListSpaceEvents :many
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings FROM events WHERE space_id=$1 AND deleted_at IS NULL AND visibility='public'
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed FROM events WHERE space_id=$1 AND deleted_at IS NULL AND visibility='public'
 AND (status='published' OR (status='cancelled' AND published_at IS NOT NULL))
 AND (($2::boolean AND ends_at<=clock_timestamp()) OR (NOT $2::boolean AND status='published' AND ends_at>clock_timestamp()))
 ORDER BY CASE WHEN $2::boolean THEN ends_at END DESC, starts_at,id
@@ -299,6 +299,7 @@ func (q *Queries) ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams
 			&i.RegistrationNameRequired,
 			&i.AdminReference,
 			&i.RegistrationFormSettings,
+			&i.ManagementClosed,
 		); err != nil {
 			return nil, err
 		}
@@ -581,7 +582,7 @@ func (q *Queries) ReadSpaceSummaryByID(ctx context.Context, id pgtype.UUID) (Rea
 }
 
 const setEventSpace = `-- name: SetEventSpace :one
-UPDATE events SET space_id=$2,revision=revision+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+UPDATE events SET space_id=$2,revision=revision+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type SetEventSpaceParams struct {
@@ -639,6 +640,7 @@ func (q *Queries) SetEventSpace(ctx context.Context, arg SetEventSpaceParams) (E
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }

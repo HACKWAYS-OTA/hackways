@@ -50,6 +50,11 @@ Internal backend and database ports must not be published publicly. By explicit 
 
 ## Data and concurrency
 
+First-party analytics remains in global-backend/PostgreSQL, with optional browser
+consent, bounded public ingestion and existing admin authorization on reports.
+Core-backend owns event/registration aggregates. See [analytics and audience
+contracts](backend/ANALYTICS.md) for retention, quotas, report semantics and deployment.
+
 The only checked-in migration sequence is `deploy/migrations/`. Both backend sqlc configurations must compile against that schema. Generated query code is committed with its SQL source under each service's `db/` directory.
 
 RSVP creation locks the event row inside a PostgreSQL transaction, sets a local 2-second statement timeout, checks publication and capacity, inserts idempotently, updates the count, writes the email outbox row, and commits. Do not move these checks to the clients or make capacity decisions from cached counts.

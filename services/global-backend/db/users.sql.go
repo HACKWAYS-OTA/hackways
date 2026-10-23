@@ -55,10 +55,10 @@ WITH inserted AS (
     ON CONFLICT (lower(email)) WHERE deleted_at IS NULL DO NOTHING
     RETURNING id, email, display_name, avatar_url, email_verified, created_at, updated_at
 )
-SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at, TRUE AS was_created
 FROM inserted
 UNION ALL
-SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at
+SELECT id, email, display_name, avatar_url, email_verified, created_at, updated_at, FALSE AS was_created
 FROM users
 WHERE lower(email) = lower($1) AND deleted_at IS NULL
 LIMIT 1
@@ -79,6 +79,7 @@ type GetOrCreateOAuthUserRow struct {
 	EmailVerified bool               `json:"email_verified"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	WasCreated    bool               `json:"was_created"`
 }
 
 func (q *Queries) GetOrCreateOAuthUser(ctx context.Context, arg GetOrCreateOAuthUserParams) (GetOrCreateOAuthUserRow, error) {
@@ -97,6 +98,7 @@ func (q *Queries) GetOrCreateOAuthUser(ctx context.Context, arg GetOrCreateOAuth
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WasCreated,
 	)
 	return i, err
 }

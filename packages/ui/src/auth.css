@@ -45,3 +45,6 @@
 .hw-auth-options > button, .hw-auth-forgot { min-height:40px; padding:8px 0; border:0; background:transparent; color:var(--ink, #1f1f23); font:inherit; font-size:13px; text-decoration:underline; text-underline-offset:4px; }
 .hw-auth-forgot { justify-self:end; }
 .hw-auth-link-button { text-align:center; text-decoration:none; }
+
+.hw-auth-preference { display:flex; align-items:flex-start; gap:10px; font-size:14px; line-height:1.5; color:var(--hw-auth-copy,#655d70); }
+.hw-auth-preference [data-slot="checkbox"] { flex-shrink:0; }

@@ -16,7 +16,8 @@
     "./avatar": "./src/Avatar.tsx",
     "./auth.css": "./src/auth.css",
     "./styles.css": "./src/controls.css",
-    "./event-fonts": "./src/EventFonts.ts"
+    "./event-fonts": "./src/EventFonts.ts",
+    "./analytics": "./src/Analytics.tsx"
   },
   "sideEffects": [
     "**/*.css"

@@ -394,6 +394,51 @@ func (q *Queries) CampaignRead(ctx context.Context, reference int64) (EmailCampa
 	return i, err
 }
 
+const campaignRecipientSearch = `-- name: CampaignRecipientSearch :many
+SELECT c.reference,c.email,c.display_name,c.source FROM promotion_contacts c
+WHERE c.subscribed AND ($1::text='all' OR c.source=$1)
+AND (c.source='import' OR EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.email_verified AND u.deleted_at IS NULL AND lower(u.email)=c.email))
+AND ($2::text='' OR c.email ILIKE $2||'%' OR c.display_name ILIKE $2||'%')
+ORDER BY c.email,c.reference LIMIT 21
+`
+
+type CampaignRecipientSearchParams struct {
+	Source string `json:"source"`
+	Q      string `json:"q"`
+}
+
+type CampaignRecipientSearchRow struct {
+	Reference   int64  `json:"reference"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	Source      string `json:"source"`
+}
+
+func (q *Queries) CampaignRecipientSearch(ctx context.Context, arg CampaignRecipientSearchParams) ([]CampaignRecipientSearchRow, error) {
+	rows, err := q.db.Query(ctx, campaignRecipientSearch, arg.Source, arg.Q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CampaignRecipientSearchRow
+	for rows.Next() {
+		var i CampaignRecipientSearchRow
+		if err := rows.Scan(
+			&i.Reference,
+			&i.Email,
+			&i.DisplayName,
+			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const campaignSetQueued = `-- name: CampaignSetQueued :exec
 UPDATE email_campaigns SET status='queued',queued_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1
 `
@@ -581,6 +626,27 @@ func (q *Queries) ReadPromotionPreference(ctx context.Context, email string) (bo
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const setNewAccountPromotionPreference = `-- name: SetNewAccountPromotionPreference :exec
+INSERT INTO promotion_contacts AS contact(email,display_name,user_id,source,consent_source,consented_at,subscribed,unsubscribed_at)
+SELECT lower(u.email),u.display_name,u.id,'account','New account email preference',clock_timestamp(),$1::boolean,
+ CASE WHEN $1::boolean THEN NULL ELSE clock_timestamp() END
+FROM users u WHERE u.id=$2
+ON CONFLICT(email) DO UPDATE SET user_id=EXCLUDED.user_id,display_name=EXCLUDED.display_name,source='account',
+ subscribed=contact.subscribed AND EXCLUDED.subscribed,
+ unsubscribed_at=CASE WHEN NOT EXCLUDED.subscribed THEN clock_timestamp() ELSE contact.unsubscribed_at END,
+ updated_at=clock_timestamp()
+`
+
+type SetNewAccountPromotionPreferenceParams struct {
+	Subscribed bool        `json:"subscribed"`
+	UserID     pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) SetNewAccountPromotionPreference(ctx context.Context, arg SetNewAccountPromotionPreferenceParams) error {
+	_, err := q.db.Exec(ctx, setNewAccountPromotionPreference, arg.Subscribed, arg.UserID)
+	return err
 }
 
 const setPromotionPreference = `-- name: SetPromotionPreference :exec

@@ -36,13 +36,13 @@ svg { flex-shrink: 0; }
 .header-create { display: inline-flex; align-items: center; justify-self: end; gap: 7px; width: fit-content; min-height: 44px; color: #6e6079; font-size: 13px; white-space: nowrap; }
 .header-create:hover { color: #35253f; }
 .app-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; min-height: 44px; width: fit-content; max-width: 100%; padding: 10px 21px; border: 1px solid transparent; border-radius: 9999px; font-family: "FG Futurist"; font-size: 13px; font-weight: 400; line-height: 22px; text-align: center; -webkit-text-stroke: .006em currentColor; }
-.app-button-primary { background: var(--accent); color: #fff; }
+.app-button-primary { background: var(--accent); color: var(--on-accent, #fff); }
 .app-button-primary:hover { background: #3a3540; }
-.app-button-outline { border-color: #cfc6d7; background: #fff; color: var(--ink); }
-.app-button-outline:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) { border-color: #b49bc6; background: #f0e8f6; }
+.app-button-outline { border-color: var(--button-border, #cfc6d7); background: var(--button-surface, #fff); color: var(--button-ink, var(--ink)); }
+.app-button-outline:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) { border-color: var(--button-border, #b49bc6); background: var(--button-hover, #f0e8f6); color: var(--button-ink, var(--ink)); }
 .app-button-secondary { background: #eee6f6; color: #503b64; }
 .app-button-secondary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) { background: #dfd0ec; color: #3f2b50; }
-.app-button-outline:active:not(:disabled):not([aria-disabled="true"]) { background: #e5d8ee; }
+.app-button-outline:active:not(:disabled):not([aria-disabled="true"]) { background: var(--button-hover, #e5d8ee); }
 .app-button-secondary:active:not(:disabled):not([aria-disabled="true"]) { background: #d3bfe3; }
 .app-button-ghost { color: var(--muted); background: transparent; }
 .app-button-ghost:hover { color: var(--ink); background: var(--soft); }
@@ -52,7 +52,7 @@ svg { flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) { .app-button { transition: none; } }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 8px; border: 0; border-radius: 9999px; background: transparent; color: var(--muted); }
 .icon-button:hover { color: var(--ink); background: var(--soft); }
-.quiet-link { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 0; border: 0; background: none; color: #654b7d; font-size: 13px; text-align: left; }
+.quiet-link { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 0; border: 0; background: none; color: var(--link-ink, #654b7d); font-size: 13px; text-align: left; }
 .quiet-link:hover { text-decoration: underline; }
 .app-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-block: 24px; margin-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .app-footer a { display: inline-flex; align-items: center; min-height: 44px; }

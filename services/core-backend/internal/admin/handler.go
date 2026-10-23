@@ -27,6 +27,7 @@ func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(auth.RequirePlatformAdmin(h.sessions, h.queries))
 	r.Get("/overview", h.Overview)
+	r.Get("/analytics", h.Analytics)
 	r.Get("/events", h.AdminListEvents)
 	r.Get("/spaces", h.AdminListSpaces)
 	r.Get("/registrations", h.AdminListRegistrations)

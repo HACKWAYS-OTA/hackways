@@ -1,4 +1,5 @@
 import { HugeiconsIcon } from '@hugeicons/react';
+import Analytics01Icon from '@hugeicons/core-free-icons/Analytics01Icon';
 import Mail01Icon from '@hugeicons/core-free-icons/Mail01Icon';
 import Ticket01Icon from '@hugeicons/core-free-icons/Ticket01Icon';
 import File01Icon from '@hugeicons/core-free-icons/File01Icon';
@@ -18,7 +19,7 @@ import ArrowDown01Icon from '@hugeicons/core-free-icons/ArrowDown01Icon';
 import Cancel01Icon from '@hugeicons/core-free-icons/Cancel01Icon';
 import ReloadIcon from '@hugeicons/core-free-icons/ReloadIcon';
 
-const icons = { up: ArrowUp01Icon, down: ArrowDown01Icon, close: Cancel01Icon, people: UserGroupIcon, messaging: Mail01Icon, tickets: Ticket01Icon, storage: File01Icon, registrations: Task01Icon, audit: Audit01Icon, moderation: Shield01Icon, home: Home01Icon, events: Calendar03Icon, spaces: UserGroupIcon, search: Search01Icon, add: Add01Icon, arrow: ArrowRight01Icon, back: ArrowLeft01Icon, external: ArrowUpRight01Icon, reload: ReloadIcon };
+const icons = { analytics: Analytics01Icon, up: ArrowUp01Icon, down: ArrowDown01Icon, close: Cancel01Icon, people: UserGroupIcon, messaging: Mail01Icon, tickets: Ticket01Icon, storage: File01Icon, registrations: Task01Icon, audit: Audit01Icon, moderation: Shield01Icon, home: Home01Icon, events: Calendar03Icon, spaces: UserGroupIcon, search: Search01Icon, add: Add01Icon, arrow: ArrowRight01Icon, back: ArrowLeft01Icon, external: ArrowUpRight01Icon, reload: ReloadIcon };
 export function Icon({ name, size = 20, className = '' }: { name: keyof typeof icons; size?: number; className?: string }) {
   return <HugeiconsIcon icon={icons[name]} size={size} strokeWidth={1.8} className={className} aria-hidden="true" focusable="false" />;
 }

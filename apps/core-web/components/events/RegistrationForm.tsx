@@ -19,6 +19,7 @@ import {
   registrationState,
 } from "@/lib/events";
 import { registrationSteps, answerError } from "@/lib/registration-form";
+import { recordAnalyticsEvent } from '@hackways/ui/analytics';
 import { RegistrationIdentityStep } from "./RegistrationIdentityStep";
 import { RegistrationReview } from "./RegistrationReview";
 import { RegistrationQuestions } from "./RegistrationQuestions";
@@ -46,8 +47,7 @@ export function RegistrationForm({
     [answers, setAnswers] = useState<Record<string, RegistrationAnswer>>({}),
     [step, setStep] = useState(0),
     [name, setName] = useState(user?.display_name || ""),
-    [email, setEmail] = useState(""),
-    [notes, setNotes] = useState("");
+    [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}),
@@ -68,7 +68,7 @@ export function RegistrationForm({
   useEffect(() => {
     if (
       confirmed ||
-      (!Object.keys(answers).length && name === (user?.display_name || "") && !email && !notes)
+      (!Object.keys(answers).length && name === (user?.display_name || "") && !email)
     )
       return;
     const leave = (event: BeforeUnloadEvent) => {
@@ -77,9 +77,10 @@ export function RegistrationForm({
     };
     window.addEventListener("beforeunload", leave);
     return () => window.removeEventListener("beforeunload", leave);
-  }, [answers, name, email, notes, confirmed, user?.display_name]);
+  }, [answers, name, email, confirmed, user?.display_name]);
   function go(next: number) {
     setStep(next);
+    recordAnalyticsEvent("registration_step", next);
     setFieldErrors({});
     setError("");
     requestAnimationFrame(() => scrollToSection("registration-step"));
@@ -164,7 +165,6 @@ export function RegistrationForm({
         event_id: event.id,
         guest_name: name.trim(),
         guest_email: user?.email || email.trim(),
-        notes: notes.trim(),
         form_revision: form.revision,
         answers: form.questions
           .filter((q) => q.kind !== "section")
@@ -196,6 +196,7 @@ export function RegistrationForm({
           "The registration could not be confirmed. Check My events before retrying.",
         );
       setConfirmed(response.data);
+      recordAnalyticsEvent("registration_complete");
       router.refresh();
     } catch (failure) {
       setError(
@@ -492,8 +493,6 @@ export function RegistrationForm({
               email={email}
               sections={sections}
               answers={answers}
-              notes={notes}
-              setNotes={setNotes}
               loading={loading}
               go={go}
               approval={event.registration_mode === "approval"}

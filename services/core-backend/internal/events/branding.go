@@ -46,8 +46,8 @@ func (h *Handler) ChangeAppearance(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed. Reload before changing its appearance", nil)
 		return
 	}
-	if event.Status == db.EventStatusCancelled || !event.StartsAt.Time.After(event.DatabaseNow.Time) {
-		platform.RespondError(w, 409, "EDIT_CLOSED", "Started or cancelled events cannot change appearance", nil)
+	if event.ManagementClosed {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
 		return
 	}
 	updated, err := q.SetEventAppearance(r.Context(), db.SetEventAppearanceParams{ID: id, Theme: appearance.Theme, ThemeColor: appearance.ThemeColor, ThemeFont: appearance.ThemeFont, ThemeStyle: appearance.ThemeStyle, ThemeDisplay: appearance.ThemeDisplay, RemoveBanner: body.RemoveBanner})

@@ -45,6 +45,14 @@ type Querier interface {
 	AdminTouchPerson(ctx context.Context, id pgtype.UUID) error
 	AdminUpdatePersonName(ctx context.Context, arg AdminUpdatePersonNameParams) error
 	AdminUserLock(ctx context.Context, id pgtype.UUID) (AdminUserLockRow, error)
+	AnalyticsAccountDaily(ctx context.Context, arg AnalyticsAccountDailyParams) ([]AnalyticsAccountDailyRow, error)
+	AnalyticsAccountSummary(ctx context.Context, arg AnalyticsAccountSummaryParams) (AnalyticsAccountSummaryRow, error)
+	AnalyticsAcquisition(ctx context.Context, arg AnalyticsAcquisitionParams) ([]AnalyticsAcquisitionRow, error)
+	AnalyticsCollectionState(ctx context.Context) (AnalyticsCollectionStateRow, error)
+	AnalyticsDevices(ctx context.Context, arg AnalyticsDevicesParams) ([]AnalyticsDevicesRow, error)
+	AnalyticsTopPages(ctx context.Context, arg AnalyticsTopPagesParams) ([]AnalyticsTopPagesRow, error)
+	AnalyticsTrafficDaily(ctx context.Context, arg AnalyticsTrafficDailyParams) ([]AnalyticsTrafficDailyRow, error)
+	AnalyticsTrafficSummary(ctx context.Context, arg AnalyticsTrafficSummaryParams) (AnalyticsTrafficSummaryRow, error)
 	AppendAdminAudit(ctx context.Context, arg AppendAdminAuditParams) error
 	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
@@ -61,9 +69,12 @@ type Querier interface {
 	CampaignLock(ctx context.Context, reference int64) (EmailCampaigns, error)
 	CampaignMessageActive(ctx context.Context, outboxID pgtype.UUID) (bool, error)
 	CampaignRead(ctx context.Context, reference int64) (EmailCampaigns, error)
+	CampaignRecipientSearch(ctx context.Context, arg CampaignRecipientSearchParams) ([]CampaignRecipientSearchRow, error)
 	CampaignSetQueued(ctx context.Context, id pgtype.UUID) error
 	CampaignStats(ctx context.Context, campaignID pgtype.UUID) (CampaignStatsRow, error)
 	ClaimEmailOutbox(ctx context.Context, arg ClaimEmailOutboxParams) ([]ClaimEmailOutboxRow, error)
+	CleanupAnalyticsBudget(ctx context.Context) error
+	CleanupAnalyticsEvents(ctx context.Context) error
 	CleanupAuthAttempts(ctx context.Context) error
 	CleanupExpiredRecognizedDevices(ctx context.Context) error
 	CleanupOAuthExchangeTokens(ctx context.Context) error
@@ -141,6 +152,7 @@ type Querier interface {
 	ReadPasswordResetChallenge(ctx context.Context, userID pgtype.UUID) (ReadPasswordResetChallengeRow, error)
 	ReadPromotionPreference(ctx context.Context, email string) (bool, error)
 	ReadRuntimeRollout(ctx context.Context) (ReadRuntimeRolloutRow, error)
+	RecordAnalyticsBatch(ctx context.Context, arg RecordAnalyticsBatchParams) (RecordAnalyticsBatchRow, error)
 	// Trusted, already verified server-side issuance; password sign-in uses the
 	// separate unverified-session query before the email challenge.
 	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
@@ -150,6 +162,7 @@ type Querier interface {
 	RevokeOwnedSession(ctx context.Context, arg RevokeOwnedSessionParams) (int64, error)
 	RevokeUserOAuthExchanges(ctx context.Context, userID pgtype.UUID) error
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
+	SetNewAccountPromotionPreference(ctx context.Context, arg SetNewAccountPromotionPreferenceParams) error
 	SetPromotionPreference(ctx context.Context, arg SetPromotionPreferenceParams) error
 	SetStorageWriteTimeout(ctx context.Context) error
 	UnsubscribePromotion(ctx context.Context, unsubscribeHash string) (int64, error)

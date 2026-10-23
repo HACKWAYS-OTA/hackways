@@ -85,8 +85,8 @@ func (h *Handler) SaveRegistrationForm(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "FORM_CHANGED", "These questions changed in another window. Reload before saving", nil)
 		return
 	}
-	if event.Status == db.EventStatusCancelled || !event.StartsAt.Time.After(event.DatabaseNow.Time) {
-		platform.RespondError(w, 409, "EDIT_CLOSED", "Started or cancelled events cannot change their registration form", nil)
+	if event.ManagementClosed {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
 		return
 	}
 	// Deactivate rather than delete. The event lock serializes this with new registrations.

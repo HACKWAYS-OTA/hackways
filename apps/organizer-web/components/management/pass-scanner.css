@@ -114,3 +114,8 @@
     flex: 1 1 auto;
   }
 }
+
+.checkin-attendee { padding-block:18px; border-top:1px solid var(--line); margin-top:18px; }
+.checkin-attendee h3 { margin:0 0 5px; font-size:20px; }
+.checkin-attendee p { overflow-wrap:anywhere; margin-block:5px; }
+.checkin-attendee .checkin-undo-action { margin-top:14px; }

@@ -6,6 +6,7 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { SkipToContent } from "@/components/site/SkipToContent";
 import { SiteMotion } from "@/components/site/SiteMotion";
+import { VisitorAnalytics } from '@/components/site/VisitorAnalytics';
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body><UIProvider>
         <SkipToContent />
         <Header />
+        <VisitorAnalytics />
         <main id="main-content" tabIndex={-1}><SiteMotion />{children}</main>
         <Footer />
       </UIProvider></body>

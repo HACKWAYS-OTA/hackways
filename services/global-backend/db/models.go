@@ -258,6 +258,23 @@ type AdminSessionChallenges struct {
 	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AnalyticsEvents struct {
+	ID           pgtype.UUID        `json:"id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	VisitorHash  string             `json:"visitor_hash"`
+	SessionHash  string             `json:"session_hash"`
+	EventName    string             `json:"event_name"`
+	Route        string             `json:"route"`
+	Device       string             `json:"device"`
+	ReferrerHost string             `json:"referrer_host"`
+	Step         pgtype.Int2        `json:"step"`
+}
+
+type AnalyticsIngestDays struct {
+	Day            pgtype.Date `json:"day"`
+	ReservedEvents int32       `json:"reserved_events"`
+}
+
 // Append-only through application queries; no secrets or form answers in metadata.
 type AuditLog struct {
 	ID          int64              `json:"id"`
@@ -423,6 +440,7 @@ type Events struct {
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
 	RegistrationFormSettings []byte             `json:"registration_form_settings"`
+	ManagementClosed         bool               `json:"management_closed"`
 }
 
 type IdempotencyRecords struct {

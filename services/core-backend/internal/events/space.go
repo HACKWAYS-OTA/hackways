@@ -51,8 +51,8 @@ func (h *Handler) ChangeSpace(w http.ResponseWriter, r *http.Request) {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed. Reload before changing its Space", nil)
 		return
 	}
-	if event.Status == db.EventStatusCancelled || !event.StartsAt.Time.After(event.DatabaseNow.Time) {
-		platform.RespondError(w, 409, "EDIT_CLOSED", "Started or cancelled events cannot change Spaces", nil)
+	if event.ManagementClosed {
+		platform.RespondError(w, 409, "EDIT_CLOSED", "An administrator has closed editing for this event", nil)
 		return
 	}
 	var spaceID pgtype.UUID

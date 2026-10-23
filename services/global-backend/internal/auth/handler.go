@@ -101,9 +101,10 @@ func (h *Handler) Routes() chi.Router {
 }
 
 type RegisterRequest struct {
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	DisplayName string `json:"display_name"`
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	DisplayName      string `json:"display_name"`
+	PromotionalEmail *bool  `json:"promotional_email,omitempty"`
 }
 
 type UserResponse struct {
@@ -178,6 +179,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	subscribed := req.PromotionalEmail == nil || *req.PromotionalEmail
+	if err = q.SetNewAccountPromotionPreference(r.Context(), db.SetNewAccountPromotionPreferenceParams{UserID: user.ID, Subscribed: subscribed}); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
 	if err = queueEmailVerification(r.Context(), q, user.ID, user.Email, user.DisplayName); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return

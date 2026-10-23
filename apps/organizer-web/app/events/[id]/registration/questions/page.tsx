@@ -7,5 +7,5 @@ export const metadata = { title: 'Registration questions' };
 export default async function Questions({ params }: { params: { id: string } }) {
   const event = await managedEvent(params.id);
   const form = (await privateApi<{ data: RegistrationFormConfig }>(`/events/${event.id}/registration-form`)).data;
-  return <><RegistrationTabs slug={event.slug} questions /><QuestionBuilder key={form.revision} eventId={event.id} initial={form} editable={event.status !== 'cancelled' && Date.parse(event.starts_at) > Date.now()} /></>;
+  return <><RegistrationTabs slug={event.slug} questions /><QuestionBuilder key={form.revision} eventId={event.id} initial={form} editable={!event.management_closed} /></>;
 }

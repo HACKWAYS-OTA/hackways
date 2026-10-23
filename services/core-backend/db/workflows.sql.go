@@ -899,7 +899,7 @@ func (q *Queries) ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditPa
 }
 
 const lockWorkflowEvent = `-- name: LockWorkflowEvent :one
-SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+SELECT id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed, clock_timestamp()::timestamptz AS database_now FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
 `
 
 type LockWorkflowEventRow struct {
@@ -949,6 +949,7 @@ type LockWorkflowEventRow struct {
 	RegistrationNameRequired bool               `json:"registration_name_required"`
 	AdminReference           int64              `json:"admin_reference"`
 	RegistrationFormSettings []byte             `json:"registration_form_settings"`
+	ManagementClosed         bool               `json:"management_closed"`
 	DatabaseNow              pgtype.Timestamptz `json:"database_now"`
 }
 
@@ -1002,7 +1003,41 @@ func (q *Queries) LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWo
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 		&i.DatabaseNow,
+	)
+	return i, err
+}
+
+const readCheckInAttendee = `-- name: ReadCheckInAttendee :one
+SELECT t.id AS ticket_id,COALESCE(NULLIF(r.guest_name,''),u.display_name,'')::text AS name,
+COALESCE(NULLIF(r.guest_email,''),u.email,'')::text AS email,r.public_code AS registration_code,t.checked_in_at
+FROM tickets t JOIN rsvps r ON r.id=t.rsvp_id LEFT JOIN users u ON u.id=r.user_id
+WHERE t.id=$1 AND r.event_id=$2 AND r.status='confirmed'
+`
+
+type ReadCheckInAttendeeParams struct {
+	ID      pgtype.UUID `json:"id"`
+	EventID pgtype.UUID `json:"event_id"`
+}
+
+type ReadCheckInAttendeeRow struct {
+	TicketID         pgtype.UUID        `json:"ticket_id"`
+	Name             string             `json:"name"`
+	Email            string             `json:"email"`
+	RegistrationCode string             `json:"registration_code"`
+	CheckedInAt      pgtype.Timestamptz `json:"checked_in_at"`
+}
+
+func (q *Queries) ReadCheckInAttendee(ctx context.Context, arg ReadCheckInAttendeeParams) (ReadCheckInAttendeeRow, error) {
+	row := q.db.QueryRow(ctx, readCheckInAttendee, arg.ID, arg.EventID)
+	var i ReadCheckInAttendeeRow
+	err := row.Scan(
+		&i.TicketID,
+		&i.Name,
+		&i.Email,
+		&i.RegistrationCode,
+		&i.CheckedInAt,
 	)
 	return i, err
 }
@@ -1206,18 +1241,20 @@ func (q *Queries) StoreIdempotentResponse(ctx context.Context, arg StoreIdempote
 
 const transitionWorkflowEvent = `-- name: TransitionWorkflowEvent :one
 UPDATE events SET status=$1::event_status, revision=revision+1, updated_at=clock_timestamp(),
+management_closed=CASE WHEN $2::boolean THEN $1::event_status<>'published' ELSE management_closed END,
 published_at=CASE WHEN $1::event_status='published' THEN clock_timestamp() ELSE published_at END,
 cancelled_at=CASE WHEN $1::event_status='cancelled' THEN clock_timestamp() ELSE cancelled_at END
-WHERE id=$2 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+WHERE id=$3 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type TransitionWorkflowEventParams struct {
-	Status EventStatus `json:"status"`
-	ID     pgtype.UUID `json:"id"`
+	Status  EventStatus `json:"status"`
+	IsAdmin bool        `json:"is_admin"`
+	ID      pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) TransitionWorkflowEvent(ctx context.Context, arg TransitionWorkflowEventParams) (Events, error) {
-	row := q.db.QueryRow(ctx, transitionWorkflowEvent, arg.Status, arg.ID)
+	row := q.db.QueryRow(ctx, transitionWorkflowEvent, arg.Status, arg.IsAdmin, arg.ID)
 	var i Events
 	err := row.Scan(
 		&i.ID,
@@ -1266,6 +1303,37 @@ func (q *Queries) TransitionWorkflowEvent(ctx context.Context, arg TransitionWor
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
+	)
+	return i, err
+}
+
+const undoCheckInWorkflowTicket = `-- name: UndoCheckInWorkflowTicket :one
+UPDATE tickets t SET status='issued',checked_in_at=NULL,checked_in_by=NULL,updated_at=clock_timestamp()
+FROM rsvps r WHERE t.id=$1 AND t.rsvp_id=r.id AND r.event_id=$2
+AND r.status='confirmed' AND t.status='scanned' AND t.checked_in_at=$3::timestamptz
+RETURNING t.id, t.rsvp_id, t.status, t.checked_in_at, t.checked_in_by, t.created_at, t.updated_at, t.public_code, t.admin_reference
+`
+
+type UndoCheckInWorkflowTicketParams struct {
+	TicketID    pgtype.UUID        `json:"ticket_id"`
+	EventID     pgtype.UUID        `json:"event_id"`
+	CheckedInAt pgtype.Timestamptz `json:"checked_in_at"`
+}
+
+func (q *Queries) UndoCheckInWorkflowTicket(ctx context.Context, arg UndoCheckInWorkflowTicketParams) (Tickets, error) {
+	row := q.db.QueryRow(ctx, undoCheckInWorkflowTicket, arg.TicketID, arg.EventID, arg.CheckedInAt)
+	var i Tickets
+	err := row.Scan(
+		&i.ID,
+		&i.RsvpID,
+		&i.Status,
+		&i.CheckedInAt,
+		&i.CheckedInBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublicCode,
+		&i.AdminReference,
 	)
 	return i, err
 }
@@ -1275,7 +1343,7 @@ UPDATE events SET title=$2, description=$3, format=$4, starts_at=$5, ends_at=$6,
 capacity=$8, location_name=$9, location_address=$10, online_url=$11, registration_opens_at=$12,
 registration_closes_at=$13, registration_mode=$14, allow_guest=$15, waitlist_enabled=$16,
 offer_minutes=$17, revision=revision+1, updated_at=clock_timestamp()
-WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings
+WHERE id=$1 RETURNING id, organizer_id, category_id, status, format, title, slug, description, short_description, banner_url, location_name, location_address, online_url, starts_at, ends_at, timezone, capacity, current_rsvp_count, registration_opens_at, registration_closes_at, tags, published_at, cancelled_at, created_at, updated_at, deleted_at, revision, held_rsvp_count, registration_mode, allow_guest, waitlist_enabled, offer_minutes, space_id, theme, theme_color, theme_font, theme_style, faq_text, contact_url, rewards, theme_display, visibility, registration_form_revision, registration_name_required, admin_reference, registration_form_settings, management_closed
 `
 
 type UpdateWorkflowEventParams struct {
@@ -1366,6 +1434,7 @@ func (q *Queries) UpdateWorkflowEvent(ctx context.Context, arg UpdateWorkflowEve
 		&i.RegistrationNameRequired,
 		&i.AdminReference,
 		&i.RegistrationFormSettings,
+		&i.ManagementClosed,
 	)
 	return i, err
 }
