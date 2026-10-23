@@ -776,3 +776,28 @@ func TestAuthRecoveryAndRecognizedDevices_LivePostgres(t *testing.T) {
 		}
 	})
 }
+
+// Uses the current documented production CIMD transition shape. This is part of
+// mandatory CI and never replaces real client metadata in application paths.
+func TestMCPCIMDPublicMethodIntersection(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		methods []string
+		legacy  string
+		allowed bool
+	}{
+		{"production plural supports public", []string{"none", "private_key_jwt"}, "private_key_jwt", true},
+		{"private assertion only", []string{"private_key_jwt"}, "private_key_jwt", false},
+		{"empty plural", []string{}, "none", false},
+		{"legacy public", nil, "none", true},
+		{"legacy unsupported", nil, "private_key_jwt", false},
+	} {
+		c := mcpClientMetadata{ClientID: "https://chatgpt.com/oauth/client.json", Name: "ChatGPT", Redirects: []string{"https://chatgpt.com/connector_platform_oauth_redirect"}, Method: test.legacy, MethodsSupported: test.methods, Grants: []string{"authorization_code", "refresh_token"}, Responses: []string{"code"}}
+		if validMCPCIMDClient(&c) != test.allowed {
+			t.Fatalf("method selection: %s", test.name)
+		}
+		if test.allowed && c.Method != "none" {
+			t.Fatal("selected unsupported client authentication")
+		}
+	}
+}

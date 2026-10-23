@@ -109,3 +109,17 @@ pending. No Directory submission or approval is claimed.
 Previous release: analytics/check-in source
 `1e898be5e702b5a48e12135f333ba68117839b26`, schema 23, all six services live;
 CI 39901702575 passed and PR 46 merged. CDN and Apple Wallet remain deferred.
+
+### ChatGPT client metadata negotiation
+
+The production metadata document was fetched successfully from the VM on
+23 October 2026. Its plural supported-method array contains none and
+private_key_jwt while its legacy singular preference is private_key_jwt.
+Use the documented method intersection and select none, which is the only method
+this authorization server advertises. PKCE remains mandatory; client assertions
+and secrets are rejected rather than silently treated as authenticated clients.
+The signed assertion method is not advertised or claimed. This compatibility
+correction is independently built as a global-backend-only candidate so public
+footer publication is not delayed.
+
+The designated profile tool returns the standard top-level persisted account ID, name and email schema. Authentication challenges include both error and error_description as required for the OpenAI linking UI. Other tools retain their actual-operation response envelopes.

@@ -77,6 +77,11 @@ func New(pool *pgxpool.Pool, logger *slog.Logger, coreBase, globalBase string) (
 			meta["openai/profile"] = true
 		}
 		tool := &mcp.Tool{Name: d.Name, Title: d.Title, Description: d.Description, InputSchema: inputSchema(d), OutputSchema: outputSchema, Meta: meta, Annotations: &mcp.ToolAnnotations{ReadOnlyHint: d.Read, IdempotentHint: d.Read, DestructiveHint: &d.Destructive, OpenWorldHint: &d.External}}
+		if d.Name == "get_my_profile" {
+			tool.OutputSchema = profileSchema
+			sdk.AddTool(tool, s.profileTool(d))
+			continue
+		}
 		mcp.AddTool[map[string]json.RawMessage, Output](sdk, tool, func(ctx context.Context, req *mcp.CallToolRequest, args map[string]json.RawMessage) (*mcp.CallToolResult, Output, error) {
 			return s.call(ctx, req, d, args)
 		})
@@ -242,10 +247,10 @@ func (s *Server) call(ctx context.Context, req *mcp.CallToolRequest, d definitio
 			if !errors.Is(e, pgx.ErrNoRows) && !errors.Is(e, auth.ErrInvalidToken) {
 				return failure("Identity service unavailable. Retry shortly.")
 			}
-			return &mcp.CallToolResult{IsError: true, Meta: mcp.Meta{"mcp/www_authenticate": []string{`Bearer resource_metadata="https://mcp.hackways.in/.well-known/oauth-protected-resource/mcp", error="invalid_token"`}}}, Output{Status: "authorization_required", Message: "Connect your Hackways account to continue."}, nil
+			return &mcp.CallToolResult{IsError: true, Meta: mcp.Meta{"mcp/www_authenticate": []string{`Bearer resource_metadata="https://mcp.hackways.in/.well-known/oauth-protected-resource/mcp", error="invalid_token", error_description="Connect your Hackways account to continue"`}}}, Output{Status: "authorization_required", Message: "Connect your Hackways account to continue."}, nil
 		}
 		if !slices.Contains(identity.Scopes, d.Scope) {
-			return &mcp.CallToolResult{IsError: true, Meta: mcp.Meta{"mcp/www_authenticate": []string{fmt.Sprintf(`Bearer resource_metadata="https://mcp.hackways.in/.well-known/oauth-protected-resource/mcp", error="insufficient_scope", scope="%s"`, d.Scope)}}}, Output{Status: "authorization_required", Message: "Connect with the required permission: " + d.Scope}, nil
+			return &mcp.CallToolResult{IsError: true, Meta: mcp.Meta{"mcp/www_authenticate": []string{fmt.Sprintf(`Bearer resource_metadata="https://mcp.hackways.in/.well-known/oauth-protected-resource/mcp", error="insufficient_scope", error_description="Reconnect with the required permission", scope="%s"`, d.Scope)}}}, Output{Status: "authorization_required", Message: "Connect with the required permission: " + d.Scope}, nil
 		}
 		if strings.HasPrefix(d.Scope, "admin:") {
 			ok, e := s.q.IsPlatformAdminSession(ctx, db.IsPlatformAdminSessionParams{SessionID: identity.SessionID, UserID: identity.UserID})
