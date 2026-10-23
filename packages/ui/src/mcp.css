@@ -1,0 +1,19 @@
+.hw-mcp-approval,.hw-mcp-connections{color:#29222f;font-size:1rem;line-height:1.6}
+.hw-mcp-approval p,.hw-mcp-connections p{margin:0 0 1.25rem}
+.hw-mcp-approval h2,.hw-mcp-connections h2{font-size:1.2rem;line-height:1.35;margin:1.75rem 0 .75rem;text-wrap:balance}
+.hw-mcp-identity{display:block;color:#66576e;font-size:.875rem;margin-top:.25rem}
+.hw-mcp-account{padding-block:1rem;border-block:1px solid #e4dce9;overflow-wrap:anywhere}
+.hw-mcp-permissions{padding-left:1.25rem;margin:0 0 1.5rem}.hw-mcp-permissions li{margin-bottom:.75rem}
+.hw-mcp-approval details{margin-block:1.5rem}.hw-mcp-approval summary{cursor:pointer;text-decoration:underline;text-underline-offset:.2em}
+.hw-mcp-client-id,.hw-mcp-operation dd{overflow-wrap:anywhere}.hw-mcp-operation{margin-block:1rem}.hw-mcp-operation dt{color:#66576e;font-size:.875rem}.hw-mcp-operation dd{margin:0}
+.hw-mcp-payload{font: .875rem/1.65 monospace;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:28rem;padding:1rem;background:#f6f2f8;border-radius:12px;tab-size:2}
+.hw-mcp-actions{display:flex;gap:.75rem;margin-top:1.75rem}.hw-mcp-actions button{flex:1}
+.hw-mcp-primary,.hw-mcp-secondary{font:inherit;min-height:48px;padding:.75rem 1.25rem;border-radius:999px;cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.hw-mcp-primary{background:#29222f;color:#fff;border:1px solid #29222f}.hw-mcp-primary:hover{background:#493852}
+.hw-mcp-secondary{background:#fff;color:#493852;border:1px solid #c7b6d0}.hw-mcp-secondary:hover{background:#f0e7f6}
+.hw-mcp-primary:disabled,.hw-mcp-secondary:disabled{opacity:.6;cursor:wait}.hw-mcp-approval :focus-visible,.hw-mcp-connections :focus-visible{outline:2px solid #74508a;outline-offset:4px}
+.hw-mcp-manage{display:block;text-align:center;margin-top:1.5rem}.hw-mcp-approval a,.hw-mcp-connections a{color:#604176;text-underline-offset:.2em}
+.hw-mcp-connection{border-bottom:1px solid #e4dce9;padding-bottom:1.75rem;margin-bottom:1.75rem}.hw-mcp-connections code{overflow-wrap:anywhere}
+.hw-mcp-approval ::selection,.hw-mcp-connections ::selection{background:#e4d6ed;color:#29222f}
+@media(max-width:380px){.hw-mcp-actions{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.hw-mcp-primary,.hw-mcp-secondary{transition:none}}

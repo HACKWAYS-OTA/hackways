@@ -74,3 +74,12 @@ Run affected app checks as well when shared behavior changes. Type and lint chec
 and bounded first-party collector used by public/core web. Collection starts only
 after visitor consent. It accepts named registration events without form answers
 or account identity; see [the service contract](../../docs/backend/ANALYTICS.md).
+
+### MCP connection views
+
+`@hackways/ui/mcp` and `@hackways/ui/mcp.css` provide the account/admin consent,
+exact-action review and connection revocation views. The independent apps fetch
+essential authorized data on the server; Go owns all permission and mutation
+decisions. No model credential is accepted as browser consent. Cookie management
+remains available through `CookiePreferencesButton`; its optional label lets the
+Cookies page display Manage cookies.

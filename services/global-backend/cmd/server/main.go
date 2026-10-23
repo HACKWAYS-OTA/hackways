@@ -19,6 +19,7 @@ import (
 	"github.com/hackways/global-backend/internal/admin"
 	"github.com/hackways/global-backend/internal/analytics"
 	"github.com/hackways/global-backend/internal/auth"
+	"github.com/hackways/global-backend/internal/mcpbridge"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
 	"github.com/hackways/global-backend/internal/rollouts"
@@ -184,6 +185,19 @@ func main() {
 
 	})
 
+	if auth.MCPEnabled() && !cfg.AdminPreviewOnly {
+		coreBase := os.Getenv("MCP_CORE_API_ORIGIN")
+		if coreBase == "" {
+			coreBase = "http://core-backend:8081"
+		}
+		globalBase := "http://127.0.0.1:" + fmt.Sprint(cfg.Port)
+		bridge, err := mcpbridge.New(pool, logger, coreBase, globalBase)
+		if err != nil {
+			logger.Error("MCP configuration invalid")
+			os.Exit(1)
+		}
+		r.Mount("/mcp", bridge)
+	}
 	// 9. HTTP Server with production timeouts
 	serverAddr := net.JoinHostPort(cfg.BindHost, fmt.Sprint(cfg.Port))
 	srv := &http.Server{

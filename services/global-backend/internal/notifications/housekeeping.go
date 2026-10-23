@@ -5,6 +5,7 @@ import (
 	"github.com/hackways/global-backend/db"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
+	"os"
 	"time"
 )
 
@@ -32,6 +33,16 @@ func Housekeeping(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) 
 				logger.Warn("analytics quota cleanup failed", "error", err)
 			}
 			cancel()
+			if os.Getenv("MCP_ENABLED") == "true" {
+				job, done := context.WithTimeout(ctx, 2*time.Second)
+				for _, cleanup := range []func(context.Context) error{q.MCPCleanupRequests, q.MCPCleanupActions, q.MCPCleanupAccessTokens, q.MCPCleanupGrants, q.MCPCleanupClients} {
+					if err := cleanup(job); err != nil {
+						logger.Warn("MCP retention cleanup failed", "error", err)
+						break
+					}
+				}
+				done()
+			}
 		}
 	}
 }

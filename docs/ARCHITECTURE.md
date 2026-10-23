@@ -107,3 +107,12 @@ issued ticket and current recipient; core-backend retains authoritative one-use
 admission and revocation. Both engines use the same protected admission signing
 seed and wire format; no browser credential storage or new service is added.
 See [the email contract](engineering/email-templates.md#confirmed-event-passes-2026-10-23).
+
+## Remote MCP
+
+The existing global Go engine hosts `mcp.hackways.in/mcp` and OAuth; it calls the
+existing authoritative Go HTTP APIs. No seventh service or TypeScript business
+backend is introduced. Separate consent/action/revocation pages render in core-web
+and admin-web, with a public-web landing page at `/mcp`. See [MCP](backend/MCP.md)
+and the [tool catalog](backend/MCP_TOOLS.md). Enable only after migration 24 and
+verified images; Go 1.25 is limited to global-backend's official MCP SDK requirement.

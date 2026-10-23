@@ -17,7 +17,9 @@
     "./auth.css": "./src/auth.css",
     "./styles.css": "./src/controls.css",
     "./event-fonts": "./src/EventFonts.ts",
-    "./analytics": "./src/Analytics.tsx"
+    "./analytics": "./src/Analytics.tsx",
+    "./mcp": "./src/MCPConnection.tsx",
+    "./mcp.css": "./src/mcp.css"
   },
   "sideEffects": [
     "**/*.css"

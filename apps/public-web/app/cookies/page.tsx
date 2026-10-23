@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { CookiePreferencesButton } from '@hackways/ui/analytics';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
 export const metadata: Metadata = { title: 'Cookies', description: 'The essential session cookies used by Hackways, how long sessions last, and how to manage cookies and sign-in in your browser.', alternates: { canonical: '/cookies' } };
 export default function CookiesPage() {
   return <Article title="Cookies" intro="What your browser stores when you use Hackways, why account sessions need cookies, and how you can control them." updated="23 October 2026">
+    <Section id="preferences" title="Manage cookies"><p>Choose whether this browser allows optional analytics. Essential cookies keep sign-in working.</p><CookiePreferencesButton label="Manage cookies" /></Section>
     <Section id="purpose" title="Cookies help a service recognize a browser">
       <p>A cookie is a small value stored by a browser for a website. It can be sent back with later requests so a service can recognize a session. Cookies are different from the account and registration records stored by the service.</p>
-      <p>The account applications use an essential cookie for sign-in. The public informational pages can be read without an account. Optional first-party analytics runs only when you choose Allow analytics.</p>
+      <p>The account applications use an essential cookie for sign-in. The public informational pages can be read without an account. Optional first-party analytics runs only when you choose Allow all.</p>
     </Section>
     <Section id="public" title="Reading the public website">
       <p>You do not need to sign in to read these pages. Optional analytics cookies are off until you allow them. No third-party advertising tracker is included. Fonts used by these pages are served from the website.</p>
@@ -30,7 +32,7 @@ export default function CookiesPage() {
     </Section>
     <Section id="external" title="Links to organizer and third-party services">
       <p>An event may link to a video meeting, venue, organizer website or another external service. Once you open that destination, its own cookie and privacy practices apply. Review those notices before sharing more information or accepting optional tracking there.</p>
-      <p>Open Cookie preferences in the footer to allow optional analytics or switch to Essential only. Declining removes the analytics browser identifiers and stops further collection in that browser; essential sign-in cookies remain available.</p>
+      <p>Use Manage cookies on this page to allow optional analytics or switch to Essential only. Declining removes the analytics browser identifiers and stops further collection in that browser; essential sign-in cookies remain available.</p>
     </Section>
     <Section id="questions" title="Ask about cookies or account information">
       <p>Email <a href={'mailto:' + supportEmail}>{supportEmail}</a> for questions about these cookies. Read <Link href="/privacy">Privacy</Link> for account and registration information, and <Link href="/contact">Contact</Link> for guidance on making a records request.</p>

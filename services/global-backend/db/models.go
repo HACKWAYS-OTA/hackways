@@ -452,6 +452,82 @@ type IdempotencyRecords struct {
 	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
 }
 
+type McpAccessTokens struct {
+	TokenHash string             `json:"token_hash"`
+	GrantID   pgtype.UUID        `json:"grant_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+type McpActionIntents struct {
+	ID                pgtype.UUID        `json:"id"`
+	GrantID           pgtype.UUID        `json:"grant_id"`
+	ToolName          string             `json:"tool_name"`
+	ApiService        string             `json:"api_service"`
+	Method            string             `json:"method"`
+	ApiPath           string             `json:"api_path"`
+	PayloadJson       []byte             `json:"payload_json"`
+	RequestHash       string             `json:"request_hash"`
+	Status            string             `json:"status"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	ApprovedAt        pgtype.Timestamptz `json:"approved_at"`
+	ApprovedSessionID pgtype.UUID        `json:"approved_session_id"`
+	LeaseHash         pgtype.Text        `json:"lease_hash"`
+	LeaseExpiresAt    pgtype.Timestamptz `json:"lease_expires_at"`
+	ResponseStatus    pgtype.Int4        `json:"response_status"`
+	ResultJson        []byte             `json:"result_json"`
+	FinishedAt        pgtype.Timestamptz `json:"finished_at"`
+}
+
+type McpOauthClients struct {
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	RedirectUris []string           `json:"redirect_uris"`
+	MetadataUrl  string             `json:"metadata_url"`
+	Verified     bool               `json:"verified"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type McpOauthGrants struct {
+	ID               pgtype.UUID        `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	SessionID        pgtype.UUID        `json:"session_id"`
+	ClientID         string             `json:"client_id"`
+	Resource         string             `json:"resource"`
+	Scopes           []string           `json:"scopes"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	RevocationReason string             `json:"revocation_reason"`
+}
+
+type McpOauthRequests struct {
+	ID            pgtype.UUID        `json:"id"`
+	ClientID      string             `json:"client_id"`
+	RedirectUri   string             `json:"redirect_uri"`
+	State         string             `json:"state"`
+	Resource      string             `json:"resource"`
+	CodeChallenge string             `json:"code_challenge"`
+	Scopes        []string           `json:"scopes"`
+	Status        string             `json:"status"`
+	UserID        pgtype.UUID        `json:"user_id"`
+	SessionID     pgtype.UUID        `json:"session_id"`
+	CodeHash      pgtype.Text        `json:"code_hash"`
+	CodeUsedAt    pgtype.Timestamptz `json:"code_used_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
+
+type McpRefreshTokens struct {
+	TokenHash string             `json:"token_hash"`
+	GrantID   pgtype.UUID        `json:"grant_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+}
+
 type OauthExchangeTokens struct {
 	TokenHash string             `json:"token_hash"`
 	UserID    pgtype.UUID        `json:"user_id"`

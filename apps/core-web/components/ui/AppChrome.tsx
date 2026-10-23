@@ -39,7 +39,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
       }
     }
   }, [pathname]);
-  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
+  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/') || pathname.startsWith('/connect/');
   return <>
     <SkipToContent />
     {!isAuthPage && <header className="app-header"><div className="app-header-inner">
