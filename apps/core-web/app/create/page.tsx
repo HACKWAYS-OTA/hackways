@@ -1,9 +1,10 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import { requireUser, privateApi } from '@/lib/account';
 import { ApiClientError } from '@/lib/api';
 import { CreateEventForm } from '@/components/hosting/CreateEventForm';
 import type { Space } from '@/types/api';
 import Link from 'next/link';
-export const metadata = { title: 'Create an event', robots: { index: false, follow: false } };
+export const metadata = { ...pageSocialMetadata('create'), title: 'Create an event', robots: { index: false, follow: false } };
 export default async function CreatePage({ searchParams }: { searchParams: { space?: string } }) {
   const spaceSlug = typeof searchParams.space === 'string' ? searchParams.space : '';
   const returnPath = spaceSlug ? `/create?space=${encodeURIComponent(spaceSlug)}` : '/create';

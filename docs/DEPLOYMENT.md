@@ -82,3 +82,28 @@ Deploy a core engine image containing `GET /api/v1/events/by-slug/{slug}` before
 Repository checks can validate source and configuration syntax, but they cannot prove Azure credentials, GitHub webhook delivery, GHCR permissions, firewall rules, database reachability, or production health. Record those results only after running the corresponding checks against the target environment. See [TESTING.md](TESTING.md) for local verification commands and known limitations.
 
 The aspirational Azure topology and migration plan are documented separately in [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md); that document is not the as-built runbook.
+
+
+## Optional local Linux Actions runner
+
+CI and release image jobs accept the repository variable HACKWAYS_CI_RUNNER_LABELS
+as a JSON array of runner labels. Its absence preserves ubuntu-latest. A dedicated
+self-hosted Linux runner can build the private repository without hosted-minute
+usage. Restrict it to trusted repository work, provide Docker, PostgreSQL client,
+C/C++ compiler and required runner libraries, and keep production credentials out
+of its workspace. This does not authorize builds on the production VM. Restore
+the variable and remove a temporary runner after the release so future checks do
+not wait for an offline machine. No automatic Azure deployment is introduced.
+
+## Europe email transport
+
+The Europe email/communication resources are hackways-email-eu-prod and
+hackways-comm-eu-prod, using mail.hackways.in with noreply, notify and updates.
+Domain ownership, SPF, DKIM and DKIM2 are verified. India resources remain intact.
+Store credentials only through the existing protected runtime configuration.
+Before changing ACS_ENDPOINT/ACS_ACCESS_KEY, quiesce the worker and verify there
+are no pending/processing operations with persisted first_sent_at. Such operations
+are bound to the original ACS resource and must be reconciled there; blindly
+replaying them in another region can duplicate delivery. Resume and verify actual
+provider acceptance after configuration. This is a regional standby/cutover
+procedure, not automatic failover or a whole-platform availability guarantee.

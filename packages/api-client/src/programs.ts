@@ -1,0 +1,11 @@
+export type ProgramQuestion = { id: string; label: string; help: string; kind: 'text' | 'long_text' | 'url' | 'choice'; required: boolean; max_length: number; options: string[] | null; domain: string };
+export type Program = { id: string; slug: string; title: string; summary: string; overview: string; responsibilities: string; recognition: string; status: 'draft' | 'open' | 'closed' | 'archived'; minimum_age: number; questions: ProgramQuestion[]; opens_at: string | null; closes_at: string | null; revision: number };
+export type ProgramProfile = { full_name: string; city: string; phone: string; biography: string; profile_url: string; proposal: string; age: number; age_confirmed: boolean; answers: Record<string, string> };
+export type ProgramDecision = 'pending' | 'accepted' | 'rejected' | 'waitlisted';
+export type ProgramApplication = ProgramProfile & { id: string; program_id: string; status: 'draft' | 'submitted' | 'withdrawn'; revision: number; submitted_at: string | null; updated_at: string; published_decision: Exclude<ProgramDecision, 'pending'> | null; published_at: string | null; question_snapshot: ProgramQuestion[] };
+export type ProgramMine = { program: Program; application: ProgramApplication | null; accepting_applications: boolean };
+export type ProgramStats = { submitted: number; pending: number; ready: number; released: number; accepted: number; rejected: number; waitlisted: number };
+export type AdminProgram = Program & { review_revision: number; stats: ProgramStats; releases: { id: string; application_count: number; created_at: string }[] };
+export type AdminProgramApplication = ProgramApplication & { user_id: string; email: string; avatar_url: string | null; decision: ProgramDecision; reviewer_notes: string; reviewed_by: string | null; reviewed_at: string | null };
+export type ProgramSummary = { slug: string; title: string; summary: string; status: Program['status']; applications: number; pending: number; updated_at: string };
+export type ProgramApplicationSummary = { id: string; full_name: string; city: string; email: string; status: ProgramApplication['status']; decision: ProgramDecision; published_at: string | null; submitted_at: string | null };

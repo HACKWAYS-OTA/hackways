@@ -22,7 +22,7 @@ concurrency:
 jobs:
   changes:
     name: Select affected checks
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 3
     outputs:
       skip: ${{ steps.select.outputs.skip }}
@@ -43,7 +43,7 @@ jobs:
     name: Repository Hygiene & Security Guard
     needs: changes
     if: needs.changes.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -53,7 +53,7 @@ jobs:
     name: Go Backend CI (${{ matrix.service }})
     needs: [changes, repo-hygiene]
     if: needs.changes.outputs.backends != '[]' && needs.changes.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 15
     strategy:
       fail-fast: true
@@ -117,7 +117,7 @@ jobs:
     name: Next.js Frontend CI
     needs: [changes, repo-hygiene]
     if: needs.changes.outputs.frontends != '[]' && needs.changes.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -146,7 +146,7 @@ jobs:
     name: Deployment tools and ordering regression tests
     needs: [changes, repo-hygiene]
     if: needs.changes.outputs.operations == 'true' && needs.changes.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -173,7 +173,7 @@ jobs:
     name: CI result
     needs: [changes, repo-hygiene, backend-ci, frontend-ci, operations-ci]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 2
     steps:
       - env:

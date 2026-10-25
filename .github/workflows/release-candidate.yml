@@ -23,7 +23,7 @@ jobs:
   images:
     name: Candidate image (${{ matrix.service }})
     needs: integration
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.HACKWAYS_CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 20
     permissions:
       contents: read

@@ -7,11 +7,13 @@ import { EventSidebar } from '@/components/events/EventSidebar';
 import { EventInvitation } from '@/components/events/EventInvitation';
 import { EventInformation } from '@/components/events/EventInformation';
 import { EventScrollLayout } from '@/components/events/EventScrollLayout';
+import { entitySocialMetadata, pageSocialMetadata } from '@/lib/social-metadata';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const event = await readEvent(params.slug);
+  if (event.visibility !== 'public' || event.status !== 'published') return { ...pageSocialMetadata('events'), title: 'Event details', description: 'View this event on Hackways.', robots: { index: false, follow: false } };
   const description = (event.short_description || event.description).slice(0, 160);
-  return { title: event.title, description, robots: event.visibility === 'private' ? { index: false, follow: false } : undefined, alternates: { canonical: eventPath(event) }, openGraph: { title: event.title, description, url: eventPath(event), type: 'website' } };
+  return { ...entitySocialMetadata(eventPath(event), event.title, description), title: event.title, description, alternates: { canonical: eventPath(event) } };
 }
 
 export default async function EventPage({ params }: { params: { slug: string } }) {

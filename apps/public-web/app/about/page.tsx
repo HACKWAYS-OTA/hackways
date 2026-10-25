@@ -1,8 +1,9 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { site } from '@/lib/site';
-export const metadata: Metadata = { title: 'About Hackways', description: 'Find technology events, understand how registration works, and meet the communities hosting on Hackways.', alternates: { canonical: '/about' } };
+export const metadata: Metadata = { ...pageSocialMetadata('about'), title: 'About Hackways', description: 'Find technology events, understand how registration works, and meet the communities hosting on Hackways.', alternates: { canonical: '/about' } };
 export default function AboutPage() {
   return <Article variant="about" title="About Hackways" intro="A place to discover technology events, bring people together, and keep the practical details of attending or hosting in one place.">
     <Section id="what-we-do" title="Events give people a reason to meet">

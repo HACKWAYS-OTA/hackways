@@ -1,9 +1,10 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CopyEndpoint } from './CopyEndpoint';
 import './mcp.css';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = { ...pageSocialMetadata('mcp'),
   title: 'Hackways MCP', description: 'Connect your AI tools to real Hackways events, registrations and organizer workflows with permissions you control.',
   alternates: { canonical: '/mcp' },
 };

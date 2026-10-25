@@ -28,7 +28,7 @@ export function AuthRecoveryForm({ request, signInHref, homeHref }: { request: A
     finally { lock.current = false; setBusy(false); }
   }
   return <AuthLayout title={sent ? 'Check your email' : 'Forgot your password?'} homeHref={homeHref}>
-    {sent ? <><p className="hw-auth-note" role="status">If an account exists for <strong>{email}</strong>, a secure reset link is queued for delivery. The link expires in 15 minutes.</p>
+    {sent ? <><p className="hw-auth-note" role="status">If an account exists for <strong>{email}</strong>, check your inbox for a password reset link. The link expires in 15 minutes.</p>
       <div className="hw-auth-options"><button type="button" disabled={busy || cooldown.seconds > 0} onClick={() => void send()}>{cooldown.seconds ? `Resend in ${cooldown.seconds}s` : 'Resend reset link'}</button><button type="button" disabled={busy} onClick={() => { setSent(false); setError(''); cooldown.clear(); }}>Use another email</button></div></> :
       <form className="hw-auth-form" onSubmit={send} aria-busy={busy}><div className="field"><label htmlFor="recovery-email">Email address</label><input id="recovery-email" className="app-input" name="email" type="email" autoComplete="email" maxLength={320} required value={email} onChange={event => setEmail(event.target.value)} disabled={busy} /></div><AuthSubmit disabled={busy}>{busy ? 'Please wait...' : 'Send reset link'}</AuthSubmit></form>}
     {error && <p className="hw-auth-error" role="alert">{error}</p>}
@@ -72,11 +72,11 @@ export function AuthResetPasswordForm({ request, signInHref, recoveryHref, homeH
 
 export function AuthVerificationForm({ email, request, onVerified, onSignOut, initiallyQueued = false }: { email: string; request: AuthFlowRequest; onVerified: () => void; onSignOut: () => void; initiallyQueued?: boolean }) {
   const lock = useRef(false), cooldown = useCooldown(initiallyQueued ? 60 : 0);
-  const [code, setCode] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(initiallyQueued ? 'Your verification code is queued for email delivery.' : '');
+  const [code, setCode] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(initiallyQueued ? 'Check your inbox for your verification code.' : '');
   async function act(confirm: boolean) {
     if (lock.current || !confirm && cooldown.seconds) return;
     lock.current = true; setBusy(true); setError(''); setNotice('');
-    try { await request(confirm ? '/auth/email-verification/confirm' : '/auth/email-verification/request', confirm ? { code } : {}); if (confirm) onVerified(); else { cooldown.start(); setNotice('A new code is queued. Use the latest email.'); } }
+    try { await request(confirm ? '/auth/email-verification/confirm' : '/auth/email-verification/request', confirm ? { code } : {}); if (confirm) onVerified(); else { cooldown.start(); setNotice('Check your inbox for a new code. Use the latest email.'); } }
     catch (err) { setError(err instanceof Error ? err.message : 'Email verification could not be completed. Try again.'); }
     finally { lock.current = false; setBusy(false); }
   }

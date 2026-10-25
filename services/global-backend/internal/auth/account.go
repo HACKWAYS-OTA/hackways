@@ -107,7 +107,7 @@ func (h *Handler) RetryNotification(w http.ResponseWriter, r *http.Request) {
 	}
 	platform.RespondJSON(w, 202, struct {
 		Message string `json:"message"`
-	}{"Notification queued; delivery is not yet confirmed"})
+	}{"Check your inbox for the notification."})
 }
 func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Request) {
 	user, _ := UserFromContext(r.Context())
@@ -117,7 +117,7 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 		}{"Email already verified"})
 		return
 	}
-	if !notifications.EmailConfigured() {
+	if !notifications.EmailConfiguredFor("email_verification") {
 		platform.RespondError(w, 503, "EMAIL_UNAVAILABLE", "Verification email is temporarily unavailable. Please try again later.", nil)
 		return
 	}
@@ -170,7 +170,7 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 	}
 	platform.RespondJSON(w, 202, struct {
 		Message string `json:"message"`
-	}{"Verification email queued. The six-digit code expires in 15 minutes."})
+	}{"Check your inbox for the six-digit verification code. It expires in 15 minutes."})
 }
 
 func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Request) {

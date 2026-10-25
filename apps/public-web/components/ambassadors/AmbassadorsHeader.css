@@ -1,0 +1,64 @@
+.ambassador-header {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 20;
+  background: transparent;
+  color: #091a40;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.ambassador-header[data-surface="dark"] { color: #f6f8ff; }
+.ambassador-header[data-surface="content"] { background: #fff; color: #091a40; border-bottom: 1px solid #dfE6f2; }
+
+.ambassador-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: var(--header-height);
+  padding: 12px clamp(20px, 4vw, 64px);
+}
+
+.ambassador-header .brand { min-height: 44px; align-items: center; font-size: clamp(20px, 2vw, 24px); }
+.ambassador-header .brand-dot { color: inherit; }
+.ambassador-header nav { flex-shrink: 0; }
+.ambassador-sign-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid #163675;
+  border-radius: 4px;
+  background: #163675;
+  color: #fff;
+  font-family: 'FG Futurist';
+  font-size: 14px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.ambassador-sign-in:hover { background: #254d96; border-color: #254d96; }
+.ambassador-sign-in:active { background: #091a40; }
+.ambassador-header[data-surface="dark"] .ambassador-sign-in { background: #f6f8ff; border-color: #f6f8ff; color: #091a40; }
+.ambassador-header[data-surface="dark"] .ambassador-sign-in:hover { background: #a5d8ff; border-color: #a5d8ff; }
+.ambassador-header :focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+
+/* The decorative renderer may be unavailable. Keep the dark fallback legible. */
+@media (forced-colors: none) {
+  html:has(.amb-hero-art [data-renderer="fallback"]) .ambassador-header[data-surface="light"] { color: #f6f8ff; }
+  html:has(.amb-hero-art [data-renderer="fallback"]) .ambassador-header[data-surface="light"] .ambassador-sign-in { background: #f6f8ff; border-color: #f6f8ff; color: #091a40; }
+  html:has(.amb-hero-art [data-renderer="fallback"]) .ambassador-header[data-surface="light"] .ambassador-sign-in:hover { background: #a5d8ff; border-color: #a5d8ff; }
+}
+
+@media (max-width: 420px) {
+  .ambassador-header-inner { gap: 1rem; padding-inline: 20px; }
+  .ambassador-sign-in { padding-inline: 18px; }
+}
+
+@media (forced-colors: active) {
+  .ambassador-header[data-surface] { background: Canvas; color: CanvasText; }
+  .ambassador-header[data-surface] .ambassador-sign-in { border-color: ButtonText; background: ButtonFace; color: ButtonText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambassador-header { transition: none; }
+}

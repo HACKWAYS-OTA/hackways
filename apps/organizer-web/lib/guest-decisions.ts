@@ -15,5 +15,5 @@ export async function saveGuestDecision(eventId: string, guest: Pick<EditableGue
     { method: 'POST', body: attempt.body, headers: { 'Idempotency-Key': attempt.key } },
   );
   if (result.data.id !== guest.id || result.data.status !== status) throw new Error('The decision could not be confirmed. Please retry.');
-  return `${status === 'confirmed' ? 'Guest approved.' : 'Application declined.'}${result.notification_queued ? ' A notification is queued.' : ''}`;
+  return `${status === 'confirmed' ? 'Guest approved.' : 'Application declined.'}${result.notification_queued ? ' An email update is on its way.' : ''}`;
 }

@@ -8,6 +8,7 @@ import { verifyAdminAccess, type AdminAccess } from './admin-session';
 export function safeAdminDestination(requested = '/') {
   if (requested.includes('\\') || requested.includes('#') || /[\u0000-\u001f\u007f]/.test(requested)) return '/';
   const path = requested.split('?')[0];
+  if (/^\/programs(?:\/(?:new|[a-z][a-z0-9-]{1,62}[a-z0-9])(?:\/(?:settings|results|applications\/[0-9a-fA-F-]{36}))?)?$/.test(path)) return requested;
   return path === '/' || ['/connect/authorize','/connect/action','/connect/connections','/messaging/new','/discover-promotions','/rollouts','/campaigns','/campaigns/new','/campaigns/contacts'].includes(path) || /^\/campaigns\/details\/[1-9][0-9]*$/.test(path) || adminModuleOrder.some(name => path === `/${name}`
     || new RegExp(`^/${name}/details/[1-9][0-9]*$`).test(path)
     || name !== 'audit' && new RegExp(`^/${name}/details/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`).test(path)) ? requested : '/';

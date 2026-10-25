@@ -8,7 +8,8 @@ import { EventCard } from '@/components/events/EventCard';
 import { SpaceMembership } from '@/components/spaces/SpaceMembership';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/spaces/spaces.css';
-export async function generateMetadata({ params }: { params: { slug: string } }) { const space = await readSpace(params.slug); return { title: space.name, description: space.description.slice(0, 160) }; }
+import { entitySocialMetadata } from '@/lib/social-metadata';
+export async function generateMetadata({ params }: { params: { slug: string } }) { const space = await readSpace(params.slug); const description = space.description.slice(0, 160); return { ...entitySocialMetadata(`/spaces/${encodeURIComponent(space.slug)}`, space.name, description), title: space.name, description }; }
 export default async function SpacePage({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
   const [space, user] = await Promise.all([readSpace(params.slug), currentUser()]);
   const past = searchParams.period === 'past', offset = pageOffset(searchParams.offset), base = `/spaces/${space.slug}`;

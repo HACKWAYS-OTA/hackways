@@ -40,6 +40,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
     }
   }, [pathname]);
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/') || pathname.startsWith('/connect/');
+  if (pathname === '/programs' || pathname.startsWith('/programs/')) return <><SkipToContent /><AnalyticsTracker path={pathname} endpoint={`${(process.env.NEXT_PUBLIC_GLOBAL_API_URL || '/api/v1').replace(/\/$/, '')}/analytics/events`} />{children}</>;
   return <>
     <SkipToContent />
     {!isAuthPage && <header className="app-header"><div className="app-header-inner">

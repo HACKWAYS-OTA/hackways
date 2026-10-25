@@ -1,0 +1,23 @@
+// Fixed editorial content for fixed pages, not application records.
+export const socialPages = {
+  platform: { title: 'Good things happen together.', description: 'Find your next event. Bring your people.', label: 'Hackways' },
+  ambassadors: { title: 'Be the reason people meet.', description: 'Become a Hackways ambassador.', label: 'Ambassadors', campaign: true },
+  about: { title: 'A place for people to meet.', description: 'Get to know Hackways.', label: 'About Hackways' },
+  organizers: { title: 'Your idea. Their next gathering.', description: 'Create an event and welcome your community with Hackways.', label: 'For organizers' },
+  contact: { title: 'Let’s talk.', description: 'Contact the Hackways team.', label: 'Contact' },
+  help: { title: 'A little help along the way.', description: 'Find answers about events, hosting and your account.', label: 'Help & FAQs' },
+  privacy: { title: 'Your information, explained.', description: 'How Hackways handles platform information.', label: 'Privacy' },
+  terms: { title: 'The terms of using Hackways.', description: 'Read the platform terms of use.', label: 'Terms of use' },
+  cookies: { title: 'Cookies, with a choice.', description: 'Understand and manage your cookie preferences.', label: 'Cookies' },
+  acceptable: { title: 'A platform worth sharing.', description: 'Read the Hackways acceptable use policy.', label: 'Acceptable use' },
+  mcp: { title: 'Hackways, in your AI workspace.', description: 'Connect your account through the Hackways MCP service.', label: 'Hackways MCP' },
+  'mcp-setup': { title: 'Connect Hackways.', description: 'Set up authentication and your MCP connection.', label: 'MCP setup' },
+  create: { title: 'Bring your gathering to life.', description: 'Create an event on Hackways.', label: 'Create an event' },
+  discover: { title: 'Find your next event.', description: 'Explore events and communities on Hackways.', label: 'Discover' },
+  events: { title: 'Something to look forward to.', description: 'Find an event and reserve your place.', label: 'Events' },
+  spaces: { title: 'Find your people.', description: 'Explore communities and their events.', label: 'Spaces' },
+  programs: { title: 'A place to contribute.', description: 'Explore programs and opportunities on Hackways.', label: 'Programs' },
+  account: { title: 'Your Hackways account.', description: 'Sign in to continue your journey.', label: 'Hackways' },
+  manage: { title: 'Welcome your guests.', description: 'Manage your events with Hackways.', label: 'Event workspace' },
+  admin: { title: 'Hackways workspace.', description: 'Sign in to the platform administration console.', label: 'Hackways' },
+} as const;

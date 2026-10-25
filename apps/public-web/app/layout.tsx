@@ -1,3 +1,4 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import { UIProvider } from '@hackways/ui/provider';
 import '@hackways/ui/styles.css';
 import React from "react";
@@ -10,11 +11,10 @@ import { VisitorAnalytics } from '@/components/site/VisitorAnalytics';
 import { site } from "@/lib/site";
 import "./globals.css";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = { ...pageSocialMetadata('platform'),
   metadataBase: new URL(site.url),
   title: { default: "Hackways — Find your next tech event", template: "%s | Hackways" },
   description: "Discover hackathons, meetups, and conferences. Find your next tech event, or bring your own community together with Hackways.",
-  openGraph: { type: "website", siteName: "Hackways" },
 };
 
 export default function RootLayout({

@@ -1,8 +1,9 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { site } from '@/lib/site';
-export const metadata: Metadata = { title: 'For organizers', description: 'A practical guide to creating, publishing and managing free events, applications, waiting lists and guest check-in on Hackways.', alternates: { canonical: '/organizers' } };
+export const metadata: Metadata = { ...pageSocialMetadata('organizers'), title: 'For organizers', description: 'A practical guide to creating, publishing and managing free events, applications, waiting lists and guest check-in on Hackways.', alternates: { canonical: '/organizers' } };
 export default function OrganizersPage() {
   return <Article variant="organizers" title="Organize an event" intro="From your first event page to your guest list on the day. Use this guide to prepare a clear invitation and understand the tools available for free events.">
     <Section id="start" title="Start with your account and host profile">

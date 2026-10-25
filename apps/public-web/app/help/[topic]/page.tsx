@@ -1,3 +1,5 @@
+import { staticSocialMetadata } from '@hackways/ui/social-image';
+import { site } from '@/lib/site';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -9,7 +11,7 @@ export function generateStaticParams() { return faqTopics.map(topic => ({ topic:
 export function generateMetadata({ params }: { params: { topic: string } }): Metadata {
   const topic = faqTopics.find(item => item.id === params.topic);
   if (!topic) notFound();
-  return { title: topic.label, description: topic.intro, alternates: { canonical: `/help/${topic.id}` } };
+  return { ...staticSocialMetadata(site.url, `help-${topic.id}`, topic.label, topic.intro), title: topic.label, description: topic.intro, alternates: { canonical: `/help/${topic.id}` } };
 }
 export default function HelpTopic({ params }: { params: { topic: string } }) {
   const topic = faqTopics.find(item => item.id === params.topic);

@@ -1,10 +1,11 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import Link from 'next/link';
 import type { Space } from '@/types/api';
 import { fetchApi } from '@/lib/api';
 import { requireUser, privateApi, pageOffset } from '@/lib/account';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/spaces/spaces.css';
-export const metadata = { title: 'Spaces', description: 'Find a community around what you care about. Join a Space and discover its events.' };
+export const metadata = { ...pageSocialMetadata('spaces'), title: 'Spaces', description: 'Find a community around what you care about. Join a Space and discover its events.' };
 export default async function Spaces({ searchParams }: { searchParams: { view?: string; q?: string; offset?: string } }) {
   const view = ['owned', 'joined'].includes(searchParams.view || '') ? searchParams.view! : 'all';
   const offset = pageOffset(searchParams.offset), query = (searchParams.q || '').slice(0, 200);

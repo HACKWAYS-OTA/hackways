@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/lib/site";
 import { Brand } from "./Brand";
+import { AmbassadorsHeader } from '@/components/ambassadors/AmbassadorsHeader';
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -12,6 +13,8 @@ export function Header() {
   const toggle = useRef<HTMLButtonElement>(null);
 
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  if (pathname === '/ambassadors' || pathname.startsWith('/ambassadors/')) return <AmbassadorsHeader />;
 
   return (
     <header className="site-header" onKeyDown={(event) => {
@@ -31,6 +34,7 @@ export function Header() {
           <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Discover</Link>
           <a href={`${site.app}/discover`}>Explore</a>
           <a href="/create">Create</a>
+          <Link href="/ambassadors" aria-current={pathname === "/ambassadors" ? "page" : undefined}>Ambassadors</Link>
           <a className="button button-primary mobile-host-action" href="/create">Host an event</a>
         </nav>
         <a className="button button-primary header-action" href="/create">Host an event</a>

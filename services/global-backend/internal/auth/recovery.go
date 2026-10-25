@@ -33,7 +33,7 @@ func recoveryEmail(raw string) (string, bool) {
 func recoveryRequested(w http.ResponseWriter) {
 	platform.RespondJSON(w, 202, struct {
 		Message string `json:"message"`
-	}{"If this account exists, a password reset link is queued. Check your email. The link expires in 15 minutes."})
+	}{"If this account exists, check your inbox for a password reset link. The link expires in 15 minutes."})
 }
 func invalidRecoveryToken(w http.ResponseWriter) {
 	platform.RespondError(w, 400, "INVALID_RESET_TOKEN", "This reset link is invalid, expired or already used. Request a new link.", nil)
@@ -55,7 +55,7 @@ func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	if !h.allowIdentityAttempt(w, r, email) {
 		return
 	}
-	if !notifications.EmailConfigured() {
+	if !notifications.EmailConfiguredFor("password_reset_requested") {
 		platform.RespondError(w, 503, "EMAIL_UNAVAILABLE", "Password recovery email is temporarily unavailable. Please try again later.", nil)
 		return
 	}
@@ -105,7 +105,7 @@ func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	payload, err := json.Marshal(resetLinkPayload{ActionURL: "https://hackways.in/auth/reset-password?key=" + token, Hash: hash})
+	payload, err := json.Marshal(resetLinkPayload{ActionURL: notifications.PasswordResetURL(token), Hash: hash})
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return

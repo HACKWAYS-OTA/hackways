@@ -1127,3 +1127,127 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   identities were preserved. Active Compose pin:
   /opt/hackways/releases/mcp-setup-f60aac33dbae/images.compose.json.
   PR 49 merged as 4533307. Actual ChatGPT browser linking remains unreviewed.
+
+
+## 2026-10-25 - Programs and ambassadors, local preview only
+
+- Implemented the requested ambassador campaign and real multi-page profile,
+  proposal, review and application-status workflow. The final user instruction
+  replaced the temporary supplied-photo hero with React Bits GradientASCII,
+  using the blue/white/cyan horizon, 18px cells and 0.8 density. Preserved upstream
+  attribution/license, added no dependency and removed both unused photo assets.
+  Hero copy is server-rendered; background has a static fallback, reduced-motion
+  support, shared pause Toggle, visibility suspension and bounded rendering.
+- Added admin Programs creation/settings, up to ten configurable questions,
+  searchable/paginated applicant profiles and private decisions/notes. Explicit
+  result release publishes reviewed outcomes to each applicant's own status page.
+  No program decision emails are sent. New migration 000025, sqlc queries and Go
+  handlers enforce ownership, verified email, age, URL-domain rules, revision
+  checks, lock ordering, publication guards and durable release idempotency.
+- Local preview uses an isolated copy of approved existing data at schema 25;
+  tests use a separate `_test` database. Public/core/global/admin ports are
+  4000/4001/4002/4003 on loopback. Production and original source snapshot were
+  untouched. No GitHub pushes, tags, Actions jobs or deployments were performed.
+- Verification: `npm run test` (type-check plus lint) passed for public-web,
+  core-web and admin-web with no lint warnings. Global Go mandatory suite ran
+  against the isolated PostgreSQL test database: 131 pass, 0 fail, 0 skip.
+  `go vet ./...`, global build and sqlc compile for both backend modules passed;
+  gofmt reported no files requiring formatting. Windows race verification could
+  not run: `go: -race requires cgo; enable cgo by setting CGO_ENABLED=1`.
+  Tracked source audit including the new files passed; git diff --check passed.
+- HTTP checks: public ambassadors, core program overview and actual Go program/
+  health endpoints returned 200. Landing HTML has one h1, ASCII canvas and pause
+  control, a real localhost application action and no photo or main-content
+  mailto references. Admin Programs routes to normal admin sign-in successfully;
+  application entry requires normal user sign-in. Local Google OAuth credentials
+  are not configured; use existing verified password sign-in for preview.
+- Final detector found only the user-requested gradient headline warning.
+  Source-only finish review returned ship for the ASCII hero; a separate verdict
+  pass scored all four prior program-form fixes resolved (busy input protection,
+  session recovery, visible dropdown labels and closed-draft instructions).
+  Documentation review corrected the dedicated core applicant shell description.
+  Browser automation fails during kernel initialization with system-path error 3;
+  rendered desktop/mobile, keyboard journeys and actual GPU animation remain
+  unverified. Source checks and HTTP success are not rendered approval.
+
+
+### Ambassador hero scroll refinement and dedicated header
+
+- User supplied the bright React Bits source appearance and requested an initial
+  full-width hero that gradually becomes a rounded inset box during scrolling.
+  Removed the fixed initial box/top gap and near-opaque upper dimmer, restored
+  source appearance defaults and added a reversible settling inset clip mask.
+  Hero dimensions and WebGL mount remain stable through scrolling; reduced-motion
+  uses a static inset box. Passive listeners and scheduled RAF clean up on exit.
+- Added a separate responsive ambassador header containing only the logo and
+  Sign in, both with 44px minimum targets. Sign in uses normal core authentication
+  with `/programs/ambassadors/apply/profile` as its safe return destination. Other
+  public pages retain their main navigation. Hid only ambassador document scrollbar
+  chrome with scoped CSS; no overflow lock or replacement scroll behavior added.
+- Public-web type-check/lint passed. HTTP 200 checks confirmed the ambassador header
+  has precisely home/logo and application sign-in links, the main landing retains
+  its original navigation, and the core sign-in page retains the application return
+  path. Source audit and diff whitespace checks passed. Detector found only the
+  already-authorized gradient headline warning. Fresh source review inspected the
+  supplied bright/scrolled screenshots and found the scroll correction consistent
+  in source; its small logo target correction was applied. Documentation review
+  found the scoped design contract and mirrored surface brief consistent.
+- Browser automation remains unavailable (kernel assets system-path error 3), so
+  new rendered frames, actual scroll/keyboard behavior and GPU smoothness are not
+  certified. No push, CI job or production deployment was performed.
+
+- Follow-up visual steering: the ambassador header now overlays the hero, adapts
+  foreground across its bright/dark regions, and gains a solid content surface
+  after the hero. Replaced the straight full-width copy fade with an oval radial
+  scrim, preserving the source shader's curved horizon, and raised hero actions.
+  Refresh watermark remains omitted. Source review caught a dark-fallback/header
+  mismatch; explicit renderer readiness/fallback state now keeps header text and
+  actions legible without WebGL, before readiness and after context loss. Intro
+  fade is off so first ready-state brightness matches the header state immediately.
+  Public type-check/lint and route HTTP checks passed before that small fallback
+  fix; final checks follow. Rendered contrast and animation remain unverified.
+
+  Final public-web type-check/lint passed after the fallback fix. HTTP 200 verified
+  the dedicated navigation and renderer fallback marker. Reviewer scored its sole
+  fallback finding resolved at source level; documentation recheck was consistent.
+
+
+## 2026-10-26 - Ambassador refinements and release preparation
+
+- Compact Programs browsing now uses smaller headings, tighter spacing, left text
+  and the supplied small right thumbnail. Removed oversized overview media and
+  age promotion. Open-role copy omits internal review procedures and benefit caveats.
+- Required ambassador contacts: LinkedIn, normalized WhatsApp number, name, city,
+  introduction and proposal; incomplete drafts remain saveable.
+- User superseded the earlier no-email policy. Submission atomically records a
+  confirmation; explicit result publication atomically records email notices.
+  Repeated requests do not duplicate messages; private reviews do not send results.
+  Dispatcher verifies current recipient ownership, verified email and withdrawal.
+  Ambassador confirmation announces results at the end of November, as supplied.
+- Password recovery filter and localhost reset links are fixed. Reset HTML includes
+  the full copyable URL. Real requested resets were accepted by ACS at 00:04:05 and
+  00:06:47 IST; inbox arrival was not independently verified. Auth notices omit queued.
+- Europe ACS resources, verified domain and three sender names are ready. Public TXT,
+  SPF and both DKIM checks pass. India remains intact. Europe is configured for the
+  scoped local preview; production cutover is pending. In-flight operations must not
+  replay across providers; automatic regional failover or an SLA is not claimed.
+- Prepared fixed-page landscape/square OG assets and real-public-data routes for
+  events, Spaces and programs. Private workspaces use generic metadata. Linux static
+  rendering passes; Windows Next 14 dynamic rendering has a bundled invalid file-URL
+  issue (503). Linux runtime verification is required before activation.
+- A diagnostic traceback exposed a local preview role credential. It was immediately
+  rotated, protected config updated and preview restarted. No production credential
+  or committed file was involved. A versioned executable preserves the old preview
+  binary after automatic approval review rejected replacing it.
+- Local Go verification: 134 passed, 0 failed/skipped; vet and SQLc generation pass.
+  Frontend checks are being finalized. HTTP confirms directory structure, real banner
+  and absence of age promotion; source reviewer found no material layout defect.
+  Browser initialization remains unavailable; rendered/WebGL QA is not claimed.
+- Registered a dedicated local Linux Actions runner to avoid hosted-minute exhaustion
+  and preserve off-VM builds. HACKWAYS_CI_RUNNER_LABELS opts into it. No release image
+  or activation has yet completed for this candidate.
+
+  Follow-up Europe reset dispatch was accepted with zero retries. The local sign-in
+  outage during executable replacement is resolved: HTTP 200, correct application
+  return path, and healthy auth/database check. All app type/lint checks and shared
+  UI checks passed; the only detector finding is the user-requested hero gradient.

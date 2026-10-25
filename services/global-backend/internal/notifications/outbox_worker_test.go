@@ -271,8 +271,8 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 
 func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 	catalog := EmailTemplateCatalog()
-	if len(catalog) != 43 {
-		t.Fatalf("expected 43 email templates, got %d", len(catalog))
+	if len(catalog) != 45 {
+		t.Fatalf("expected 45 email templates, got %d", len(catalog))
 	}
 	seen := make(map[string]bool, len(catalog))
 	for _, template := range catalog {
@@ -280,10 +280,11 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 			t.Fatalf("duplicate template id %q", template.ID)
 		}
 		seen[template.ID] = true
-		message, err := render(db.ClaimEmailOutboxRow{
-			TemplateType: template.ID,
-			PayloadJson:  []byte(`{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example","promotion_subject":"Campaign preview","promotion_body":"Campaign message"}`),
-		})
+		payload := `{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example","promotion_subject":"Campaign preview","promotion_body":"Campaign message"}`
+		if template.ID == "password_reset_requested" {
+			payload = strings.Replace(payload, "https://app.hackways.in/events/example", "https://hackways.in/auth/reset-password?key=example", 1)
+		}
+		message, err := render(db.ClaimEmailOutboxRow{TemplateType: template.ID, PayloadJson: []byte(payload)})
 		if err != nil {
 			t.Fatalf("template %q did not render: %v", template.ID, err)
 		}
@@ -348,6 +349,9 @@ func TestAuthEmailPresentation(t *testing.T) {
 	reset, err := render(db.ClaimEmailOutboxRow{TemplateType: "password_reset_requested", PayloadJson: []byte(`{"action_url":"https://hackways.in/auth/reset-password?key=example"}`)})
 	if err != nil || !strings.Contains(reset.BodyHTML, ">Reset password</a>") || strings.Contains(reset.BodyHTML, "Reset password: https:") || !strings.Contains(reset.BodyText, "?key=example") || strings.Contains(strings.ToLower(reset.BodyText), "token") || strings.Contains(reset.BodyHTML, "one-time code") {
 		t.Fatal("reset link presentation incorrect")
+	}
+	if !strings.Contains(reset.BodyHTML, ">https://hackways.in/auth/reset-password?key=example</a>") {
+		t.Fatal("copyable reset URL is missing from HTML email")
 	}
 	alert, err := render(db.ClaimEmailOutboxRow{TemplateType: "sign_in_alert", PayloadJson: []byte(`{"device_name":"Windows PC","browser_name":"Chrome 130","approx_location":"Bengaluru, Karnataka, IN","signed_in_at":"2026-10-22T12:00:00Z"}`)})
 	if err != nil || !strings.Contains(alert.BodyText, "Device: Windows PC") || !strings.Contains(alert.BodyText, "Browser: Chrome 130") || !strings.Contains(alert.BodyText, "Near: Bengaluru, Karnataka, IN") || !strings.Contains(alert.BodyText, "approximate") {
@@ -418,4 +422,49 @@ func verifyConfirmationAttachments(t *testing.T) {
 	}
 	t.Setenv("TICKET_SIGNING_SEED", base64.StdEncoding.EncodeToString(key.Seed()))
 
+}
+
+func TestAccountMailPreviewConfiguration(t *testing.T) {
+	t.Setenv("ACS_ENDPOINT", "https://unit.communication.azure.com")
+	t.Setenv("ACS_ACCESS_KEY", "unit-only-not-a-live-key")
+	t.Setenv("ACS_SENDER_ADDRESS", "noreply@example.test")
+	t.Setenv("EMAIL_OUTBOX_TEMPLATE_FILTER", "admin_daily_otp,password_reset_requested")
+	if !EmailConfiguredFor("password_reset_requested") || EmailConfiguredFor("email_verification") {
+		t.Fatal("scoped availability must match the worker filter")
+	}
+	t.Setenv("EMAIL_OUTBOX_TEMPLATE_FILTER", "")
+	if !EmailConfiguredFor("email_verification") {
+		t.Fatal("unscoped worker should permit configured account email")
+	}
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("APP_PUBLIC_URL", "http://localhost:4001")
+	key := strings.Repeat("a", 64)
+	expected := "http://localhost:4001/auth/reset-password?key=" + key
+	if PasswordResetURL(key) != expected || safeResetURL("https://hackways.in/auth/reset-password?key="+key) != expected {
+		t.Fatal("local reset email must target its own preview")
+	}
+	if safeResetURL("http://localhost.evil.example:4001/auth/reset-password?key="+key) != "" || safeResetURL("http://localhost:4001/other") != "" {
+		t.Fatal("untrusted preview action accepted")
+	}
+	t.Setenv("APP_ENV", "production")
+	if PasswordResetURL(key) != "https://hackways.in/auth/reset-password?key="+key || safeResetURL(expected) != "" {
+		t.Fatal("production must not emit a loopback reset link")
+	}
+}
+
+func TestProgramApplicationMailPresentation(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	payload := []byte(`{"program_title":"Hackways Ambassadors","program_slug":"ambassadors"}`)
+	for _, template := range []string{"program_application_received", "program_results_released"} {
+		message, err := render(db.ClaimEmailOutboxRow{TemplateType: template, PayloadJson: payload})
+		if err != nil || !strings.Contains(message.BodyHTML, "https://hackways.in/programs/ambassadors/application") || !strings.Contains(message.BodyText, "Hackways Ambassadors") {
+			t.Fatal("program notification is missing its safe application link or program title")
+		}
+		if template == "program_application_received" && (!strings.Contains(message.BodyText, "Thanks for applying") || !strings.Contains(message.BodyText, "end of November")) {
+			t.Fatal("ambassador receipt must confirm application and the announced result window")
+		}
+		if strings.Contains(message.BodyText, "accepted") || strings.Contains(message.BodyText, "rejected") || strings.Contains(message.BodyText, "reviewer_notes") {
+			t.Fatal("program mail must send applicants to their authenticated result")
+		}
+	}
 }

@@ -103,6 +103,8 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
+	ProgramTitle     string             `json:"program_title"`
+	ProgramSlug      string             `json:"program_slug"`
 	PassQR           bool               `json:"-"`
 	CampaignDesign   *CampaignDesign    `json:"campaign_design,omitempty"`
 	PromotionSubject string             `json:"promotion_subject"`
@@ -205,6 +207,12 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		actionURL = strings.TrimSpace(payload.EventURL)
 	}
 	actionURL = safeHTTPSURL(actionURL)
+	if template.ID == "program_application_received" || template.ID == "program_results_released" {
+		actionURL = programApplicationURL(payload.ProgramSlug)
+	}
+	if template.ID == "password_reset_requested" {
+		actionURL = safeResetURL(payload.ActionURL)
+	}
 	action := ""
 	passQR := ""
 	if payload.PassQR {
@@ -222,6 +230,9 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 			label = "My pass"
 		}
 		action = `<p style="margin:26px 0 22px;"><a href="` + html.EscapeString(actionURL) + `" style="display:inline-block;padding:11px 18px;background:#201a2b;color:#ffffff;text-decoration:none;font-weight:600;">` + label + `</a></p>`
+		if template.ID == "password_reset_requested" {
+			action += `<p style="margin:0 0 10px;font-size:14px;line-height:1.65;color:#655d70;">Or copy and paste this link into your browser:</p><p style="margin:0 0 24px;font-size:13px;line-height:1.7;word-break:break-all;overflow-wrap:anywhere;"><a href="` + html.EscapeString(actionURL) + `" style="color:#49326b;text-decoration:underline;">` + html.EscapeString(actionURL) + `</a></p>`
+		}
 	}
 	if isOTPTemplate(template.ID) && payload.Code != "" {
 		action = `<div style="margin:30px 0;text-align:center;"><p style="margin:0 0 12px;font-size:14px;color:#655d70;">Verification code</p><p style="margin:0;padding:22px 12px;background:#f3eef8;border:1px solid #e8e1ed;font-size:38px;line-height:1.3;font-weight:700;letter-spacing:8px;color:#201a2b;">` + html.EscapeString(payload.Code) + `</p></div>`
@@ -283,6 +294,13 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	}
 	subject, body := template.Subject, template.Copy
 	switch e.TemplateType {
+	case "program_application_received":
+		body = "Thanks for applying to " + payload.ProgramTitle + ". We will review your profile and email you our decision."
+		if payload.ProgramSlug == "ambassadors" {
+			body += " Results will be shared at the end of November."
+		}
+	case "program_results_released":
+		body = "Your application update for " + payload.ProgramTitle + " is ready. Sign in to your Hackways account to view your result. Thank you for sharing your ideas with us."
 	case "admin_promotion", "admin_service_message":
 		subject = payload.PromotionSubject
 		body = payload.PromotionBody
@@ -357,7 +375,10 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 		body += "\n\nVerification code: " + payload.Code
 	}
 	if e.TemplateType == "password_reset_requested" {
-		body += "\n\nReset password: " + safeHTTPSURL(payload.ActionURL)
+		body += "\n\nReset password: " + safeResetURL(payload.ActionURL)
+	}
+	if e.TemplateType == "program_application_received" || e.TemplateType == "program_results_released" {
+		body += "\n\nYour application: " + programApplicationURL(payload.ProgramSlug)
 	}
 	senderClass := "event"
 	if template.Category == "account" || template.Category == "security" || template.ID == "organizer_welcome" {
@@ -445,6 +466,16 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 var errSuperseded = errors.New("notification superseded; no provider send was attempted")
 
 func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) error {
+	if e.TemplateType == "program_application_received" || e.TemplateType == "program_results_released" {
+		active, err := w.queries.ProgramNotificationActive(ctx, e.ID)
+		if err != nil {
+			return err
+		}
+		if !active {
+			return errSuperseded
+		}
+		return nil
+	}
 	if e.TemplateType == "admin_service_message" {
 		active, err := w.queries.AdminMessageRecipientActive(ctx, e.ID)
 		if err != nil {

@@ -1,6 +1,6 @@
 import type { ApiError } from '@/types/api';
 function apiBase(path: string): string {
-  const global = path.startsWith('/auth/') || path.startsWith('/storage/');
+  const global = path.startsWith('/auth/') || path.startsWith('/storage/') || path === '/programs' || path.startsWith('/programs/');
   const configured = global ? process.env.NEXT_PUBLIC_GLOBAL_API_URL : process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined') return configured || (process.env.NODE_ENV === 'production' ? '/api/v1' : `http://localhost:${global ? 8082 : 8081}/api/v1`);
   const internal = global ? process.env.GLOBAL_API_URL : process.env.CORE_API_URL;

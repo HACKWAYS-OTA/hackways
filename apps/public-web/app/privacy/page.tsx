@@ -1,8 +1,9 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
-export const metadata: Metadata = { title: 'Privacy', description: 'How Hackways uses account, event, registration, ticket and session information, who can access it, and how to raise a privacy request.', alternates: { canonical: '/privacy' } };
+export const metadata: Metadata = { ...pageSocialMetadata('privacy'), title: 'Privacy', description: 'How Hackways uses account, event, registration, ticket and session information, who can access it, and how to raise a privacy request.', alternates: { canonical: '/privacy' } };
 export default function PrivacyPage() {
   return <Article title="Privacy" intro="Understand what information is used when you browse, register, host an event or sign in to Hackways, and how to ask about your records." updated="23 October 2026">
     <Section id="scope" title="What this notice covers">

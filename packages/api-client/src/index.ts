@@ -1,6 +1,7 @@
 /**
  * Hackways Shared TypeScript API Contracts & Client
  */
+export type { ProgramQuestion, Program, ProgramProfile, ProgramDecision, ProgramApplication, ProgramMine, ProgramStats, AdminProgram, AdminProgramApplication, ProgramSummary, ProgramApplicationSummary } from './programs';
 
 export type EventFormat = "in_person" | "online" | "hybrid";
 export type EventStatus = "draft" | "published" | "unpublished" | "cancelled";

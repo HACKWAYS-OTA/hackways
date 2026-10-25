@@ -1,8 +1,9 @@
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { site, supportEmail } from '@/lib/site';
-export const metadata: Metadata = { title: 'Contact Hackways', description: 'Contact Hackways support for account, platform, privacy and safety concerns, or find the organizer for event-specific questions.', alternates: { canonical: '/contact' } };
+export const metadata: Metadata = { ...pageSocialMetadata('contact'), title: 'Contact Hackways', description: 'Contact Hackways support for account, platform, privacy and safety concerns, or find the organizer for event-specific questions.', alternates: { canonical: '/contact' } };
 export default function ContactPage() {
   return <Article variant="contact" title="Contact Hackways" intro="Get your question to the right place. Contact the organizer about their event, or contact Hackways for help with your account, the platform, privacy or misuse.">
     <Section id="support" title="Contact platform support">

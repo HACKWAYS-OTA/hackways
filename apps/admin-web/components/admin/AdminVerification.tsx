@@ -14,7 +14,7 @@ export function AdminVerification({ next }: { next: string }) {
       const body: unknown = await response.json().catch(() => null);
       const problem = body && typeof body === 'object' && 'error' in body ? body.error : null;
       if (!response.ok) { if (response.status === 429) setQueued(true); throw new Error(problem && typeof problem === 'object' && 'message' in problem && typeof problem.message === 'string' ? problem.message : 'Verification is unavailable. Try again.'); }
-      setQueued(true); setMessage('Verification email queued. Enter the six-digit code from your email.');
+      setQueued(true); setMessage('Check your inbox and enter the six-digit verification code.');
     } catch (failure) { setError(failure instanceof Error && failure.name !== 'AbortError' ? failure.message : 'The request timed out. Your sign-in has been preserved; try again.'); }
     finally { clearTimeout(timer); setPending(false); }
   }

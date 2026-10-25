@@ -225,7 +225,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	platform.RespondJSON(w, http.StatusCreated, map[string]interface{}{
 		"verification_required":    true,
-		"email_delivery_available": notifications.EmailConfigured(),
+		"email_delivery_available": notifications.EmailConfiguredFor("email_verification"),
 		"user": UserResponse{
 			ID:            userIDStr,
 			Email:         user.Email,

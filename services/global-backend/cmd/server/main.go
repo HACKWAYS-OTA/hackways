@@ -22,6 +22,7 @@ import (
 	"github.com/hackways/global-backend/internal/mcpbridge"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
+	"github.com/hackways/global-backend/internal/programs"
 	"github.com/hackways/global-backend/internal/rollouts"
 	"github.com/hackways/global-backend/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -166,6 +167,7 @@ func main() {
 	authHandler.SetLocationProxies(cfg.AuthLocationProxyCIDRs)
 	authHandler.SetRollouts(runtimeCache)
 	storageHandler := storage.NewHandler(sasSigner, pool)
+	programHandler := programs.New(pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -179,8 +181,10 @@ func main() {
 		} else {
 			v1.Mount("/auth", authHandler.Routes())
 			v1.Mount("/analytics", analytics.NewHandler(pool, cfg.SessionSecret, cfg.AppEnv == "development").Routes())
+			v1.Mount("/programs", programHandler.Routes())
 			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
 		}
+		v1.Mount("/admin/global/programs", programHandler.AdminRoutes())
 		v1.Mount("/admin/global", admin.NewHandler(pool, runtimeCache).Routes())
 
 	})

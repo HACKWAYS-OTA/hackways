@@ -7,7 +7,7 @@ import { EventCover } from '@/components/events/EventCover';
 import { currentUser } from '@/lib/account';
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const event = await readEvent(params.slug);
-  return { title: `Register for ${event.title}`, robots: { index: false, follow: true } };
+  return { title: event.visibility === 'public' && event.status === 'published' ? `Register for ${event.title}` : 'Event registration', robots: { index: false, follow: false } };
 }
 export default async function RegisterPage({ params,searchParams }: { params: { slug: string };searchParams:{invitation?:string} }) {
   const [event, user, form,invitation] = await Promise.all([readEvent(params.slug), currentUser(), readRegistrationForm(params.slug),readInvitationState(params.slug)]);

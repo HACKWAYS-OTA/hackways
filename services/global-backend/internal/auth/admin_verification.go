@@ -20,7 +20,7 @@ func adminVerificationOrigin(w http.ResponseWriter, r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	allowed := origin == "https://admin.hackways.in"
 	if os.Getenv("APP_ENV") == "development" {
-		allowed = allowed || origin == "http://localhost:3103" || origin == "http://127.0.0.1:3103" || origin == "http://localhost:3003" || origin == "http://127.0.0.1:3003"
+		allowed = allowed || origin == "http://localhost:4003" || origin == "http://127.0.0.1:4003" || origin == "http://localhost:3103" || origin == "http://127.0.0.1:3103" || origin == "http://localhost:3003" || origin == "http://127.0.0.1:3003"
 	}
 	if !allowed {
 		platform.RespondError(w, 403, "INVALID_ORIGIN", "Use the admin sign-in page", nil)
@@ -32,7 +32,7 @@ func (h *Handler) RequestAdminVerification(w http.ResponseWriter, r *http.Reques
 	if !adminVerificationOrigin(w, r) {
 		return
 	}
-	if !notifications.EmailConfigured() {
+	if !notifications.EmailConfiguredFor("admin_daily_otp") {
 		platform.RespondError(w, 503, "EMAIL_UNAVAILABLE", "Admin verification email is unavailable. Your sign-in is preserved; try again later.", nil)
 		return
 	}
@@ -101,7 +101,7 @@ func (h *Handler) RequestAdminVerification(w http.ResponseWriter, r *http.Reques
 	}
 	platform.RespondJSON(w, 202, struct {
 		Message string `json:"message"`
-	}{"Verification email queued. The code expires in 10 minutes."})
+	}{"Check your inbox for your verification code. It expires in 10 minutes."})
 }
 
 func (h *Handler) ConfirmAdminVerification(w http.ResponseWriter, r *http.Request) {
