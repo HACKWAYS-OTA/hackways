@@ -39,15 +39,15 @@ export async function renderSocialImage(content: SocialContent, id: string) {
   if (hit && hit.expires > Date.now()) return imageResponse(hit.bytes, key);
   if (hit) { cachedBytes -= hit.bytes.byteLength; cache.delete(key); }
   if (active) {
-    if (active.key === key) { try { return imageResponse(await active.promise, key); } catch { return unavailable(); } }
     if (waiting >= 2) return unavailable();
+    const pending = active;
     waiting++;
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    try { await Promise.race([active.promise.catch(() => undefined), new Promise(resolve => { timeout = setTimeout(resolve, 3000); })]); }
+    try { await Promise.race([pending.promise.catch(() => undefined), new Promise(resolve => { timeout = setTimeout(resolve, 3000); })]); }
     finally { waiting--; if (timeout) clearTimeout(timeout); }
-    if (active) return unavailable();
     const saved = cache.get(key);
     if (saved && saved.expires > Date.now()) return imageResponse(saved.bytes, key);
+    if (active || pending.key === key) return unavailable();
   }
   const promise = (async () => {
     const response = new ImageResponse(<SocialImage content={content} format={format} />, { ...socialSizes[format], fonts: await imageFonts() });
