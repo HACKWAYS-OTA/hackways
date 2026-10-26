@@ -1370,3 +1370,22 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   Hosted race checks, image publication and activation follow this entry.
 - Corrected an accidental documentation overwrite from the source commit; all prior
   worklog entries are preserved here. No production data or runtime was involved.
+
+
+### 2026-10-26 ? Phone / result-correction rollout verified live
+
+- Full hosted Linux workflow and three image builds passed for ed51bfa (run
+  40342353023). Activated global-backend, core-web and admin-web without a migration;
+  all six runtime identities/readiness passed, environment SHA unchanged.
+- Live compiled core bundle contains the new optional-country-code help and omits
+  the old plus/country requirement. Admin bundle contains Edit released result,
+  Send communication and explicit publication confirmation. Global database health
+  is healthy. No production applicant decision or communication was changed by us.
+- Follow-up admin-only candidate 9f684d6 (run 40346106199) passed checks and publication
+  to remove an older contradictory locked-result helper and tidy text punctuation.
+  Final activation evidence follows the VM command result; browser interaction and
+  inbox arrival are not claimed from source/bundle/HTTP checks.
+
+- Final admin activation completed: 9f684d6 image provenance verified, all four web
+  readiness checks passed, other five images and runtime environment retained.
+  Temporary publication scope/cache settings were removed after both successful runs.
