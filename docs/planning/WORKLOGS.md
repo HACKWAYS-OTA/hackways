@@ -1329,3 +1329,26 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   actual backend eligibility. Directory thumbnail increases from 144 to 192px desktop
   (88 to 104px mobile), with a subtle border and 10px corners.
 - Public type/lint passed before the final spacing adjustment; full CI/build follows.
+
+- Final local public/core type and lint checks pass; shared UI type check passes.
+  Both local pages emit the new PNG URL with width1200/height630, and static/file-based
+  image endpoints both return PNG1200x630. The source detector reports only the
+  explicitly requested gradient lettering. Browser rendering remains unverified.
+
+
+### 2026-10-26 ? Final mobile / WhatsApp refinements activated
+
+- Candidate b492f919968bd9220cebe6d82ade98c75dc43b7b: complete hosted Linux checks
+  and both frontend images passed (run 40332501281). Public/core now use those
+  immutable images; global/admin/organizer retain 94b2eb2 and core engine 3ac0bfc.
+- Linux core canary returned the exact 1200x630 PNG and remained healthy under its
+  production memory cap. All six service identities/readiness and Nginx passed;
+  `.env` unchanged, no database migration, no communication send action performed.
+- Public HTTPS returns200 for campaign/directory/program and both OG image paths.
+  Both pages emit the new image URL; image bytes match the checked artifact and
+  decode as PNG1200x630. A transient stylesheet download timeout recovered on retry;
+  all four linked stylesheets were checked (166,808 bytes): 164px mobile spacing,
+  192px desktop thumbnail and 10px corners are present, as is the shorter hero copy.
+- Cleared temporary personal publication matrix/cache variables, restoring normal
+  full-image defaults. Source review and live HTTP are verified; browser keyboard,
+  pixel-layout and inbox-delivery claims remain outside this verification.

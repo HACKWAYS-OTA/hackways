@@ -105,9 +105,17 @@ keyboard or WebGL visual approval. See WORKLOGS.md for executed results.
 ## Directory and overview refinement
 
 The Programs directory is a compact browse view: 32px heading, 16px intro, left-aligned
-program text and a 144px right thumbnail (88px on narrow screens). The user-supplied
+program text and a 192px right thumbnail (104px on narrow screens). The user-supplied
 `AMBASSADORS-HW-M.jpg` is preserved as its program image. It is not repeated at large
 size on the overview. The overview describes the open role, community contribution
 and recognition in short prose. Eligibility is not promoted, internal review steps
 are omitted, and confirmed email updates replace the earlier no-email policy.
 Application controls retain full touch targets and required LinkedIn/WhatsApp fields.
+
+
+Mobile refinement keeps the existing type and ASCII palette but uses content height
+instead of a viewport-height minimum. The headline begins after 164px of top space;
+body copy is left aligned at 16px/1.65. The compact 44px pause toggle sits separately
+at the upper-right, with a stable accessible toggle label. Mobile navigation adds a
+contrasting translucent background. High-contrast mode preserves system colors.
+The requested gradient headline remains the one intentional detector exception.
