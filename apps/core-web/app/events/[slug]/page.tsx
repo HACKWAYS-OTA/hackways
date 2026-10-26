@@ -21,7 +21,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
   return <EventScrollLayout>
       <header className="event-title-block"><div className="event-title-anchor"><h1 className={event.title.length > 85 ? 'event-title-long' : undefined}>{event.title}</h1></div>
         {event.short_description && <p className="event-intro-copy">{event.short_description}</p>}
-        <div className="event-presented-by"><span className="event-host-initial" aria-hidden="true">{(event.space_name || event.organizer_name).slice(0, 1).toUpperCase()}</span><div><span>{event.space_slug ? 'A gathering by' : 'Hosted by'}</span>{event.space_slug ? <Link href={`/spaces/${event.space_slug}`}>{event.space_name}</Link> : <strong>{event.organizer_name}</strong>}{event.space_slug && <small>Hosted by {event.organizer_name}</small>}</div></div>
+        <div className="event-presented-by"><span className="event-host-initial" aria-hidden="true">{(event.space_name || event.organizer_name).slice(0, 1).toUpperCase()}</span><div>{!event.space_slug && <span>Hosted by</span>}{event.space_slug ? <Link href={`/spaces/${event.space_slug}`}>{event.space_name}</Link> : <strong>{event.organizer_name}</strong>}</div></div>
         <EventInvitation event={event} managementAccess={managementAccess} invited={invitation.invited} registrationCode={invitation.registration_code} />
       </header>
     <aside className="event-plan" aria-label="Event banner and visit details"><div className="event-plan-anchor"><EventCover event={event} priority className="event-hero-image" sizes="(max-width: 640px) calc(100vw - 40px), (max-width: 860px) calc(100vw - 48px), 43vw" /><EventSidebar event={event} /></div></aside>

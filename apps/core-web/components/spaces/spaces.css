@@ -16,10 +16,10 @@
 .space-brand-fields { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 20px; align-items: start; }
 .space-mark { display: inline-grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border-radius: 16px; background: #f0eaf6; color: #76568d; font-family: "FG Futurist"; font-size: 28px; }
 .space-directory-row h2 { font-size: 23px; line-height: 1.4; margin: 5px 0 8px; overflow-wrap: anywhere; }
-.space-directory-row h2 a:hover { text-decoration: underline; }
+.space-directory-row:hover h2 { text-decoration: underline; }
 .space-directory-row p { color: var(--muted); font-size: 14px; max-width: 70ch; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.space-member-count, .space-owner-name { color: var(--muted); font-size: 12px; }
-.space-owner-name { display: inline-block; margin-top: 12px; }
+.space-member-count { color: var(--muted); font-size: 12px; }
+
 .space-open { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 21px; font-size: 13px; }
 .space-open:hover { color: var(--violet); }
 .space-profile { display: flex; align-items: flex-start; justify-content: space-between; gap: 48px; padding-block: 36px; }
@@ -112,3 +112,5 @@
 
 
 @media (max-width: 640px) { .space-creation-toolbar { align-items: flex-start; gap: 16px; } .space-creation-toolbar h1 { font-size: 25px; } .space-step-actions { gap: 12px; } .space-step-actions > button.app-button { padding-inline: 16px; font-size: 12px; } .space-creation-steps { flex-wrap: wrap; gap: 10px; } .space-appearance-step .space-brand-fields { grid-template-columns: minmax(0, 1fr); } .space-appearance-step .media-field-banner .media-field-preview { aspect-ratio: 2.5; } }
+
+.space-body-full { grid-template-columns: minmax(0, 1fr); }
