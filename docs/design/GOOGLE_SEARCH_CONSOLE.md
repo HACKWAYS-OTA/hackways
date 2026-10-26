@@ -83,8 +83,9 @@ Analytics or Tag Manager installation is required to verify the Domain property.
 
 A successful fetch and allowed indexing do not guarantee Google considers the page
 useful. The live event API returned zero upcoming public events when this was
-reported. Discover now has substantive server-rendered context and useful links
-in addition to its honest live catalog. After the release, inspect
+reported. Discover intentionally keeps a minimal search/catalog layout, without
+promotional guidance paragraphs. An empty catalog may still be classified as soft
+404 by Google; metadata and sitemaps do not guarantee indexing. Inspect
 `https://hackways.in/discover`, run Test live URL and request indexing where
 offered. Monitor the indexed report after Google recrawls; a local content change
 cannot confirm that Google has cleared its classification.

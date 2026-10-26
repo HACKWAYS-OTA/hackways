@@ -1510,3 +1510,20 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   corners and16/32/48/64/128/256 ICO frames verified.
 - This joins the65d2454 follow-up for discovery soft404 guidance, automatic public
   catalog sitemap and em-dash removal. Production activation pending hosted CI.
+
+## 2026-10-27 - Original favicon release verified; Discover cleanup requested
+
+- Source66d02c2 passed complete hosted checks and four web image builds, run
+  40380485751. Sequential web rollout and catalog readiness passed. Both Go
+  container identities/start times and environment remained unchanged.
+- Live HTTP verified general blue and green auth metadata on public/organizer/admin
+  pages, root title without em dash, exact original native PNG and SVG-embedded
+  bytes for all three variants, 21 static sitemap URLs, two actual catalog URLs
+  and both sitemap declarations in production robots. No fake records or mutations.
+- User rejected visible discovery guidance. Removed the entire DiscoverGuide
+  component/styles and introductory paragraph beneath Discover events. No hidden
+  replacement copy. Genuine catalog, search, loading/errors, metadata/canonical
+  and automatic/public static sitemaps retained.
+- Search Console guide now states the intentionally minimal empty catalog may
+  still receive Google's soft404 classification; Google index inclusion is not
+  claimed. User's clean-interface direction takes precedence over added prose.
