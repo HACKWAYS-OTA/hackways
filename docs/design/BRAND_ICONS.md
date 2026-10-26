@@ -1,34 +1,46 @@
-# Circular Hackways favicon
+# Original Hackways favicons
 
-The favicon uses the existing FG Futurist lowercase `h`, outlined to SVG paths,
-with the wordmark's terminal dot. A solid navy circle (`#173b7a`) carries white
-lettering and a pale blue dot (`#a5d8ff`). The square asset has transparent corners;
-the visible mark is circular. No font request, external image, animation or runtime
-icon renderer is needed.
+The user's three PNG originals in `C:\Users\ADMIN\Downloads\HACKWAYS-FAVICONS`
+are the visual authority. They supersede the generated monogram. Their shape,
+gradients, colors, white center and transparency are unchanged.
 
-The canonical source is `apps/public-web/public/brand/hackways-icon.svg`.
-The same checked assets are copied into each of the four independent apps:
+| Variant | Original | Use |
+| --- | --- | --- |
+| general | GENERAL-FAVICON.png | Public marketing, discovery, Spaces and programs |
+| event | EVENT PAGE FAVICON.png | Event details, registration and event management |
+| admin-auth | ADMIN FAVICON  ALSO FOR AUTHINTICATION.png | All public auth pages, sign-in, connections and the entire admin console |
 
-- `favicon.ico`: transparent 16, 32 and 48 pixel frames.
-- `brand/hackways-icon.svg`: scalable source with outlined lettering.
-- `brand/hackways-icon-{48,96,180,192,512}.png`: transparent raster exports.
+All sources are 400x400 RGBA. Native 400px platform PNGs are byte-for-byte copies.
+Source SHA256 values are recorded in the user's export manifest. No recoloring,
+sharpening, tracing, AI enhancement or redrawing is used. PNG exports above 400px
+are Lanczos resamples, not newly recovered source detail.
 
-All roots use `brandIcons()` from `@hackways/ui/brand-metadata` for browser,
-shortcut and Apple touch links. Organizer-web passes `/manage` because of its
-existing Next.js base path. Admin links to the public brand origin so its login
-page does not fetch protected static paths or require an authentication exception.
-Public/core use root paths. Existing
-private-page noindex policy and social preview artwork remain unchanged.
+Each app has `public/brand/{general,event,admin-auth}/` with:
 
-The public homepage advertises a crawlable 96px PNG and SVG plus the ICO fallback.
-See [Google's favicon guidance](https://developers.google.com/search/docs/appearance/favicon-in-search).
-This supports favicon eligibility; Google controls whether and when it appears.
-Browser/search caches may continue showing older icons until refreshed.
+- `favicon.svg`: a self-contained SVG embedding the exact original PNG. This
+  preserves the source pixels and is not described as traced vector artwork.
+- `favicon.ico`: transparent 16/32/48/64/128/256px frames.
+- `icon-{48,96,180,192,400,512}.png`: transparent derived/native sizes.
 
-Export tooling used the already available FG Futurist font, fontTools, Sharp and
-Pillow as local asset utilities. No app dependency or build-time rendering step
-was added. Future edits should change the canonical SVG, regenerate the raster
-sizes/ICO, copy the exact results to all apps and verify matching hashes.
+Legacy `brand/hackways-icon*` paths now contain the supplied general artwork.
+Root favicon.ico uses each app's default variant. The shared
+`brandIcons(basePath, variant)` helper supplies browser, shortcut and Apple links.
+Organizer assets use `/manage`; admin links use the public origin so login needs
+no authentication exception for assets. Metadata-only public auth/connection
+layouts and sign-in metadata select green. The event layout selects purple.
+Existing form, session and application logic is unchanged.
 
-The user also has copies and a scale preview under
-`C:\Users\ADMIN\Downloads\HACKWAYS LOGOS\Favicon`.
+Google supports one search favicon per hostname; page tab variants do not promise
+different search-result icons on the same hostname. The homepage exposes a 96px
+square PNG plus SVG/ICO. Google controls recrawling and search display. See
+[Google's favicon guidance](https://developers.google.com/search/docs/appearance/favicon-in-search).
+
+The original Downloads files remain unchanged. General, Events and
+Admin-Authentication subfolders contain original copies, transparent PNGs from
+16px to 1024px, embedded-image SVGs, ICO, lossless transparent WebP and quality98
+white-background JPGs. A manifest, README, preview and ZIP are alongside them.
+JPEG has a white background because it cannot store transparency.
+
+Exports use the already available Pillow utility. No app dependency or production
+build-time image renderer was added. Future artwork changes must start from
+approved originals, then regenerate/check identical asset hashes in all four apps.

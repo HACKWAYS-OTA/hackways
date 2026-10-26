@@ -1491,3 +1491,22 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Search Console guide now includes both sitemap submissions and soft404 retest
   instructions. Google's Indexing API is restricted to eligible job/livestream
   pages; automatic discovery does not guarantee Google index inclusion.
+
+## 2026-10-27 - Supplied original favicon variants
+
+- User superseded the generated monogram with three native400px RGBA PNGs in
+  Downloads/HACKWAYS-FAVICONS. Original source hashes unchanged. Created General,
+  Events and Admin-Authentication format folders, preserving exact artwork/colors.
+- PNG16..1024, multi-frameICO, losslessWebP, white quality98JPG, and self-contained
+  SVG embedding exact source PNG. Larger exports are resamples; no fabricated
+  vector trace, new details, recoloring or AI editing. README/manifest/ZIP included.
+- Platform metadata maps blue to general pages, purple to events/management, green
+  to ALL public sign-in/authentication/connection pages and the entire admin console.
+  Added metadata-only auth layouts; original authentication/forms/permissions remain.
+- Admin icon links use public asset origin, preserving its existing middleware
+  protection. Legacy monogram paths replaced with the supplied general artwork.
+- All app/shared-package type-check and lint commands passed. Native PNG and SVG
+  embedded bytes match each original in all four apps; dimensions, transparent
+  corners and16/32/48/64/128/256 ICO frames verified.
+- This joins the65d2454 follow-up for discovery soft404 guidance, automatic public
+  catalog sitemap and em-dash removal. Production activation pending hosted CI.

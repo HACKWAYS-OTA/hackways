@@ -1,8 +1,9 @@
 import { AuthForm } from '@/components/account/AuthForm';
+import { brandIcons } from '@hackways/ui/brand-metadata';
 import { safeNext } from '@/lib/journeys';
 import { currentUser } from '@/lib/account';
 import { redirect } from 'next/navigation';
-export const metadata = { title: 'Sign in', robots: { index: false, follow: false } };
+export const metadata = { title: 'Sign in', icons: brandIcons('', 'admin-auth'), robots: { index: false, follow: false } };
 export default async function Login({ searchParams }: { searchParams: { next?: string } }) {
   const next = safeNext(searchParams.next);
   if (await currentUser()) redirect(next);

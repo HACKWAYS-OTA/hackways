@@ -9,7 +9,7 @@ import './globals.css';
 import '@hackways/ui/auth.css';
 
 const publicOrigin = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://hackways.in';
-export const metadata: Metadata = { ...staticSocialMetadata(publicOrigin, 'admin', 'Hackways Admin', 'Hackways administration.'), icons: brandIcons(publicOrigin), title: 'Hackways Admin', description: 'Hackways administration.', robots: { index: false, follow: false } };
+export const metadata: Metadata = { ...staticSocialMetadata(publicOrigin, 'admin', 'Hackways Admin', 'Hackways administration.'), icons: brandIcons(publicOrigin, 'admin-auth'), title: 'Hackways Admin', description: 'Hackways administration.', robots: { index: false, follow: false } };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <html lang="en"><body><UIProvider>{children}</UIProvider></body></html>;

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { brandIcons } from '@hackways/ui/brand-metadata';
 import Link from 'next/link';
 import { readEvent } from '@/lib/event-details';
 
@@ -8,6 +9,8 @@ import { AppNavigation } from '@/components/ui/AppNavigation';
 import { appearanceOf, appearanceStyle } from '@/lib/appearance';
 import '@/components/hosting/appearance.css';
 import './event-details.css';
+
+export const metadata = { icons: brandIcons('', 'event') };
 
 export default async function EventLayout({ children, params }: { children: ReactNode; params: { slug: string } }) {
   const event = await readEvent(params.slug);
