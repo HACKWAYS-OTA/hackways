@@ -488,6 +488,13 @@ func TestProgramApplicationMailPresentation(t *testing.T) {
 	if err != nil || !strings.Contains(message.Subject, "Ada <Builder>") || !strings.Contains(message.BodyText, "waitlisted") {
 		t.Fatal("communication personalization failed", err)
 	}
+	payload := templatePayload{ProgramResultUpdated: true}
+	applyProgramDetails(&payload, details)
+	correctedRaw, _ := json.Marshal(payload)
+	corrected, correctedErr := render(db.ClaimEmailOutboxRow{TemplateType: "program_results_released", PayloadJson: correctedRaw})
+	if correctedErr != nil || !strings.Contains(corrected.Subject, "Updated result") || !strings.Contains(corrected.BodyText, "result has been updated") {
+		t.Fatal("corrected result notice missing", correctedErr)
+	}
 	details.Decision = ""
 	message, err = RenderProgramCommunicationPreview(details, "Application update", "Your result: {{decision}}")
 	if err != nil || !strings.Contains(message.BodyText, "under review") {

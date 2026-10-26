@@ -63,10 +63,10 @@ VALUES(@program_id,@request_key,@payload_hash,@application_count,@released_by) R
 WITH published AS (
  UPDATE program_applications SET published_decision=decision,published_at=clock_timestamp(),revision=revision+1,updated_at=clock_timestamp()
  WHERE program_id= @program_id AND status='submitted' AND decision<>'pending' AND published_at IS NULL
- RETURNING id,program_id,user_id,full_name
+ RETURNING id,program_id,user_id,full_name,published_at
 ), messages AS (
  INSERT INTO email_outbox(recipient_email,recipient_name,template_type,payload_json)
- SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug)
+ SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug,'program_published_at',a.published_at)
  FROM published a JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
  WHERE u.deleted_at IS NULL AND u.email_verified
  RETURNING id
@@ -84,7 +84,7 @@ SELECT EXISTS(SELECT 1 FROM email_outbox o
  JOIN users u ON u.id=a.user_id
  WHERE o.id= @id AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
  AND lower(u.email)=lower(o.recipient_email)
- AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)));
+ AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL AND (NOT (o.payload_json ? 'program_published_at') OR (o.payload_json->>'program_published_at')::timestamptz=a.published_at))));
 -- name: ProgramReleaseList :many
 SELECT id,application_count,created_at FROM program_releases WHERE program_id= @program_id ORDER BY created_at DESC,id LIMIT 20;
 -- name: ProgramActivityAppend :exec
@@ -96,7 +96,7 @@ FROM email_outbox o JOIN program_applications a ON a.id=(o.payload_json->>'appli
 JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
 WHERE o.id= @id AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
 AND lower(u.email)=lower(o.recipient_email)
-AND (o.template_type<>'program_results_released' OR a.published_at IS NOT NULL);
+AND (o.template_type<>'program_results_released' OR (a.published_at IS NOT NULL AND (NOT (o.payload_json ? 'program_published_at') OR (o.payload_json->>'program_published_at')::timestamptz=a.published_at)));
 
 -- name: ProgramCommunicationAudience :many
 SELECT a.id,a.user_id,a.full_name,u.email,a.published_decision,a.revision,a.city,a.proposal,a.profile_url,a.submitted_at
@@ -136,3 +136,20 @@ WHERE a.program_id= @program_id AND a.status='submitted'
 AND (@decision_filter::text='' OR a.decision= @decision_filter)
 AND (@search::text='' OR a.full_name ILIKE '%'|| @search||'%' OR u.email ILIKE '%'|| @search||'%' OR a.city ILIKE '%'|| @search||'%')
 ORDER BY a.submitted_at,a.id LIMIT 100 OFFSET @page_offset;
+
+
+-- name: ProgramCorrectPublishedDecision :one
+UPDATE program_applications SET decision= @decision,published_decision= @decision,published_at=clock_timestamp(),
+reviewer_notes= @reviewer_notes,reviewed_by= @reviewed_by,reviewed_at=clock_timestamp(),revision=revision+1,updated_at=clock_timestamp()
+WHERE id= @id AND revision= @revision AND status='submitted' AND published_at IS NOT NULL RETURNING *;
+
+-- name: ProgramSupersedeUnsentResults :exec
+UPDATE email_outbox SET status='failed',updated_at=clock_timestamp(),error_message='Superseded by an updated program result'
+WHERE template_type='program_results_released' AND payload_json->>'application_id'= @application_id::text
+AND status='pending' AND first_sent_at IS NULL;
+
+-- name: ProgramEnqueueCorrectedResult :execrows
+INSERT INTO email_outbox(recipient_email,recipient_name,template_type,payload_json)
+SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug,'program_published_at',a.published_at,'program_result_updated',true)
+FROM program_applications a JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
+WHERE a.id= @id AND a.status='submitted' AND a.published_at IS NOT NULL AND u.deleted_at IS NULL AND u.email_verified;

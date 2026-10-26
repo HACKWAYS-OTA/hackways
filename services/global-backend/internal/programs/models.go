@@ -73,6 +73,8 @@ type profileBody struct {
 
 var slugPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}[a-z0-9]$`)
 var questionPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,63}$`)
+var indianPhonePattern = regexp.MustCompile(`^[6-9][0-9]{9}$`)
+var indianPrefixedPhonePattern = regexp.MustCompile(`^91[6-9][0-9]{9}$`)
 var phonePattern = regexp.MustCompile(`^\+[1-9][0-9]{7,14}$`)
 
 func length(s string, min, max int) bool {
@@ -163,6 +165,11 @@ func (b *profileBody) validate(p db.Programs, submit bool) error {
 	b.City = strings.TrimSpace(b.City)
 	b.Phone = strings.TrimSpace(b.Phone)
 	b.Phone = strings.NewReplacer(" ", "", "-", "", "(", "", ")", "", ".", "").Replace(b.Phone)
+	if indianPhonePattern.MatchString(b.Phone) {
+		b.Phone = "+91" + b.Phone
+	} else if indianPrefixedPhonePattern.MatchString(b.Phone) {
+		b.Phone = "+" + b.Phone
+	}
 	b.ProfileURL = strings.TrimSpace(b.ProfileURL)
 	if !length(b.FullName, 0, 120) || !length(b.City, 0, 150) || !length(b.Phone, 0, 32) || !length(b.Biography, 0, 2000) || !length(b.ProfileURL, 0, 2048) || !length(b.Proposal, 0, 5000) || b.Age < 0 || b.Age > 120 {
 		return errors.New("Some profile answers exceed their character limits")
@@ -178,7 +185,7 @@ func (b *profileBody) validate(p db.Programs, submit bool) error {
 			return errors.New("Add your LinkedIn profile using linkedin.com or one of its subdomains")
 		}
 		if !phonePattern.MatchString(b.Phone) {
-			return errors.New("Add your WhatsApp number with country code, for example +91 followed by your number")
+			return errors.New("Enter a valid 10-digit Indian WhatsApp number, or include the country code for an international number")
 		}
 		if !length(strings.TrimSpace(b.Biography), 10, 2000) {
 			return errors.New("Add a short introduction of at least 10 characters")

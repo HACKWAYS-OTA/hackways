@@ -58,6 +58,7 @@ func (h *Handler) AdminRoutes() chi.Router {
 	r.Post("/{slug}/communications/send", h.communicationSend)
 	r.Get("/{slug}/applications/{id}", h.adminApplication)
 	r.Post("/{slug}/applications/{id}/decision", h.decision)
+	r.Post("/{slug}/applications/{id}/published-decision", h.correctPublishedDecision)
 	r.Post("/{slug}/release", h.release)
 	return r
 }

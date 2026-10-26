@@ -186,8 +186,10 @@ type Querier interface {
 	ProgramApplicationWithdraw(ctx context.Context, id pgtype.UUID) (ProgramApplications, error)
 	ProgramApplicationsAdmin(ctx context.Context, arg ProgramApplicationsAdminParams) ([]ProgramApplicationsAdminRow, error)
 	ProgramCommunicationAudience(ctx context.Context, arg ProgramCommunicationAudienceParams) ([]ProgramCommunicationAudienceRow, error)
+	ProgramCorrectPublishedDecision(ctx context.Context, arg ProgramCorrectPublishedDecisionParams) (ProgramApplications, error)
 	ProgramCreate(ctx context.Context, arg ProgramCreateParams) (Programs, error)
 	ProgramDecisionSave(ctx context.Context, arg ProgramDecisionSaveParams) (ProgramApplications, error)
+	ProgramEnqueueCorrectedResult(ctx context.Context, id pgtype.UUID) (int64, error)
 	ProgramEnqueueReceipt(ctx context.Context, id pgtype.UUID) (int64, error)
 	ProgramExportCount(ctx context.Context, arg ProgramExportCountParams) (int64, error)
 	ProgramExportPage(ctx context.Context, arg ProgramExportPageParams) ([]ProgramExportPageRow, error)
@@ -202,6 +204,7 @@ type Querier interface {
 	ProgramReleaseList(ctx context.Context, programID pgtype.UUID) ([]ProgramReleaseListRow, error)
 	ProgramReleaseLookup(ctx context.Context, arg ProgramReleaseLookupParams) (ProgramReleases, error)
 	ProgramReviewStats(ctx context.Context, programID pgtype.UUID) (ProgramReviewStatsRow, error)
+	ProgramSupersedeUnsentResults(ctx context.Context, applicationID string) error
 	ProgramTouchReview(ctx context.Context, id pgtype.UUID) error
 	ProgramUpdate(ctx context.Context, arg ProgramUpdateParams) (Programs, error)
 	PromotionContactsList(ctx context.Context, pageOffset int32) ([]PromotionContactsListRow, error)

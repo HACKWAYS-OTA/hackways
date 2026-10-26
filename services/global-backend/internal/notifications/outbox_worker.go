@@ -103,41 +103,42 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
-	ProgramDecision    string             `json:"program_decision,omitempty"`
-	ProgramCity        string             `json:"program_city,omitempty"`
-	ProgramProposal    string             `json:"program_proposal,omitempty"`
-	ProgramProfileURL  string             `json:"program_profile_url,omitempty"`
-	ProgramSubmittedAt time.Time          `json:"program_submitted_at,omitempty"`
-	ProgramTitle       string             `json:"program_title"`
-	ProgramSlug        string             `json:"program_slug"`
-	PassQR             bool               `json:"-"`
-	CampaignDesign     *CampaignDesign    `json:"campaign_design,omitempty"`
-	PromotionSubject   string             `json:"promotion_subject"`
-	PromotionBody      string             `json:"promotion_body"`
-	ActionLabel        string             `json:"action_label"`
-	UnsubscribeURL     string             `json:"unsubscribe_url"`
-	IsTest             bool               `json:"is_test"`
-	VerificationHash   string             `json:"verification_hash"`
-	DeviceName         string             `json:"device_name"`
-	BrowserName        string             `json:"browser_name"`
-	ApproxLocation     string             `json:"approx_location"`
-	DeviceLabel        string             `json:"device_label"`
-	SignedInAt         time.Time          `json:"signed_in_at"`
-	Code               string             `json:"verification_code"`
-	Title              string             `json:"event_title"`
-	StartsAt           time.Time          `json:"starts_at"`
-	EndsAt             time.Time          `json:"ends_at"`
-	OfferExpiresAt     pgtype.Timestamptz `json:"offer_expires_at"`
-	CustomMessage      string             `json:"custom_message"`
-	RecipientName      string             `json:"recipient_name"`
-	OrganizerName      string             `json:"organizer_name"`
-	SpaceName          string             `json:"space_name"`
-	Location           string             `json:"location"`
-	EventURL           string             `json:"event_url"`
-	ActionURL          string             `json:"action_url"`
-	EventBannerURL     string             `json:"event_banner_url"`
-	Reason             string             `json:"reason"`
-	TicketCode         string             `json:"ticket_code"`
+	ProgramResultUpdated bool               `json:"program_result_updated"`
+	ProgramDecision      string             `json:"program_decision,omitempty"`
+	ProgramCity          string             `json:"program_city,omitempty"`
+	ProgramProposal      string             `json:"program_proposal,omitempty"`
+	ProgramProfileURL    string             `json:"program_profile_url,omitempty"`
+	ProgramSubmittedAt   time.Time          `json:"program_submitted_at,omitempty"`
+	ProgramTitle         string             `json:"program_title"`
+	ProgramSlug          string             `json:"program_slug"`
+	PassQR               bool               `json:"-"`
+	CampaignDesign       *CampaignDesign    `json:"campaign_design,omitempty"`
+	PromotionSubject     string             `json:"promotion_subject"`
+	PromotionBody        string             `json:"promotion_body"`
+	ActionLabel          string             `json:"action_label"`
+	UnsubscribeURL       string             `json:"unsubscribe_url"`
+	IsTest               bool               `json:"is_test"`
+	VerificationHash     string             `json:"verification_hash"`
+	DeviceName           string             `json:"device_name"`
+	BrowserName          string             `json:"browser_name"`
+	ApproxLocation       string             `json:"approx_location"`
+	DeviceLabel          string             `json:"device_label"`
+	SignedInAt           time.Time          `json:"signed_in_at"`
+	Code                 string             `json:"verification_code"`
+	Title                string             `json:"event_title"`
+	StartsAt             time.Time          `json:"starts_at"`
+	EndsAt               time.Time          `json:"ends_at"`
+	OfferExpiresAt       pgtype.Timestamptz `json:"offer_expires_at"`
+	CustomMessage        string             `json:"custom_message"`
+	RecipientName        string             `json:"recipient_name"`
+	OrganizerName        string             `json:"organizer_name"`
+	SpaceName            string             `json:"space_name"`
+	Location             string             `json:"location"`
+	EventURL             string             `json:"event_url"`
+	ActionURL            string             `json:"action_url"`
+	EventBannerURL       string             `json:"event_banner_url"`
+	Reason               string             `json:"reason"`
+	TicketCode           string             `json:"ticket_code"`
 }
 
 var registrationStateTemplates = map[string]struct{}{
@@ -322,6 +323,10 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 			body = "Thank you for applying to " + payload.ProgramTitle + ". Your application has been placed on the waiting list."
 		default:
 			return EmailMessage{}, errors.New("a published program decision is required")
+		}
+		if payload.ProgramResultUpdated {
+			subject = "Updated result: " + payload.ProgramTitle
+			body = "Your application result has been updated.\n\n" + body
 		}
 	case "program_communication":
 		subject, body = strings.Join(strings.Fields(programMerge(payload.PromotionSubject, payload)), " "), programMerge(payload.PromotionBody, payload)

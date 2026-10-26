@@ -664,6 +664,58 @@ func (q *Queries) ProgramCommunicationAudience(ctx context.Context, arg ProgramC
 	return items, nil
 }
 
+const programCorrectPublishedDecision = `-- name: ProgramCorrectPublishedDecision :one
+UPDATE program_applications SET decision= $1,published_decision= $1,published_at=clock_timestamp(),
+reviewer_notes= $2,reviewed_by= $3,reviewed_at=clock_timestamp(),revision=revision+1,updated_at=clock_timestamp()
+WHERE id= $4 AND revision= $5 AND status='submitted' AND published_at IS NOT NULL RETURNING id, program_id, user_id, full_name, city, phone, biography, profile_url, proposal, age_confirmed, age, answers, question_snapshot, status, decision, reviewer_notes, reviewed_by, reviewed_at, published_decision, published_at, revision, submitted_at, created_at, updated_at
+`
+
+type ProgramCorrectPublishedDecisionParams struct {
+	Decision      string      `json:"decision"`
+	ReviewerNotes string      `json:"reviewer_notes"`
+	ReviewedBy    pgtype.UUID `json:"reviewed_by"`
+	ID            pgtype.UUID `json:"id"`
+	Revision      int64       `json:"revision"`
+}
+
+func (q *Queries) ProgramCorrectPublishedDecision(ctx context.Context, arg ProgramCorrectPublishedDecisionParams) (ProgramApplications, error) {
+	row := q.db.QueryRow(ctx, programCorrectPublishedDecision,
+		arg.Decision,
+		arg.ReviewerNotes,
+		arg.ReviewedBy,
+		arg.ID,
+		arg.Revision,
+	)
+	var i ProgramApplications
+	err := row.Scan(
+		&i.ID,
+		&i.ProgramID,
+		&i.UserID,
+		&i.FullName,
+		&i.City,
+		&i.Phone,
+		&i.Biography,
+		&i.ProfileUrl,
+		&i.Proposal,
+		&i.AgeConfirmed,
+		&i.Age,
+		&i.Answers,
+		&i.QuestionSnapshot,
+		&i.Status,
+		&i.Decision,
+		&i.ReviewerNotes,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.PublishedDecision,
+		&i.PublishedAt,
+		&i.Revision,
+		&i.SubmittedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const programCreate = `-- name: ProgramCreate :one
 INSERT INTO programs(slug,title,summary,overview,responsibilities,recognition,status,minimum_age,questions,opens_at,closes_at,created_by)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, slug, title, summary, overview, responsibilities, recognition, status, minimum_age, questions, opens_at, closes_at, revision, review_revision, created_by, created_at, updated_at
@@ -771,6 +823,21 @@ func (q *Queries) ProgramDecisionSave(ctx context.Context, arg ProgramDecisionSa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const programEnqueueCorrectedResult = `-- name: ProgramEnqueueCorrectedResult :execrows
+INSERT INTO email_outbox(recipient_email,recipient_name,template_type,payload_json)
+SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug,'program_published_at',a.published_at,'program_result_updated',true)
+FROM program_applications a JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
+WHERE a.id= $1 AND a.status='submitted' AND a.published_at IS NOT NULL AND u.deleted_at IS NULL AND u.email_verified
+`
+
+func (q *Queries) ProgramEnqueueCorrectedResult(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, programEnqueueCorrectedResult, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const programEnqueueReceipt = `-- name: ProgramEnqueueReceipt :execrows
@@ -950,7 +1017,7 @@ FROM email_outbox o JOIN program_applications a ON a.id=(o.payload_json->>'appli
 JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
 WHERE o.id= $1 AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
 AND lower(u.email)=lower(o.recipient_email)
-AND (o.template_type<>'program_results_released' OR a.published_at IS NOT NULL)
+AND (o.template_type<>'program_results_released' OR (a.published_at IS NOT NULL AND (NOT (o.payload_json ? 'program_published_at') OR (o.payload_json->>'program_published_at')::timestamptz=a.published_at)))
 `
 
 type ProgramMailContextRow struct {
@@ -986,7 +1053,7 @@ SELECT EXISTS(SELECT 1 FROM email_outbox o
  JOIN users u ON u.id=a.user_id
  WHERE o.id= $1 AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
  AND lower(u.email)=lower(o.recipient_email)
- AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)))
+ AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL AND (NOT (o.payload_json ? 'program_published_at') OR (o.payload_json->>'program_published_at')::timestamptz=a.published_at))))
 `
 
 func (q *Queries) ProgramNotificationActive(ctx context.Context, id pgtype.UUID) (bool, error) {
@@ -1101,10 +1168,10 @@ const programReleaseDecisions = `-- name: ProgramReleaseDecisions :one
 WITH published AS (
  UPDATE program_applications SET published_decision=decision,published_at=clock_timestamp(),revision=revision+1,updated_at=clock_timestamp()
  WHERE program_id= $1 AND status='submitted' AND decision<>'pending' AND published_at IS NULL
- RETURNING id,program_id,user_id,full_name
+ RETURNING id,program_id,user_id,full_name,published_at
 ), messages AS (
  INSERT INTO email_outbox(recipient_email,recipient_name,template_type,payload_json)
- SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug)
+ SELECT u.email,a.full_name,'program_results_released',jsonb_build_object('application_id',a.id,'program_title',p.title,'program_slug',p.slug,'program_published_at',a.published_at)
  FROM published a JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
  WHERE u.deleted_at IS NULL AND u.email_verified
  RETURNING id
@@ -1206,6 +1273,17 @@ func (q *Queries) ProgramReviewStats(ctx context.Context, programID pgtype.UUID)
 		&i.Waitlisted,
 	)
 	return i, err
+}
+
+const programSupersedeUnsentResults = `-- name: ProgramSupersedeUnsentResults :exec
+UPDATE email_outbox SET status='failed',updated_at=clock_timestamp(),error_message='Superseded by an updated program result'
+WHERE template_type='program_results_released' AND payload_json->>'application_id'= $1::text
+AND status='pending' AND first_sent_at IS NULL
+`
+
+func (q *Queries) ProgramSupersedeUnsentResults(ctx context.Context, applicationID string) error {
+	_, err := q.db.Exec(ctx, programSupersedeUnsentResults, applicationID)
+	return err
 }
 
 const programTouchReview = `-- name: ProgramTouchReview :exec

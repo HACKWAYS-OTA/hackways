@@ -26,7 +26,7 @@ transaction with a 2-second statement timeout. Revisions prevent stale overwrite
 Release locks the same program against concurrent submissions/reviews, requires
 pending count zero and an exact reviewed count/revision, and publishes only complete
 submitted decisions. Durable request key plus payload hash makes retries idempotent;
-a changed payload with a reused key conflicts. Published decisions cannot be edited.
+a changed payload with a reused key conflicts. Published decisions can be corrected through the explicit confirmed admin correction action.
 Submission writes a `program_application_received` email to the existing transactional
 outbox inside the same transaction. Release atomically publishes the eligible decisions
 and inserts one `program_results_released` notice per active verified applicant.
@@ -88,7 +88,7 @@ retains 3ac0bfc. Immutable activation evidence is recorded in WORKLOGS.md.
 ## Ambassador contact requirements
 
 Final submission requires a LinkedIn HTTPS profile (exact linkedin.com or subdomain),
-a WhatsApp number normalized to E.164, city, name, introduction and event proposal.
+a WhatsApp number normalized to E.164 (10-digit Indian numbers need no typed country code), city, name, introduction and event proposal.
 Incomplete drafts remain saveable. Age stays a backend eligibility check, not a
 promotional headline. Migration 26 updates only the original seeded copy; administrator
 custom text is preserved.
@@ -122,3 +122,24 @@ receipt, result and communication messages use the supplied ambassador banner fo
 ambassadors slug. Receipts include the actual event proposal and November window;
 result notices explain accepted, not-selected or waitlisted outcomes. Already-sent
 messages are not automatically resent by deployment.
+
+
+## Released-result corrections
+
+POST `/{slug}/applications/{id}/published-decision` takes a new accepted/waitlisted/
+rejected outcome, private notes, current application revision, `confirmed:true` and
+an `Idempotency-Key`. Platform admin session, daily OTP and admin origin are mandatory.
+Program/application row locks and the normal two-second statement timeout apply.
+A confirmed change updates the published result, records the old/new outcome in
+program activity and a durable release entry, and schedules one clearly labeled
+updated-result email in the same transaction. Retries cannot create duplicate notices.
+Old unstarted pending result notices are superseded; versioned notices are guarded
+against changed publication timestamps. Already-started or delivered mail cannot be
+retracted. The existing private decision endpoint still cannot alter published results.
+No schema migration is needed. The review page exposes Send communication independently
+of the released decision state.
+
+WhatsApp entry accepts a ten-digit Indian mobile number, explicit +91 format, or 91
+followed by the ten digits; all normalize to the same +91 storage value. International
+numbers retain their explicit country code. Invalid/incomplete submissions still fail
+on the Go API, and incomplete drafts stay saveable.

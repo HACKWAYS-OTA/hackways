@@ -30,8 +30,8 @@ export function ProgramProfileFields({ values, email, minimumAge, ambassador, bu
       </label>
     </div>
     <label htmlFor="program-phone">WhatsApp number{!ambassador && <span>(optional)</span>}
-      <input id="program-phone" name="phone" type="tel" autoComplete="tel" maxLength={32} required={ambassador} pattern={ambassador ? '\\+[1-9][0-9\\s\\(\\)\\.\\-]{7,24}' : undefined} placeholder="Include your country code" value={values.phone} onChange={e => onChange('phone', e.target.value)} aria-describedby="program-phone-note" />
-      <span id="program-phone-note">Use an active WhatsApp number, including + and your country code.</span>
+      <input id="program-phone" name="phone" type="tel" autoComplete="tel" maxLength={32} required={ambassador} placeholder="10-digit number" value={values.phone} onChange={e => onChange('phone', e.target.value)} aria-describedby="program-phone-note" />
+      <span id="program-phone-note">Country code is optional for Indian numbers.</span>
     </label>
     <label htmlFor="program-profile">{ambassador ? 'LinkedIn profile' : 'Profile or portfolio'}{!ambassador && <span>(optional)</span>}
       <input id="program-profile" name="profile_url" type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="https://" maxLength={2048} required={ambassador} value={values.profile_url} onChange={e => onChange('profile_url', e.target.value)} aria-describedby={ambassador ? 'program-linkedin-note' : undefined} />

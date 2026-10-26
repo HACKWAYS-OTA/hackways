@@ -318,6 +318,38 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 		Notes    string `json:"notes"`
 	}{app.Revision, "rejected", ""})
 	check(call(true, 0, "POST", "/"+slug+"/applications/"+aID.(string)+"/decision", string(raw), ""), 409)
+	// An explicit published correction preserves private-save protection and sends one updated notice.
+	correctionPath := "/" + slug + "/applications/" + aID.(string) + "/published-decision"
+	correctionBody := struct {
+		Decision  string `json:"decision"`
+		Notes     string `json:"notes"`
+		Revision  int64  `json:"revision"`
+		Confirmed bool   `json:"confirmed"`
+	}{"waitlisted", "Corrected after review", app.Revision, true}
+	correctionRaw, _ := json.Marshal(correctionBody)
+	check(call(true, -1, "POST", correctionPath, string(correctionRaw), "program-result-correction-ci"), 401)
+	check(call(true, 1, "POST", correctionPath, string(correctionRaw), "program-result-correction-ci"), 403)
+	correctionBody.Confirmed = false
+	invalidCorrection, _ := json.Marshal(correctionBody)
+	check(call(true, 0, "POST", correctionPath, string(invalidCorrection), "program-result-correction-ci"), 400)
+	check(call(true, 0, "POST", correctionPath, string(correctionRaw), "program-result-correction-ci"), 200)
+	check(call(true, 0, "POST", correctionPath, string(correctionRaw), "program-result-correction-ci"), 200)
+	if got := mine(1).PublishedDecision.String; got != "waitlisted" {
+		t.Fatal("updated published result missing")
+	}
+	correctionBody.Confirmed = true
+	correctionBody.Decision = "rejected"
+	changedCorrection, _ := json.Marshal(correctionBody)
+	check(call(true, 0, "POST", correctionPath, string(changedCorrection), "program-result-correction-ci"), 409)
+	check(call(true, 0, "POST", correctionPath, string(changedCorrection), "program-result-correction-stale"), 409)
+	var correctionCount, supersededCount int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM email_outbox WHERE recipient_email LIKE $1 AND payload_json->>'program_result_updated'='true'", "program-1-"+nonce+"@example.invalid").Scan(&correctionCount); err != nil || correctionCount != 1 {
+		t.Fatal("result correction retry duplicated notice", err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM email_outbox WHERE recipient_email LIKE $1 AND template_type='program_results_released' AND status='failed'", "program-1-"+nonce+"@example.invalid").Scan(&supersededCount); err != nil || supersededCount != 1 {
+		t.Fatal("old unsent result not superseded", err)
+	}
+	app = mine(1)
 	raw, _ = json.Marshal(struct {
 		Revision int64 `json:"revision"`
 	}{app.Revision})
@@ -346,8 +378,20 @@ func TestAmbassadorRequiredProfile(t *testing.T) {
 	}
 	body.ProfileURL = "https://linkedin.com/in/ci-only"
 	body.Phone = "9876543210"
+	if err := body.validate(program, true); err != nil || body.Phone != "+919876543210" {
+		t.Fatal("10-digit Indian number must normalize without requiring +91", err)
+	}
+	body.Phone = "919876543210"
+	if err := body.validate(program, true); err != nil || body.Phone != "+919876543210" {
+		t.Fatal("unprefixed country code normalization failed", err)
+	}
+	body.Phone = "+447700900123"
+	if err := body.validate(program, true); err != nil || body.Phone != "+447700900123" {
+		t.Fatal("international number changed", err)
+	}
+	body.Phone = "12345"
 	if body.validate(program, true) == nil {
-		t.Fatal("WhatsApp number without country code accepted")
+		t.Fatal("incomplete phone accepted")
 	}
 	body.Phone = "+919876543210"
 	body.Biography = ""
