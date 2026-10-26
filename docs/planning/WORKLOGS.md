@@ -1546,3 +1546,11 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Predeployment database and configuration backups streamed to private Azure Blob Storage, SHA256/encryption checked; PostgreSQL restore catalog validated. Schema remains26 clean and no runtime changed during staging.
 
 - Latest visibility correction: each Space directory card is one semantic link, with no nested links. Owner attribution was removed from directory/profile and from events presented under a Space; standalone organizer attribution remains. No ownership/API authorization was changed.
+
+
+## 2026-10-27 - Spaces and City Hubs production activation verified
+
+- Hosted run40394547108 passed full Linux race/PostgreSQL16 and published five base images from44659a6. Run40396892475 passed the same mandatory checks and published final core-web92c5a83. Backend/package/deployment sources are identical between these commits.
+- Verified private streamed database/configuration backups and restore catalog. Applied additive migrations27/28: schema28 clean. Activated core/global engines independently, then public/core/admin web, and patched only City route additions in existing ingress. All six runtimes ready, no OOM, organizer runtime identity retained, runtime environment unchanged.
+- Live HTTP200 verified Cities, Spaces, Discover, Ambassadors, login, both sitemaps and public City API. Whole-card Space anchors and absent visible owner attribution confirmed; the supplied public community event no longer displays gathering/owner labels. Static sitemap includes Cities. No City Hubs were seeded (actual public list empty). Temporary publisher variables removed.
+- User then requested a separate managed-team workspace with Space/event role assignment. Planning/source work is pending separately; it is not included in this deployed release. Browser work was explicitly excluded by the user; actual Azure upload and authenticated admin creation were not exercised with production records.
