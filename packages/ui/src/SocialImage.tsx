@@ -42,3 +42,10 @@ export function staticSocialMetadata(origin: string, key: string, title: string,
   const images = (['wide', 'square'] as const).map(format => ({ url: new URL(`/social/${key}-${format}.png`, origin).href, ...socialSizes[format], alt: `${title} — Hackways`, type: 'image/png' }));
   return { openGraph: { title, description, siteName: 'Hackways', type: 'website' as const, locale: 'en_IN', images }, twitter: { card: 'summary_large_image' as const, title, description, images: [images[0].url] } };
 }
+
+
+/** The supplied campaign artwork, shared without applicant or result data. */
+export function ambassadorSocialMetadata(title: string, description: string) {
+  const image = { url: 'https://hackways.in/programs/ambassadors.jpg?v=20261026', width: 3616, height: 2396, alt: 'Hackways Ambassadors', type: 'image/jpeg' };
+  return { openGraph: { title, description, siteName: 'Hackways', type: 'website' as const, locale: 'en_IN', images: [image] }, twitter: { card: 'summary_large_image' as const, title, description, images: [image.url] } };
+}

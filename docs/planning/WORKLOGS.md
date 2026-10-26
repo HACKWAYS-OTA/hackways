@@ -1291,3 +1291,7 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   Admin production build caught a misplaced client directive before image publication;
   corrected its import order. No failed image was deployed. Shared dropdown checks
   and all frontend builds are included in the next immutable candidate.
+
+- User requested exact ambassador artwork for OG. Campaign and program metadata now
+  use the supplied JPEG, and the file-based program OG route returns identical bytes.
+  Other platform OG generation remains in place; no private application data enters OG.

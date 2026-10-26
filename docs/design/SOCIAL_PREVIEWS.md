@@ -30,3 +30,10 @@ local dynamic image requests return 503 there. Linux image generation succeeds.
 Production Linux runtime, image dimensions, private-data guards and container memory
 must be verified before claiming deployment complete. Static PNGs are committed
 artifacts; no production build runs on the production VM.
+
+
+Ambassador campaign and program link previews use the supplied
+`apps/core-web/public/programs/ambassadors.jpg` unchanged (3616 x 2396 JPEG).
+The program file-based OG route also returns that same JPEG, so Next metadata
+precedence cannot replace it with generated campaign artwork. Other public entity
+images remain dynamic. The shared artwork contains no applicant or decision data.
