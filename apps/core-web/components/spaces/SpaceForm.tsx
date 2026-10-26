@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; hostName: string; hasProfile: boolean }) {
   const router = useRouter();
   const formID = useId();
+  const [step, setStep] = useState(0);
   const [profile, setProfile] = useState(hasProfile), [busy, setBusy] = useState(''), [error, setError] = useState(''), [archive, setArchive] = useState(false);
   const attempt = useRef<{ payload: string; key: string } | null>(null);
   const saved = useRef<Space | undefined>(space);
@@ -24,7 +25,9 @@ export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; host
     finally { setBusy(''); }
   }
   async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); if (busy) return; setBusy('save'); setError('');
+    e.preventDefault(); if (busy) return;
+    if (step === 0) { setError(''); setStep(1); return; }
+    setBusy('save'); setError('');
     const form = new FormData(e.currentTarget);
     const fields = { name: String(form.get('name')).trim(), description: String(form.get('description')).trim(), guidelines: String(form.get('guidelines')).trim(), website_url: String(form.get('website')).trim() };
     const signature = JSON.stringify(fields);
@@ -55,19 +58,20 @@ export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; host
     finally { setBusy(''); }
   }
   return <div className="space-form-page">
-    <div className="space-creation-toolbar"><div><Link className="quiet-link space-studio-back" href={space ? `/spaces/${space.slug}` : '/spaces'}><Icon name="arrow" size={15} />{space ? 'Back to Space' : 'All Spaces'}</Link><h1>{space ? 'Edit Space' : 'New Space'}</h1></div><button form={formID} className="app-button app-button-primary" disabled={!!busy}>{busy === 'save' ? 'Saving...' : space ? 'Save changes' : 'Create Space'}<Icon name="arrow" size={17} /></button></div>
-    <form id={formID} className="space-composer" onSubmit={submit}>
+    <div className="space-creation-toolbar"><div><Link className="quiet-link space-studio-back" href={space ? `/spaces/${space.slug}` : '/spaces'}><Icon name="arrow" size={15} />{space ? 'Back to Space' : 'All Spaces'}</Link><h1>{space ? 'Edit Space' : 'Create a Space'}</h1></div><div className="space-step-actions">{step === 1 && <button type="button" className="quiet-link" disabled={!!busy} onClick={() => setStep(0)}>Back</button>}<button form={formID} className="app-button app-button-primary" disabled={!!busy}>{busy === 'save' ? 'Saving...' : step === 0 ? 'Continue' : space ? 'Save changes' : 'Create Space'}<Icon name="arrow" size={17} /></button></div></div>
+    <ol className="space-creation-steps" aria-label="Creation progress"><li aria-current={step === 0 ? 'step' : undefined}>Community details</li><li aria-hidden="true"><Icon name="arrow" size={15} /></li><li aria-current={step === 1 ? 'step' : undefined}>Appearance <span>(optional)</span></li></ol>
+    <form id={formID} className="space-composer" onSubmit={submit} onInvalid={() => setStep(0)}>
       <fieldset className="space-composer-fields" disabled={!!busy}>
         <legend className="visually-hidden">Create your community page</legend>
-        <div className="space-composer-brand"><div className="space-brand-fields">
+        <section className="space-details-step" hidden={step !== 0}>
+          <Input label="Space name" name="name" defaultValue={space?.name || ''} maxLength={120} placeholder="Your community's name" required />
+          <div className="field"><label htmlFor="space-about">About your Space</label><textarea className="app-input" id="space-about" name="description" defaultValue={space?.description || ''} rows={4} maxLength={6000} placeholder="What is your community about?" required /></div>
+          <Input label="Website (optional)" name="website" type="url" pattern="https://.*" defaultValue={space?.website_url || ''} placeholder="https://" maxLength={2048} />
+          <details className="space-studio-guidelines" open={Boolean(space?.guidelines)}><summary>Community guidelines <span>(optional)</span><Icon name="down" size={17} /></summary><div className="field"><label className="visually-hidden" htmlFor="space-guidelines">Community guidelines</label><textarea className="app-input" id="space-guidelines" name="guidelines" defaultValue={space?.guidelines || ''} rows={3} maxLength={10000} placeholder="Share any values or expectations for your community." /></div></details>
+        </section>
+        <section className="space-appearance-step" hidden={step !== 1}><p className="space-appearance-intro">Add a cover and logo, or create your Space now and add them later.</p><div className="space-brand-fields">
           {(['banner', 'logo'] as const).map(kind => <MediaField key={kind} label={kind === 'logo' ? 'Logo' : 'Cover image'} variant={kind} file={images[kind].file} initialUrl={saved.current?.[`${kind}_url`]} removed={images[kind].removed} disabled={!!busy} onChange={(file, removed) => setImages(current => ({ ...current, [kind]: { file, removed } }))} />)}
-        </div></div>
-        <div className="space-composer-copy">
-          <Input label="Space name" className="space-name-input" name="name" defaultValue={space?.name || ''} maxLength={120} placeholder="Name your Space" required />
-          <div className="field"><label className="visually-hidden" htmlFor="space-about">About your Space</label><textarea className="app-input space-description-input" id="space-about" name="description" defaultValue={space?.description || ''} rows={5} maxLength={6000} placeholder="What brings your community together? Share what you do and who this Space is for." required /></div>
-          <div className="space-website-field"><Icon name="globe" size={18} /><Input label="Website (optional)" name="website" type="url" pattern="https://.*" defaultValue={space?.website_url || ''} placeholder="Add a website (https://...)" maxLength={2048} /></div>
-          <details className="space-studio-guidelines" open={Boolean(space?.guidelines)}><summary><Icon name="people" size={18} />Community guidelines<Icon name="down" size={17} /></summary><div className="field"><label className="visually-hidden" htmlFor="space-guidelines">Community guidelines (optional)</label><textarea className="app-input" id="space-guidelines" name="guidelines" defaultValue={space?.guidelines || ''} rows={3} maxLength={10000} placeholder="Share any values or expectations for your community." /></div></details>
-        </div>
+        </div></section>
       </fieldset>
       {error && <div className="journey-error" role="alert"><p>{error}</p>{saved.current && <button className="quiet-link" type="button" disabled={!!busy} onClick={() => void reloadLatest()}>Reload the latest Space</button>}</div>}
     </form>

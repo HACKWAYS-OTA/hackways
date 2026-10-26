@@ -1537,3 +1537,10 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Migrations27/28 are additive. Resource-scoped create-only SAS and Azure HEAD completion extend existing storage; image retries preserve persisted records, ownership and revision checks. No auth, ambassador submission or mail transport implementation changed.
 - All workspace type checks and lint passed without warnings. Both Go builds/vet passed; core isolated PostgreSQL suite passed62 cases. The full global isolated PostgreSQL suite also passed, including the extended application/media case. Hosted race/full checks and immutable image publication are pending.
 - Source reviewer scored conflict-recovery, file reselection and wrapping fixes resolved. Visual approval is not claimed; browser work was stopped, then explicitly excluded by the user. Production activation of this new feature release is still pending.
+
+
+### Final creation flow and owner controls
+
+- User rejected the borderless page composer. Community details now use visible labeled inputs as step one; optional Appearance/cropped branding is step two. Continue validates without creating records; Back retains draft fields and selected files. Removed ownership/member tags and grouped owner actions under one Manage Space disclosure.
+- Final core-web type check and lint passed. Base release44659a6 passed hosted Linux race/PostgreSQL16 integration checks and published both Go, public and core images; admin image is still building. Final core UI correction will be published separately and pinned with that verified service set before activation.
+- Predeployment database and configuration backups streamed to private Azure Blob Storage, SHA256/encryption checked; PostgreSQL restore catalog validated. Schema remains26 clean and no runtime changed during staging.

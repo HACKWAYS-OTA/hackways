@@ -6,7 +6,7 @@ This surface guide records an extension of Hackways' existing application identi
 
 The approved direction preserves FG Futurist, Google Sans Flex, light paper, dark ink and soft violet, Hugeicons, and the shared `@hackways/ui` controls. Spaces remain communities with owners and membership; City Hubs are admin-managed local pages with curated public events. A City Hub is not a membership Space, and the public pages offer no City Hub editing controls.
 
-Visitor mode is **Operate**: discover a community or local event, create an identifiable community, or curate a city page. Space creation is a page composer: branding sits beside directly editable community copy, with the create/save action in the top toolbar. Empty directories and event lists explain their real state rather than supplying example communities, cities or events.
+Visitor mode is **Operate**: discover a community or local event, create an identifiable community, or curate a city page. Space creation starts with recognizable labeled inputs, then offers optional branding in a second step. The toolbar carries the current action. Empty directories and event lists explain their real state rather than supplying example communities, cities or events.
 
 ## Colors
 
@@ -16,9 +16,9 @@ Images carry community and city identity. Empty image regions use the existing s
 
 ## Typography
 
-FG Futurist supplies community/city names, directory/profile headings, initials and the established action-button character. Google Sans Flex supplies descriptions, metadata, ordinary form controls and the understated New Space/Edit Space toolbar heading. Keep the existing self-hosted faces.
+FG Futurist supplies community/city names, page headings, initials and the established action-button character. Google Sans Flex supplies descriptions, metadata, form controls, labels and progress text. Keep the existing self-hosted faces.
 
-The Space toolbar heading is quiet (20px). The editable Space name carries the page hierarchy in FG Futurist (36px, reducing to 30px at 900px and 29px at 680px), while description and supporting fields use Google Sans Flex (15px). Directory community titles are compact (23px, reducing to 20px), with descriptions and owner/member metadata subordinate. City profile names are intentionally larger, scaling from 40px to 72px. These sizes describe the current scoped CSS, not a global hierarchy change.
+The Create a Space/Edit Space heading is moderately sized (28px, reducing to 25px at 640px). Form fields use Google Sans Flex (14px) with visible labels (13px); progress text is smaller (12px), and the current step has stronger emphasis. Directory community titles are compact (23px, reducing to 20px), with descriptions and host/member-count metadata subordinate. City profile names are intentionally larger, scaling from 40px to 72px. These sizes describe the current scoped CSS, not a global hierarchy change.
 
 ## Layout
 
@@ -32,11 +32,13 @@ Profiles may begin with a saved cover image, followed by logo, name, membership 
 
 ### Space creation and settings
 
-The centered composer page is capped at 1040px. Its toolbar pairs back navigation and New Space/Edit Space at left with Create Space/Save changes at right. The action sits outside the form element and submits that form through its native `form` attribute; pending state disables it and changes its label. There is no bottom save row.
+The centered creation/settings page is capped at 760px, with the editing area capped at 640px. Its toolbar pairs back navigation and Create a Space/Edit Space at left with the current action at right. The action sits outside the form element and submits that form through its native `form` attribute; pending state disables it and changes its label. The semantic progress list below identifies Community details and Appearance (optional), marking the active item with `aria-current="step"`.
 
-Below the toolbar, a 300px branding column sits left of the editable copy with a 64px gap. The branding column stacks the cover control and a compact square logo control. The right column begins with a large borderless Space name, then a directly editable description, a website field accompanied by a globe icon, and collapsible community guidelines. Accessible labels remain present even where they are visually hidden. This is the editing surface itself; the rejected community-page preview card and sequential section headings are absent. Archive/reactivate controls remain a separate settings action.
+Community details comes first: a bordered, visibly labeled Space name input, About your Space textarea, optional website input and optional collapsible guidelines. Continue uses the form's native validation and advances to Appearance without creating a profile, saving a Space or uploading an image. Both steps stay mounted; hiding the inactive section preserves typed values and selected files. Validation failure returns the details step to view.
 
-At 900px and below, the branding column narrows to 250px and the gap to 40px. At 680px and below, branding and copy stack with a 28px gap; cover and logo sit side by side within the branding row, and the toolbar action remains at the top with tighter padding. At 640px and below, page outer margins reduce from at least 40px to 20px. Image selection and adjustment show the actual selected image inside the shared media controls.
+Appearance offers a bounded cover picker and a square logo picker, with explicit permission to leave both empty and add them later. Back returns to details without clearing the draft or files. The toolbar's final Create Space/Save changes action runs the existing persisted save/upload workflow. There is no bottom save row or community-page preview card. Archive/reactivate controls remain a separate settings action.
+
+On desktop, cover and logo sit side by side with a 24px gap and a 112px logo column. At 640px and below, page outer margins reduce from at least 40px to 20px, progress text can wrap, toolbar spacing tightens, and appearance controls stack. The cover picker keeps a bounded wide frame (2.8:1 on desktop, 2.5:1 on mobile); this display frame is separate from the crop output ratio. Image selection and adjustment show the actual selected image inside the shared media controls.
 
 ### Public City Hubs
 
@@ -54,11 +56,11 @@ Event curation follows the saved city details. Existing associations are listed 
 
 Use the established light surface with restrained tonal layering. Community cards, City Hub cards and media fields rely on their boundaries and image regions rather than decorative shadow stacks. The crop dialog is an elevated, modal task layer with a dimmed backdrop and a single diffuse shadow.
 
-Space composer fields, guidelines and archive settings, plus Space/City profile sections, use spacing instead of structural divider lines. Composer text fields are borderless at rest and gain an explicit violet focus outline while editing. Admin curation also loses its section-top divider; list-row separators remain for scanning. Preserve keyboard focus and necessary control/card boundaries. This is a scoped divider cleanup, not a global ban on borders.
+Space form groups, guidelines and archive settings, plus Space/City profile sections, use spacing instead of structural divider lines. Text fields retain visible boundaries at rest and gain an explicit violet focus outline while editing. Admin curation also loses its section-top divider; list-row separators remain for scanning. Preserve keyboard focus and necessary control/card boundaries. This is a scoped divider cleanup, not a global ban on borders.
 
 ## Shapes
 
-Cards use gently rounded corners (14px). Media pickers use rounded frames (12px), with a wide cover/banner shape and a square logo shape. Composer text fields are flat, transparent and square at rest, with a small corner radius on their focus outline (3px). The crop dialog uses a softer outer frame (16px) around the cropped image region (12px). Existing pill actions remain part of the app language.
+Cards use gently rounded corners (14px). Media pickers use rounded frames (12px), with a wide cover/banner shape and a square logo shape. Space inputs have clear borders and rounded corners (10px), with a minimum height of 46px and comfortable internal padding. The owner disclosure uses a compact rounded boundary (12px). The crop dialog uses a softer outer frame (16px) around the cropped image region (12px). Existing pill actions remain part of the app language.
 
 ## Components
 
@@ -76,13 +78,13 @@ The cropper reports image decoding/export failures, rejects decoded dimensions a
 
 ### Image selection and persistence
 
-The shared image field uses browser object URLs for temporary selected-image display and revokes them during component cleanup. A displayed selection is not an Azure asset, a saved profile or a confirmed upload. Saved fields and media follow the real API flow only when the form submits.
+The shared image field uses browser object URLs for temporary selected-image display and revokes them during component cleanup. A displayed selection is not an Azure asset, a saved profile or a confirmed upload. Continue changes only the active step; saved fields and media follow the real API flow only after final Create Space/Save changes submission from Appearance.
 
 Space saving retains the persisted identity/revision and image-attempt state to support retry after partial success. Image uploads go directly from browser to Azure using the existing signed-upload transport, followed by completion through Go. Failures keep recoverable entries and report an error; navigation follows completed saving. Reload latest updates saved revision information while preserving unsaved form entries for review. Do not describe that action as discarding the draft or automatically merging concurrent edits.
 
 ### Membership and lifecycle actions
 
-Owners receive event creation and settings actions; members receive membership status and a leave confirmation; other signed-in visitors can join active Spaces; signed-out visitors enter the existing login journey with a return destination. Archiving has an explicit confirmation and explains that existing memberships/events remain. Reactivation is a separate real status mutation. Go owns permissions and lifecycle validity.
+Owners receive one Manage Space disclosure containing Create an event for active Spaces and Edit Space. The disclosure closes on Escape or when focus leaves it. Separate Your Space and member-status labels are removed; existing members receive Leave Space with a confirmation, while other signed-in visitors can join active Spaces. Signed-out visitors enter the existing login journey with a return destination. Archived nonmembers see that membership is paused. Archiving has an explicit confirmation and explains that existing memberships/events remain. Reactivation is a separate real status mutation. Go owns permissions and lifecycle validity.
 
 ### City publication and curation
 
@@ -92,7 +94,7 @@ Event search is delayed briefly (250ms), cancels older requests and distinguishe
 
 ### Accessibility and first render
 
-Preserve associated field labels, native form validation, semantic buttons/links, alert messages and live status messages. Composer name, description, website and guidelines retain accessible labels; borderless presentation must preserve the visible focus outline. Keep the toolbar submit action associated with the form's generated ID so native validation and submission still apply. Use clean page paths and the existing query-based tabs/pagination; do not introduce fragment navigation. Keep icons decorative when adjacent text supplies the action name. Shared checkbox, radio, select and toggle exports remain mandatory wherever those controls are needed.
+Preserve associated field labels, native form validation, semantic buttons/links, alert messages and live status messages. Name, description and website retain visible labels; the guidelines disclosure and its textarea retain an accessible name. Keep the toolbar submit action associated with the form's generated ID so native validation and submission still apply. Preserve progress-list semantics and the native owner disclosure. Use clean page paths and the existing query-based tabs/pagination; do not introduce fragment navigation. Keep icons decorative when adjacent text supplies the action name. Shared checkbox, radio, select and toggle exports remain mandatory wherever those controls are needed.
 
 Directories and profiles fetch their essential real records on the server. Space profile event and authenticated membership reads are concurrent after resolving identity; personalized membership is not a fabricated client default. Reserved image ratios and explicit dimensions describe intended layout stability. Actual focus behavior, reduced motion, font loading and absence of overflow still require rendered verification.
 
@@ -102,9 +104,11 @@ Directories and profiles fetch their essential real records on the server. Space
 - Do keep community identity, event discovery and the create/save action easy to scan.
 - Do distinguish a local draft, uploaded media and confirmed persisted state.
 - Do show the real empty, archived, loading, error and retry states.
-- Do retain the toolbar create/save action, mobile branding-before-copy order and keyboard access as content stacks.
+- Do retain Community details before optional Appearance, draft/file preservation on Back and toolbar actions appropriate to the current step.
+- Do keep Space inputs recognizable through visible labels, borders and focus states.
+- Do keep owner event/settings actions inside one Manage Space disclosure.
 - Don't restore the rejected community-page preview card alongside or below the creation form.
-- Don't restore sequential section headings, boxed text fields or a bottom save row in the Space composer.
+- Don't persist a partial Space when Continue only advances to Appearance.
 - Don't turn City Hubs into public membership Spaces or expose public editing/curation controls.
 - Don't invent community records, city photography, membership totals or events to fill empty regions.
 - Don't introduce a new visual identity, font/icon dependency or frontend business backend.
@@ -112,13 +116,13 @@ Directories and profiles fetch their essential real records on the server. Space
 
 ## Direction contract
 
-**THESIS:** Extend Hackways with recognizable communities and separately curated local event pages; community creation directly composes the page's branding and copy instead of presenting a sequential details form.
+**THESIS:** Extend Hackways with recognizable communities and separately curated local event pages; creation first gathers community details through familiar inputs, then offers optional branding before final save.
 
 **OWN-WORLD:** Retain the existing paper/dark-ink/soft-violet language, FG Futurist and Google Sans Flex, rounded controls and Hugeicons.
 
-**STORY:** Visitors discover real communities or city events. Owners identify their community and save it. Administrators prepare and curate City Hubs through the separate console.
+**STORY:** Visitors discover real communities or city events. Owners enter details, optionally add branding, then save; Manage Space groups their profile actions. Administrators prepare and curate City Hubs through the separate console.
 
-**FIRST VIEWPORT:** The top toolbar places New Space/Edit Space and back navigation at left, Create Space/Save changes at right. A compact branding column sits beside the large editable name and description, followed by website and guidelines. Mobile stacks branding above copy while retaining the action in the toolbar.
+**FIRST VIEWPORT:** The top toolbar places Create a Space/Edit Space and back navigation at left, Continue at right. The two-step progress list leads into labeled name, description and website fields plus optional guidelines. Appearance then offers cover/logo controls with Back and final Create Space/Save changes in the toolbar.
 
 **FORM:** Local extension of the established application world. No concept-seed or replacement identity was requested for this narrowly specified direction.
 
@@ -128,8 +132,8 @@ For this extension, existing global design files are preserved. No shipping rast
 
 ## Evidence and verification limits
 
-Recorded from source on 2026-10-27. Reviewed `AGENTS.md`, `PRODUCT.md`, the architecture and verification guides, existing authentication/brand-icon/management design notes, core/admin global CSS, Space directory/profile/form/membership and upload helper, public City directory/profile/CSS, admin City list/new/detail/editor/CSS, and the shared media/crop controls/CSS and UI usage guide. The final Space form and CSS were reread after replacement of the rejected preview/sequential-form arrangement with the toolbar-led page composer. Root `DESIGN.md` was absent in this checkout during inspection; this task creates only the local surface guide and does not repair global design artifacts or sidecars.
+Recorded from source on 2026-10-27. Reviewed `AGENTS.md`, `PRODUCT.md`, the architecture and verification guides, existing authentication/brand-icon/management design notes, core/admin global CSS, Space directory/profile/form/membership and upload helper, public City directory/profile/CSS, admin City list/new/detail/editor/CSS, and the shared media/crop controls/CSS and UI usage guide. The final Space form, membership actions and CSS were reread after the latest two-step-details/appearance direction and consolidated owner actions landed. Root `DESIGN.md` was absent in this checkout during inspection; this task creates only the local surface guide and does not repair global design artifacts or sidecars.
 
-Primary implementation references: [Space form](../../apps/core-web/components/spaces/SpaceForm.tsx), [Space layout](../../apps/core-web/components/spaces/spaces.css), [public City profile](../../apps/core-web/app/cities/[slug]/page.tsx), [City layout](../../apps/core-web/components/cities/cities.css), [City editor](../../apps/admin-web/components/admin/CityEditor.tsx), [admin City layout](../../apps/admin-web/app/(console)/cities/cities.css), [shared media field](../../packages/ui/src/MediaField.tsx), [crop dialog](../../packages/ui/src/ImageCropDialog.tsx) and [media/crop styles](../../packages/ui/src/media-field.css).
+Primary implementation references: [Space form](../../apps/core-web/components/spaces/SpaceForm.tsx), [Space membership/owner actions](../../apps/core-web/components/spaces/SpaceMembership.tsx), [Space layout](../../apps/core-web/components/spaces/spaces.css), [public City profile](../../apps/core-web/app/cities/[slug]/page.tsx), [City layout](../../apps/core-web/components/cities/cities.css), [City editor](../../apps/admin-web/components/admin/CityEditor.tsx), [admin City layout](../../apps/admin-web/app/(console)/cities/cities.css), [shared media field](../../packages/ui/src/MediaField.tsx), [crop dialog](../../packages/ui/src/ImageCropDialog.tsx) and [media/crop styles](../../packages/ui/src/media-field.css).
 
-Browser review was explicitly excluded at the user's request, so no current rendered review was performed. User feedback rejected the preview card and subsequent sequential form; the resulting composer was checked in source. Earlier screenshots do not verify the final composer layout, crop flow, divider cleanup or responsive result. This document records source-backed behavior and responsive intent, not a visual pass. Browser keyboard/focus, mobile overflow, reduced motion, crop interaction, authenticated saving/curation and external Azure completion remain unverified. No browser, build or deployment actions were performed by this documentation work. No new tests, fixtures, generated assets or application functionality were added.
+Browser review was explicitly excluded at the user's request, so no current rendered review was performed. The latest direction restores recognizable inputs, moves optional branding after details and consolidates owner actions; those changes were checked in source. Earlier screenshots do not verify the final two-step layout, validation focus, crop flow, owner disclosure, divider cleanup or responsive result. This document records source-backed behavior and responsive intent, not a visual pass. Browser keyboard/focus, mobile overflow, reduced motion, crop interaction, authenticated saving/curation and external Azure completion remain unverified. No browser, build or deployment actions were performed by this documentation work. No new tests, fixtures, generated assets or application functionality were added.
