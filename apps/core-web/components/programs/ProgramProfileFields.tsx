@@ -26,8 +26,7 @@ export function ProgramProfileFields({ values, email, minimumAge, ambassador, bu
         <input id="program-city" name="city" autoComplete="address-level2" required minLength={2} maxLength={150} value={values.city} onChange={e => onChange('city', e.target.value)} />
       </label>
       <label htmlFor="program-age">Age
-        <input id="program-age" name="age" type="number" inputMode="numeric" min={minimumAge} max={120} step={1} required value={values.age || ''} onChange={e => onChange('age', Number(e.target.value))} aria-describedby="program-age-note" />
-        <span id="program-age-note">Used to check program eligibility.</span>
+        <input id="program-age" name="age" type="number" inputMode="numeric" min={minimumAge} max={120} step={1} required value={values.age || ''} onChange={e => onChange('age', Number(e.target.value))} />
       </label>
     </div>
     <label htmlFor="program-phone">WhatsApp number{!ambassador && <span>(optional)</span>}

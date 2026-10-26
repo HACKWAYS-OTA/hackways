@@ -27,8 +27,9 @@ Regenerate fixed cards on Linux with:
 
 The installed Next 14 node image package has an invalid file-URL path on Windows;
 local dynamic image requests return 503 there. Linux image generation succeeds.
-Production Linux runtime, image dimensions, private-data guards and container memory
-must be verified before claiming deployment complete. Static PNGs are committed
+Production Linux runtime returned both required PNG dimensions at the initial launch;
+the core canary peaked at 136,036,352 bytes under its 250 MiB cap. Private metadata
+contains generic artwork, never applicant or result data. Static PNGs are committed
 artifacts; no production build runs on the production VM.
 
 
@@ -37,3 +38,11 @@ Ambassador campaign and program link previews use the supplied
 The program file-based OG route also returns that same JPEG, so Next metadata
 precedence cannot replace it with generated campaign artwork. Other public entity
 images remain dynamic. The shared artwork contains no applicant or decision data.
+
+
+WhatsApp adaptation: the same supplied artwork is center-framed with `objectFit: cover`
+at 1200 x 630 in the existing React OG rendering utility. No additional title or border
+is painted into the asset. The resulting `ambassadors-og.png` fills wide preview cards,
+and its new URL avoids reusing the earlier tall-image cache. Both campaign and program
+metadata use it. The original JPEG remains the directory/email asset. Regenerate via
+`node deploy/scripts/render-social-images.cjs --ambassadors-only` on Linux.

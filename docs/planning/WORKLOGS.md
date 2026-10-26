@@ -1295,3 +1295,37 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - User requested exact ambassador artwork for OG. Campaign and program metadata now
   use the supplied JPEG, and the file-based program OG route returns identical bytes.
   Other platform OG generation remains in place; no private application data enters OG.
+
+
+### 2026-10-26 ? Applicant mail, Excel and shared dropdown release live
+
+- Candidate 94b2eb22c9b89d1325a097ee3fd29485543ad665 passed the complete hosted
+  Linux integration workflow and five image builds (run 40325383723). All four
+  local frontend type/lint checks and shared UI type/lint also passed.
+- Activated immutable global-backend and all four web images at that source; core
+  backend remains 3ac0bfc. A Linux core canary passed within its 250 MiB cap.
+  All runtime identities, database health and Nginx validation passed. `.env` SHA
+  remained unchanged; schema stays 26; no migration or region cutover occurred.
+- Actual public HTTPS: ambassadors/directory/role 200, admin login 200; anonymous
+  admin Excel API 401. Existing dedicated session, platform grant and daily OTP
+  remain authoritative. No applicant communication was sent by this deployment.
+- Local supplied artwork OG: image/jpeg, 3,898,895 bytes, SHA identical to the user's
+  file. Both campaign and program HTML reference the supplied artwork. OG-only
+  core/public rebuild is the remaining rollout step at this entry.
+- Removed both idle temporary self-hosted runners and the temporary organization
+  runner-label override. No user-installed Linux packages were removed.
+
+
+### 2026-10-26 ? Mobile campaign and WhatsApp adaptation
+
+- The exact-JPEG OG rollout (dfc7555, run 40327512017) passed all checks and is live.
+  Linux canary proved identical supplied bytes. Its wider WhatsApp framing is now
+  refined from the same artwork: 1200x630 PNG, 1,323,068 bytes, no baked side bars.
+- User's mobile screenshot showed excess hero height and a pause control before the
+  heading. Mobile hero now uses content height and 164px top space; a 44px pause
+  control sits separately at top-right. Copy is shorter, left aligned, and the
+  mobile header has a contrasting glass surface. Reduced motion/forced colors remain.
+- Removed the age helper sentence and its stale aria-describedby reference, preserving
+  actual backend eligibility. Directory thumbnail increases from 144 to 192px desktop
+  (88 to 104px mobile), with a subtle border and 10px corners.
+- Public type/lint passed before the final spacing adjustment; full CI/build follows.

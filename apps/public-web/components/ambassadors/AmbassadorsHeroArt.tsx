@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import PauseIcon from '@hugeicons/core-free-icons/PauseIcon';
+import PlayIcon from '@hugeicons/core-free-icons/PlayIcon';
 import { Toggle } from '@hackways/ui/toggle';
 import GradientASCII from './GradientASCII';
 
@@ -72,8 +75,8 @@ export function AmbassadorsHeroArt() {
         glow={0.2} grain={0.08} dpr={1.25} intro={false}
       />
     </div>
-    <Toggle className="amb-motion-control" pressed={paused} onPressedChange={setPaused} aria-label="Pause background animation">
-      {paused ? 'Resume animation' : 'Pause animation'}
+    <Toggle className="amb-motion-control" pressed={paused} onPressedChange={setPaused} aria-label="Pause background animation" title={paused ? 'Resume animation' : 'Pause animation'}>
+      <HugeiconsIcon className="amb-motion-icon" icon={paused ? PlayIcon : PauseIcon} size={18} strokeWidth={1.8} aria-hidden="true" /><span className="amb-motion-label">{paused ? 'Resume animation' : 'Pause animation'}</span>
     </Toggle>
   </>;
 }

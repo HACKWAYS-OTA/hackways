@@ -41,7 +41,7 @@ export default function AmbassadorsPage() {
       <AmbassadorsHeroArt />
       <div className="amb-hero-copy">
         <h1 id="amb-hero-title">Be the reason<br /><span className="amb-hero-gradient">people meet.</span></h1>
-        <p className="amb-lead">Become a Hackways ambassador. Turn a shared interest into an event, a conversation, a community that keeps coming back.</p>
+        <p className="amb-lead">Bring your people together. Host events, spark conversations and build a community with Hackways.</p>
         <div className="amb-hero-actions"><JoinLink label="Become an ambassador" /><SectionJumpButton targetId="ambassador-role" className="amb-role-link">Explore the program<HugeiconsIcon icon={ArrowDown01Icon} size={17} strokeWidth={1.5} aria-hidden="true" /></SectionJumpButton></div>
       </div>
     </section>

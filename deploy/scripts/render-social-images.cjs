@@ -12,7 +12,20 @@ function sourceModule(relative) {
   mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020 } }).outputText, file);
   return mod.exports;
 }
+async function renderAmbassadorArtwork() {
+  const image = fs.readFileSync(path.join(root, 'apps/core-web/public/programs/ambassadors.jpg')).toString('base64');
+  const element = React.createElement('div', { style: { display: 'flex', width: 1200, height: 630, overflow: 'hidden', background: '#101019' } },
+    React.createElement('img', { src: 'data:image/jpeg;base64,' + image, width: 1200, height: 630, style: { objectFit: 'cover' } }));
+  const response = new ImageResponse(element, { width: 1200, height: 630 });
+  const bytes = Buffer.from(await response.arrayBuffer());
+  fs.writeFileSync(path.join(root, 'apps/core-web/public/programs/ambassadors-og.png'), bytes);
+  fs.writeFileSync(path.join(root, 'apps/public-web/public/social/ambassadors-wide.png'), bytes);
+  return bytes;
+}
 async function main() {
+  const artwork = await renderAmbassadorArtwork();
+  if (process.argv.includes('--ambassadors-only')) { console.log('Ambassador artwork: 1200 x 630, ' + artwork.length + ' bytes'); return; }
+
   const { SocialImage, socialSizes } = sourceModule('packages/ui/src/SocialImage.tsx');
   const { socialPages } = sourceModule('packages/ui/src/SocialPages.ts');
   const { faqTopics } = sourceModule('apps/public-web/lib/help-topics.ts');
@@ -22,6 +35,7 @@ async function main() {
   const output = path.join(root, 'apps/public-web/public/social'); fs.mkdirSync(output, { recursive: true });
   for (const [key, content] of Object.entries(cards)) {
     for (const format of ['wide', 'square']) {
+      if (key === 'ambassadors' && format === 'wide') continue;
       const response = new ImageResponse(React.createElement(SocialImage, { content, format }), { ...socialSizes[format], fonts });
       const bytes = Buffer.from(await response.arrayBuffer());
       fs.writeFileSync(path.join(output, `${key}-${format}.png`), bytes);

@@ -38,8 +38,7 @@ html:has(.ambassadors-page)::-webkit-scrollbar{display:none}
 #main-content .amb-manifesto{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(2.5rem,7vw,6rem);align-items:center;padding-block:clamp(4rem,8vw,7rem)}#main-content .amb-manifesto h2{font-size:clamp(2rem,3.3vw,3rem);line-height:1.25;max-width:22ch;margin:0}#main-content .amb-manifesto h2 span{color:#365b99}#main-content .amb-manifesto p{font-size:1.05rem;line-height:1.9;max-width:48ch}#main-content .amb-manifesto p+p{margin-top:1rem}
 #main-content .amb-open-section{background:#f1f5ff}#main-content .amb-open-inner{position:relative}#main-content .amb-open-inner h2{font-size:clamp(2.1rem,3.3vw,3rem)}#main-content .amb-recognition-list>div:first-child dt{display:inline;background:#e8f0ff;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:.08em .2em}#main-content .amb-recognition-list>div:first-child dd{margin-top:1rem}
 #main-content .amb-journey{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(2.5rem,7vw,6rem);padding-block:clamp(3rem,6vw,5rem) clamp(4rem,7vw,6rem);border-top:1px solid var(--line)}#main-content .amb-journey .amb-join-link{margin-top:1.75rem}#main-content .amb-journey ol{list-style:none;padding:0;margin:0}#main-content .amb-journey li{display:flex;gap:1.25rem;padding-bottom:2rem;margin-bottom:1.5rem;border-bottom:1px solid var(--line)}#main-content .amb-journey li:last-child{margin-bottom:0;padding-bottom:0;border:0}#main-content .amb-journey li>span{flex-shrink:0;display:grid;place-items:center;width:32px;height:32px;background:#e1ebff;font-size:.85rem;font-variant-numeric:tabular-nums;color:#23477f}#main-content .amb-journey h3{font-size:1.2rem;line-height:1.5;margin-bottom:.65rem}#main-content .amb-journey p{font-size:1rem;line-height:1.8}
-@media(max-width:800px){#main-content .amb-hero{min-height:max(740px,100svh)}#main-content .amb-hero-copy{padding:14rem 2rem 5rem}#main-content .amb-hero h1{font-size:clamp(2.7rem,8.5vw,4.2rem)}#main-content .amb-hero .amb-lead{font-size:1.05rem}#main-content .amb-manifesto,#main-content .amb-journey{grid-template-columns:minmax(0,1fr);gap:2rem}#main-content .amb-manifesto h2{max-width:25ch}}
-@media(max-width:420px){#main-content .amb-hero{min-height:780px}#main-content .amb-hero-copy{padding:12rem 2rem 5rem}#main-content .amb-hero h1{font-size:clamp(2.5rem,10.8vw,2.9rem)}#main-content .amb-hero .amb-lead{font-size:1rem}#main-content .amb-hero-actions{flex-direction:column;gap:.65rem}#main-content .amb-hero .amb-join-link{width:100%}#main-content .amb-hero .amb-eligibility-note{font-size:.8rem}}
+@media(max-width:800px){#main-content .amb-manifesto,#main-content .amb-journey{grid-template-columns:minmax(0,1fr);gap:2rem}#main-content .amb-manifesto h2{max-width:25ch}}
 @media(prefers-reduced-motion:reduce){#main-content .amb-motion-control{display:none}#main-content .amb-hero{clip-path:inset(0 var(--amb-box-gutter) round 20px)}}
 @media(forced-colors:active){#main-content .amb-hero-art,#main-content .amb-motion-control{display:none}#main-content .amb-hero-gradient{background:none;color:CanvasText;-webkit-text-fill-color:CanvasText}#main-content .amb-hero{background:Canvas;color:CanvasText}#main-content .amb-hero :is(h1,p,a,button){color:CanvasText;border-color:ButtonText}}
 
@@ -47,3 +46,22 @@ html:has(.ambassadors-page)::-webkit-scrollbar{display:none}
 @keyframes amb-background-in{from{transform:scale(1.025)}to{transform:scale(1)}}
 @media(prefers-reduced-motion:no-preference){#main-content .amb-hero-art [data-renderer="ready"] .gradient-ascii-canvas{animation:amb-background-in 850ms cubic-bezier(.16,1,.3,1) both}#main-content .amb-hero-art[data-paused="true"] .gradient-ascii-canvas{animation-play-state:paused}}
 @media(max-width:600px){#main-content .ambassadors-page .site-container{width:calc(100% - 40px)}#main-content .amb-role,#main-content .amb-recognition,#main-content .amb-faq,#main-content .amb-journey{gap:1.75rem}#main-content .ambassadors-page h2{font-size:clamp(1.85rem,7vw,2.4rem)}#main-content .amb-hero-copy{padding-inline:1.5rem}#main-content .amb-join-section{padding:1.5rem}#main-content .amb-join-section .amb-join-link{width:100%}#main-content .amb-role-list li,#main-content .amb-journey li{gap:1rem}#main-content .amb-manifesto{padding-block:3.5rem}}
+
+/* The mobile story starts in the first viewport, with controls in document flow. */
+#main-content .amb-motion-icon{display:none}
+@media(max-width:600px){
+  #main-content .amb-hero{min-height:0;display:flex;flex-direction:column;justify-content:flex-start;padding:164px 0 36px}
+  #main-content .amb-hero-copy{width:100%;padding:0 24px;text-align:left}
+  #main-content .amb-hero h1{font-size:clamp(2.3rem,10.5vw,3.1rem);line-height:1.1;letter-spacing:-.035em;max-width:none;margin:0 0 22px}
+  #main-content .amb-hero .amb-lead{font-size:1rem;line-height:1.65;max-width:34ch;margin:0;color:#e0ebff}
+  #main-content .amb-hero-actions{align-items:stretch;flex-direction:column;gap:10px;margin-top:28px}
+  #main-content .amb-hero .amb-join-link{width:100%;min-height:52px;padding:14px 18px;font-size:.94rem;justify-content:space-between}
+  #main-content .amb-role-link{align-self:flex-start;font-size:.875rem;min-height:44px}
+  #main-content .amb-hero-art::after{background:radial-gradient(ellipse 110% 64% at 50% 58%,rgba(4,11,36,.98) 0%,rgba(4,11,36,.94) 46%,rgba(4,11,36,.52) 78%,transparent 100%)}
+  #main-content .amb-hero .amb-motion-control{position:absolute;top:92px;right:24px;bottom:auto;margin:0;width:44px;height:44px;min-width:44px;padding:0;justify-content:center;border-radius:50%;background:#0b1b3f99;border-color:#849dca80}
+  #main-content .amb-motion-icon{display:block}
+  #main-content .amb-motion-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  #main-content .amb-manifesto p,#main-content .amb-role-list p,#main-content .amb-journey p,#main-content .amb-open-inner p,#main-content .amb-recognition-list dd,#main-content .amb-faq-list details p{font-size:1rem;line-height:1.7}
+  #main-content .amb-role,#main-content .amb-journey,#main-content .amb-faq{padding-block:3rem}
+}
+@media(max-width:360px){#main-content .amb-hero-copy{padding-inline:20px}#main-content .amb-hero .amb-motion-control{right:20px}}

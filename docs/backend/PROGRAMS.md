@@ -72,7 +72,7 @@ Admin: `http://localhost:4003/programs/ambassadors` (normal admin sign-in + dail
 Global API: loopback 4002, PostgreSQL local preview cluster on 55440. Private runtime
 configuration and logs are outside the repository. Do not commit them or use the
 copied preview database for tests. Preview Google OAuth credentials are not configured;
-use existing verified password sign-in. Local mail delivery is scoped to admin OTP, password recovery, verification and the two
+use existing verified password sign-in. Local mail delivery is scoped to admin OTP, password recovery, verification and all three
 program templates. Europe transport uses protected configuration outside Git.
 
 The existing mandatory Go suite includes real PostgreSQL coverage for authorization,
@@ -81,8 +81,9 @@ publication idempotency, ownership, withdrawal, confirmation/notification dedupl
 and absence of result notifications before release. Run
 against an explicit isolated `_test` database. See the worklog for commands actually
 executed and verification limitations. Nginx routing has been verified in production;
-production is live at schema 26, with the six source-3ac0bfc services and Europe ACS.
-The follow-up communications/export release is recorded separately in WORKLOGS.md.
+production is live at schema 26 with Europe ACS. The applicant communication/export
+release runs global-backend and all four web apps at source 94b2eb2; the core engine
+retains 3ac0bfc. Immutable activation evidence is recorded in WORKLOGS.md.
 
 ## Ambassador contact requirements
 

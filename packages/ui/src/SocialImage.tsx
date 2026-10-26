@@ -46,6 +46,6 @@ export function staticSocialMetadata(origin: string, key: string, title: string,
 
 /** The supplied campaign artwork, shared without applicant or result data. */
 export function ambassadorSocialMetadata(title: string, description: string) {
-  const image = { url: 'https://hackways.in/programs/ambassadors.jpg?v=20261026', width: 3616, height: 2396, alt: 'Hackways Ambassadors', type: 'image/jpeg' };
+  const image = { url: 'https://hackways.in/programs/ambassadors-og.png?v=20261026-2', width: 1200, height: 630, alt: 'Hackways Ambassadors', type: 'image/png' };
   return { openGraph: { title, description, siteName: 'Hackways', type: 'website' as const, locale: 'en_IN', images: [image] }, twitter: { card: 'summary_large_image' as const, title, description, images: [image.url] } };
 }

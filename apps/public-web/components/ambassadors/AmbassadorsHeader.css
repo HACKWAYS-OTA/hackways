@@ -62,3 +62,12 @@
 @media (prefers-reduced-motion: reduce) {
   .ambassador-header { transition: none; }
 }
+
+@media(max-width:600px) and (forced-colors:none){
+  .ambassador-header-inner{min-height:68px;padding:10px 24px;gap:16px}
+  .ambassador-header .brand{font-size:21px}
+  .ambassador-header:not([data-surface="content"]){color:#f6f8ff;background:#06112966;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .ambassador-header:not([data-surface="content"]) .ambassador-sign-in{background:#07152b80;color:#fff;border-color:#d3e3ff80;padding:8px 16px}
+  .ambassador-header:not([data-surface="content"]) .ambassador-sign-in:hover{background:#173264}
+}
+@media(max-width:360px){.ambassador-header-inner{padding-inline:20px}}
