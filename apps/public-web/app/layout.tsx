@@ -1,4 +1,5 @@
 import { pageSocialMetadata } from '@/lib/social-metadata';
+import { brandIcons } from '@hackways/ui/brand-metadata';
 import { UIProvider } from '@hackways/ui/provider';
 import '@hackways/ui/styles.css';
 import React from "react";
@@ -12,6 +13,7 @@ import { site } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = { ...pageSocialMetadata('platform'),
+  icons: brandIcons(),
   metadataBase: new URL(site.url),
   title: { default: "Hackways — Find your next tech event", template: "%s | Hackways" },
   description: "Discover hackathons, meetups, and conferences. Find your next tech event, or bring your own community together with Hackways.",

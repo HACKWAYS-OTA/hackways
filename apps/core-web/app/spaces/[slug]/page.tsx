@@ -9,7 +9,17 @@ import { SpaceMembership } from '@/components/spaces/SpaceMembership';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/spaces/spaces.css';
 import { entitySocialMetadata } from '@/lib/social-metadata';
-export async function generateMetadata({ params }: { params: { slug: string } }) { const space = await readSpace(params.slug); const description = space.description.slice(0, 160); return { ...entitySocialMetadata(`/spaces/${encodeURIComponent(space.slug)}`, space.name, description), title: space.name, description }; }
+export async function generateMetadata({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
+  const space = await readSpace(params.slug);
+  const description = space.description.slice(0, 160);
+  const path = `/spaces/${encodeURIComponent(space.slug)}`;
+  const query = new URLSearchParams();
+  if (searchParams.period === 'past') query.set('period', 'past');
+  const offset = pageOffset(searchParams.offset);
+  if (offset) query.set('offset', String(offset));
+  const canonical = query.size ? `${path}?${query}` : path;
+  return { ...entitySocialMetadata(path, space.name, description), title: space.name, description, alternates: { canonical } };
+}
 export default async function SpacePage({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
   const [space, user] = await Promise.all([readSpace(params.slug), currentUser()]);
   const past = searchParams.period === 'past', offset = pageOffset(searchParams.offset), base = `/spaces/${space.slug}`;

@@ -9,12 +9,14 @@ import { ContentSwitcher } from "@/components/site/ContentSwitcher";
 import { DisclosureList } from "@/components/site/DisclosureList";
 import { LandingNavigation } from "@/components/site/LandingNavigation";
 import { site } from "@/lib/site";
+import { siteIdentity } from '@/lib/structured-data';
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function HomePage() {
   return (
     <div className="landing-page">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteIdentity).replace(/</g, '\\u003c') }} />
       <div className="hero-discovery">
       <section className="landing-section reference-hero" aria-labelledby="hero-heading">
         <div className="site-container reference-hero-inner">

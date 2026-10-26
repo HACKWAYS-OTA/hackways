@@ -16,6 +16,7 @@
     "./avatar": "./src/Avatar.tsx",
     "./social-image": "./src/SocialImage.tsx",
     "./social-pages": "./src/SocialPages.ts",
+    "./brand-metadata": "./src/BrandMetadata.ts",
     "./auth.css": "./src/auth.css",
     "./styles.css": "./src/controls.css",
     "./event-fonts": "./src/EventFonts.ts",

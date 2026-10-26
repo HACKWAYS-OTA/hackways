@@ -1,4 +1,5 @@
 import { pageSocialMetadata } from '@/lib/social-metadata';
+import { brandIcons } from '@hackways/ui/brand-metadata';
 import '@hackways/ui/mcp.css';
 import { SessionRefresh } from '@hackways/ui/session-refresh';
 import { UIProvider } from '@hackways/ui/provider';
@@ -12,7 +13,7 @@ import './globals.css';
 import './dashboard.css';
 import '@hackways/ui/auth.css';
 
-export const metadata: Metadata = { ...pageSocialMetadata('platform'), metadataBase: new URL(site.app), title: { default: 'Discover events | Hackways', template: '%s | Hackways' }, description: 'Explore published tech events and reserve your place with Hackways.' };
+export const metadata: Metadata = { ...pageSocialMetadata('platform'), icons: brandIcons(), metadataBase: new URL(site.app), title: { default: 'Discover events | Hackways', template: '%s | Hackways' }, description: 'Explore published tech events and reserve your place with Hackways.' };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#ffffff' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

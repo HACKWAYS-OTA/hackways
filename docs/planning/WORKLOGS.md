@@ -1411,3 +1411,53 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   scope/cache settings were cleared after successful activation.
 - User emphasized applications are live: preserve the applicant journey and avoid
   changes to forms, submission behavior or backend/mail services for admin-only fixes.
+
+## 2026-10-26 - Requested SEO skill and public metadata audit
+
+- Installed AgricIDaniel/claude-seo instruction hub plus technical, sitemap, schema
+  and page modules into the user Codex skills directory; retained the existing
+  user-selected seo-audit. No upstream hooks/runtime installers or app dependencies.
+- Read-only HTTPS/source audit found sitemap directory gaps, missing public
+  program/Space canonicals, inherited event copy on Programs, www duplication
+  and an oversized unoptimized thumbnail. Evidence, priorities, limitations and
+  follow-up sequence are in SEO_AUDIT_2026-10-26.md.
+- Source fixes only: added three public directory sitemap URLs, public program
+  and Space canonicals (preserving pagination), noindex for search/private tabs,
+  and directory-specific metadata descriptions. Forms, sessions, submissions, mail,
+  Go APIs and database contracts unchanged. No production release for this audit.
+- Both affected app npm test commands passed type-check/lint, source audit and
+  diff checks passed. Anonymous loopback preview output verified the new metadata;
+  initial cold-preview failures and eventual successful output are recorded.
+- PageSpeed quota returned429; no GSC, field CWV, rendered-schema or ranking claims.
+
+## 2026-10-26 - Promotional wordmark export request
+
+- Exported the existing lowercase FG Futurist hackways. wordmark as outlined SVG
+  and 6000px-long-edge transparent PNG/white JPG in ten aspect ratios. Files are
+  user deliverables under Downloads/HACKWAYS LOGOS, outside the application repo.
+- Existing original Downloads assets retained. No production application changed.
+
+## 2026-10-26 - Circular favicon and requested AI SEO
+
+- Applied the ai-seo skill and factual structured-data guidance. Designed a navy
+  circular FG Futurist h/dot favicon, with outlined SVG, 48/96/180/192/512 PNGs
+  and transparent ICO frames16/32/48. Matching assets and shared metadata links
+  installed in all four apps, including organizer /manage paths.
+- Added homepage server-rendered Organization/WebSite JSON-LD, factual About
+  introduction and a static public llms.txt directory. No invented social profiles,
+  reviews, addresses, employment claims, private data or AI ranking guarantees.
+- Existing crawler/training rules retained. Header-based anonymous OAI-SearchBot,
+  PerplexityBot and Claude-SearchBot /about requests returned200 with public copy;
+  genuine crawler-IP access/indexation is not proven by those checks.
+- Four app npm test commands and shared UI type-check/lint passed. Public-web
+  production build completed locally (off the production VM). Local production
+  HTTP verified homepage JSON-LD parsing, icon discovery links, SVG/PNG/ICO MIME
+  and200 responses, exact llms.txt contents, and expanded sitemap XML.
+- Icon hashes matched across all four apps; alpha corners, image sizes and ICO
+  frames verified. Visual size preview inspected from16px through192px. Source
+  audit, whitespace check and Impeccable detector passed.
+- Documentation: docs/design/BRAND_ICONS.md and docs/design/AI_SEARCH.md. Favicon
+  copies/preview added to Downloads/HACKWAYS LOGOS/Favicon and the existing ZIP.
+- Source only: no production deployment/restart, applicant flow, session, Go,
+  database or mail contract changes. Rendered Rich Results Test, real AI citation
+  rates, Search Console and field CWV remain unverified.

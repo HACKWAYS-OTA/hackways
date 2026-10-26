@@ -1,0 +1,38 @@
+# Hackways
+
+> Hackways is an event and community platform for discovering technology gatherings, hosting events and managing registrations.
+
+Hackways connects people with hackathons, meetups, conferences and other technology events. A Space is a community profile with its events. Each event has its own registration and participation requirements, described on its current public page.
+
+## Explore the platform
+
+- [About Hackways](https://hackways.in/about): What the platform does and how attending and hosting work.
+- [Discover events](https://hackways.in/discover): Current publicly listed events and their registration details.
+- [Spaces](https://hackways.in/spaces): Community profiles and their events.
+- [Programs](https://hackways.in/programs): Published programs and role details. Current availability and requirements are shown on each program page.
+- [Hackways Ambassadors](https://hackways.in/ambassadors): An introduction to bringing a community together through events hosted on Hackways.
+
+## Help and hosting
+
+- [Organizer guide](https://hackways.in/organizers): Preparing, publishing and managing an event.
+- [Finding an event](https://hackways.in/help/finding): Discovery, visibility and schedules.
+- [Registration and status](https://hackways.in/help/joining): Confirmation, organizer review and waiting lists.
+- [Your registration](https://hackways.in/help/changes): Tickets and available registration actions.
+- [Accounts and email](https://hackways.in/help/accounts): Sign-in, verification and transactional email.
+- [Hosting an event](https://hackways.in/help/hosting): Event settings and the organizer workspace.
+- [Safety and support](https://hackways.in/help/safety): Getting help and protecting private information.
+- [Contact](https://hackways.in/contact): Platform support and event-specific contacts.
+
+## AI workspace connection
+
+- [Hackways MCP](https://hackways.in/mcp): Connecting a Hackways account to an AI workspace.
+- [MCP setup](https://hackways.in/mcp/setup): Authentication and connection instructions.
+
+## Policies
+
+- [Privacy](https://hackways.in/privacy): Information use and access.
+- [Terms](https://hackways.in/terms): Responsibilities when using the platform.
+- [Acceptable use](https://hackways.in/acceptable-use): Participation, content and conduct guidelines.
+- [Sitemap](https://hackways.in/sitemap.xml): Public page discovery.
+
+Event and program information can change. Their current public pages are the source for schedules, availability and participation requirements. Account records, guest lists, application answers and decisions are private; they are not part of this public directory.

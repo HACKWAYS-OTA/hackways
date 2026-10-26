@@ -4,7 +4,8 @@ import { ProgramFrame } from '@/components/programs/ProgramFrame';
 import { entitySocialMetadata } from '@/lib/social-metadata';
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const { data } = await programRead(params.slug);
-  return { ...entitySocialMetadata(`/programs/${encodeURIComponent(data.slug)}`, data.title, data.summary), title: data.title, description: data.summary };
+  const path = `/programs/${encodeURIComponent(data.slug)}`;
+  return { ...entitySocialMetadata(path, data.title, data.summary), title: data.title, description: data.summary, alternates: { canonical: path } };
 }
 export default async function ProgramOverview({ params }: { params: { slug: string } }) {
   const { data: program, accepting_applications: accepting } = await programRead(params.slug);
