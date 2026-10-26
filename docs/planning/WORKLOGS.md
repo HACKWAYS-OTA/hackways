@@ -1276,3 +1276,18 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   stale preview conflicts, idempotency and private decision handling.
 - Browser automation remains unavailable; rendered/keyboard QA is not claimed.
   Follow-up image build and activation remain pending at this entry.
+
+
+### 2026-10-26 ? Shared dropdown mounting correction
+
+- Traced the platform-wide missing options to shared Select's explicit null portal
+  container. Installed Base UI 1.8 defers rendering for null. Use undefined outside
+  native dialogs, preserving dialog-local mounting and inherited portal behavior.
+- Preserve explicit empty-string options such as All decisions rather than treating
+  them as missing selection. No dependency or backend contract changes.
+- All four frontend images require rebuilding because they share this source.
+
+- Follow-up hosted Linux checks all passed, including race checks for both backends.
+  Admin production build caught a misplaced client directive before image publication;
+  corrected its import order. No failed image was deployed. Shared dropdown checks
+  and all frontend builds are included in the next immutable candidate.

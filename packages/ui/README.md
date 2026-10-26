@@ -83,3 +83,10 @@ essential authorized data on the server; Go owns all permission and mutation
 decisions. No model credential is accepted as browser consent. Cookie management
 remains available through `CookiePreferencesButton`; its optional label lets the
 Cookies page display Manage cookies.
+
+
+Select portal containers use the enclosing native dialog when present; otherwise
+`undefined` preserves Base UI's body/parent-portal default. Never pass explicit
+`null` as the no-dialog fallback: Base UI waits rather than mounting options.
+An empty-string option (for example All decisions) is a real selectable value when
+included in `options`; only absent values show the placeholder.

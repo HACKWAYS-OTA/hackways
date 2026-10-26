@@ -16,13 +16,15 @@ export type SelectProps<Value extends string> = {
 
 export function Select<Value extends string>({ options, value, onValueChange, label, placeholder = 'Choose an option', autoFocus, className = '', id, ...props }: SelectProps<Value>) {
   const trigger = useRef<HTMLButtonElement>(null);
-  const [container, setContainer] = useState<HTMLElement | null>(null);
+  const [container, setContainer] = useState<HTMLElement | undefined>(undefined);
   const [palette, setPalette] = useState<CSSProperties>({});
   const highlight = useId();
   const reduced = useReducedMotion();
-  return <Primitive.Root {...props} items={options} value={value || null} onValueChange={next => { const option = options.find(item => item.value === next); if (option) onValueChange(option.value); }} onOpenChange={open => {
+  return <Primitive.Root<Value | ''> {...props} items={options} value={options.some(option => option.value === value) ? value : null} onValueChange={next => { const option = options.find(item => item.value === next); if (option) onValueChange(option.value); }} onOpenChange={open => {
     if (!open || !trigger.current) return;
-    setContainer(trigger.current.closest('dialog'));
+    // An explicit null tells Base UI to defer mounting the popup indefinitely.
+    // Undefined uses its default body/parent portal outside a native dialog.
+    setContainer(trigger.current.closest('dialog') ?? undefined);
     const style = getComputedStyle(trigger.current);
     setPalette({ ...Object.fromEntries(['--hw-ink', '--hw-paper', '--hw-line', '--hw-muted', '--hw-fill'].map(token => [token, style.getPropertyValue(token)])), fontFamily: style.fontFamily } as CSSProperties);
   }}>
