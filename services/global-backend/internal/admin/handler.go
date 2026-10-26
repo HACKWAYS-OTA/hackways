@@ -34,6 +34,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Use(auth.RequirePlatformAdmin(h.sessions, h.queries))
 	r.Get("/overview", h.Overview)
 	r.Get("/analytics", h.Analytics)
+	r.Get("/analytics/live", h.LiveAnalytics)
 	r.Get("/people", h.AdminListPeople)
 	r.Get("/messaging", h.AdminListMessages)
 	r.Get("/storage", h.AdminListAssets)

@@ -128,6 +128,55 @@ func TestAdminDetailActions(t *testing.T) {
 		t.Fatal("analytics CSV range invalid")
 	}
 	eventPath := "/events/" + strconv.FormatInt(event.AdminReference, 10)
+	// Sliding windows use the database clock and exclude older registrations.
+	check(request("GET", "/analytics/live", "", "", "", "", ""), 401)
+	check(request("GET", "/analytics/live", "", "", "", "", auth.DefaultSessionCookie), 401)
+	for _, value := range []string{"invalid", "0", "90d"} {
+		check(call("GET", "/analytics/live?window="+value, "", ""), 400)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE rsvps SET registered_at=clock_timestamp()-interval '18 minutes' WHERE id=$1", reg.Data.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, window := range []string{"5m", "1h", "24h"} {
+		rec := call("GET", "/analytics/live?window="+window, "", "")
+		check(rec, 200)
+		var live liveCoreAnalytics
+		if err = json.Unmarshal(rec.Body.Bytes(), &live); err != nil || live.Window != window || rec.Header().Get("Cache-Control") != "private, no-store" {
+			t.Fatalf("invalid live report %s: %s", window, rec.Body.String())
+		}
+		seconds, buckets := 300, 20
+		if window == "1h" {
+			seconds = 3600
+		}
+		if window == "24h" {
+			seconds, buckets = 86400, 24
+		}
+		if len(live.Activity) != buckets || time.Since(live.CapturedAt) > 10*time.Second || time.Until(live.CapturedAt) > time.Second || !live.Activity[0].Bucket.Time.Equal(live.CapturedAt.Add(-time.Duration(seconds)*time.Second)) {
+			t.Fatalf("live window bounds or buckets invalid: %s", window)
+		}
+		var registrations, checkins int64
+		for _, row := range live.Activity {
+			registrations += row.Registrations
+			checkins += row.CheckIns
+		}
+		if registrations != live.Summary.Registrations || checkins != live.Events.CheckIns {
+			t.Fatal("live activity does not reconcile with totals")
+		}
+		var persisted int64
+		if err = pool.QueryRow(ctx, "SELECT count(*) FROM rsvps r JOIN events e ON e.id=r.event_id WHERE e.deleted_at IS NULL AND r.registered_at >= $1 AND r.registered_at < $2", live.CapturedAt.Add(-time.Duration(seconds)*time.Second), live.CapturedAt).Scan(&persisted); err != nil || persisted != registrations {
+			t.Fatalf("%s totals differ from persisted interval: %v", window, err)
+		}
+		if window == "5m" {
+			for _, row := range live.TopEvents {
+				if row.Reference == event.AdminReference {
+					t.Fatal("older fixture leaked into five-minute report")
+				}
+			}
+		}
+	}
+	if _, err = pool.Exec(ctx, "UPDATE rsvps SET registered_at=clock_timestamp() WHERE id=$1", reg.Data.ID); err != nil {
+		t.Fatal(err)
+	}
 	// Extend the mandatory isolated admin workflow with real City Hub persistence,
 	// publication, curation, replay and private-event exclusion.
 	cityAdmin, cityPublic := cities.NewHandler(pool).AdminRoutes(), cities.NewHandler(pool).Routes()

@@ -127,6 +127,8 @@ type Querier interface {
 	ListRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) ([]ListRegistrationQuestionsRow, error)
 	ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams) ([]Events, error)
 	ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditParams) ([]ListWorkflowAuditRow, error)
+	LiveAnalyticsWindow(ctx context.Context, windowSeconds float64) (LiveAnalyticsWindowRow, error)
+	LiveRegistrationActivity(ctx context.Context, arg LiveRegistrationActivityParams) ([]LiveRegistrationActivityRow, error)
 	LockCity(ctx context.Context, reference int64) (CityHubs, error)
 	LockDiscoverPromotionSettings(ctx context.Context) (LockDiscoverPromotionSettingsRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)

@@ -2,6 +2,10 @@
 .analytics-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px; margin-bottom:26px; }
 .analytics-heading h1 { font-size:clamp(32px,4vw,48px); }
 .analytics-heading > div { display:flex; flex-wrap:wrap; gap:10px; }
+.analytics-live-heading { align-items:flex-end; }
+.analytics-heading .analytics-live-controls { align-items:flex-end; gap:14px; }
+.analytics-live-controls > :first-child { width:150px; }
+.analytics-history-link { align-self:center; font-size:14px; text-decoration:underline; text-underline-offset:4px; }
 .analytics-filters { display:grid; grid-template-columns:minmax(160px,1.1fr) minmax(150px,1fr) minmax(150px,1fr) auto; align-items:end; gap:16px; padding-bottom:28px; margin-bottom:30px; border-bottom:1px solid var(--line); }
 .analytics-filters .field { margin:0; }
 .analytics-filters label { font-size:13px; color:var(--muted); }

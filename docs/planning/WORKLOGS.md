@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Live admin analytics intervals
+
+- Replaced the default date-only console report with database-clock sliding 5 min, 1 hr and 24 hr windows. Both Go engines retain dedicated admin authorization, read-only repeatable-read snapshots and bounded request/statement timeouts. SQLc owns all added queries; no schema change.
+- Added concurrent first-render data, visible-tab refresh every 15 seconds after completion, request cancellation, independent error/retry handling and explicit interval switching. No update timestamps are rendered. History and existing daily exports remain available separately.
+- Registration buckets reconcile with interval totals. Consent-based visitors and provider-accepted emails are labeled accurately; visitor budget saturation is disclosed when applicable. Live polling omits the historical all-contact count.
+- Verified locally: SQLc generation for both engines; go vet and full go test -p 1 ./... -count=1 against the isolated _test PostgreSQL database (both engines); admin type check/lint; shared API-client build; tracked-source audit; git diff --check. Mandatory existing integration cases now cover auth, interval rejection, database bounds/counts and bucket reconciliation. Local Windows checks do not claim race-detector coverage; hosted Linux CI remains required before activation.
+- Impeccable detector returned []; independent source-only finish review returned ship. User excluded browser checks, so no rendered/visual verification is claimed. Production activation remains pending at this commit.
+
 ### 2026-10-21 ACS-008 - Minimal first-send fix and isolated image publication
 
 - User explicitly authorized a global-backend-only launch fix, retry/duplicate-send regression tests and one replacement CI image for review; production changes remain excluded.

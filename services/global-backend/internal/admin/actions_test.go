@@ -97,6 +97,27 @@ func TestAdminRecordActions(t *testing.T) {
 	}
 
 	// Analytics extends this mandatory real-PostgreSQL administration regression.
+	if got := request("GET", "/analytics/live", actionBody{}, "", "", "", "").Code; got != 401 {
+		t.Fatalf("anonymous live analytics access %d", got)
+	}
+	if got := request("GET", "/analytics/live", actionBody{}, "", "", "", auth.DefaultSessionCookie).Code; got != 401 {
+		t.Fatalf("ordinary live analytics access %d", got)
+	}
+	for _, value := range []string{"invalid", "0", "90d"} {
+		if got := get("/analytics/live?window=" + value).Code; got != 400 {
+			t.Fatalf("unbounded live interval %s accepted: %d", value, got)
+		}
+	}
+	for _, window := range []string{"5m", "1h", "24h"} {
+		rec := get("/analytics/live?window=" + window)
+		var live liveGlobalAnalytics
+		if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &live) != nil || live.Window != window || live.Pages == nil || live.Sources == nil || rec.Header().Get("Cache-Control") != "private, no-store" || time.Since(live.CapturedAt) > 10*time.Second || time.Until(live.CapturedAt) > time.Second {
+			t.Fatalf("invalid live account analytics %d %s", rec.Code, rec.Body.String())
+		}
+		if live.Accounts.NewAccounts < 2 {
+			t.Fatal("live report did not include persisted accounts")
+		}
+	}
 	if got := request("GET", "/analytics", actionBody{}, "", "", "", "").Code; got != 401 {
 		t.Fatalf("anonymous analytics access %d", got)
 	}

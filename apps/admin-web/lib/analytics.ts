@@ -19,6 +19,18 @@ export type CoreAnalytics = {
   generated_at: string;
 };
 export const analyticsNumber = (value: number) => new Intl.NumberFormat('en-IN').format(value);
+export type AnalyticsWindow = '5m' | '1h' | '24h';
+export type LiveCoreAnalytics = Pick<CoreAnalytics, 'summary' | 'events' | 'top_events'> & {
+  window: AnalyticsWindow;
+  captured_at: string;
+  activity: { bucket: string; registrations: number; check_ins: number }[];
+};
+export type LiveGlobalAnalytics = Pick<GlobalAnalytics, 'traffic' | 'pages' | 'sources'> & {
+  window: AnalyticsWindow;
+  captured_at: string;
+  limited: boolean;
+  accounts: Pick<GlobalAnalytics['accounts'], 'new_accounts' | 'accepted_emails' | 'failed_emails'>;
+};
 export function analyticsPeriod(params: { from?: string; to?: string }) {
   const today = new Date().toISOString().slice(0, 10);
   const to = params.to || today;

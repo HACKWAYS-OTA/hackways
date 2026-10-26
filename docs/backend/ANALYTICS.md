@@ -2,6 +2,26 @@
 
 ## Admin reports
 
+The default console view uses `GET /api/v1/admin/{core,global}/analytics/live`.
+`window=5m` (default), `1h`, and `24h` select exact sliding intervals; other values
+return 400. PostgreSQL `transaction_timestamp()` defines each engine's interval
+inside a read-only repeatable-read transaction. The engines retain independent
+snapshots. Core activity has 20 buckets for 5m/1h and 24 for 24h, including real
+zero counts, with the same bounds as the totals. Existing indexed queries provide
+registration states, check-ins, event creation, new accounts, provider acceptance
+and consented traffic. No schema migration is required.
+
+The page loads both engines concurrently on the server. While visible, it refreshes
+15 seconds after the preceding request completes; hidden tabs stop polling and
+refresh on return. Interval changes cancel older requests and clear prior figures.
+Failed sections clear their figures and offer retry; missing data never becomes
+zero. Existing admin session, grant and daily OTP checks apply to both endpoints.
+Responses remain private/no-store, with 5-second requests and 2-second statements.
+`captured_at` is transport metadata only: the interface has no update timestamp.
+Traffic is labeled as consented visitors, not online users. A collection-budget
+warning appears when a selected day reached its ingestion limit. History and its
+date-range exports remain available separately under `/analytics?view=history`.
+
 `GET /api/v1/admin/core/analytics` reports registrations, current registration states,
 events created, current ticket check-in timestamps, daily activity and ten leading
 events. `GET /api/v1/admin/global/analytics` reports accounts, provider-accepted and
