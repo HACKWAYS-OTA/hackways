@@ -1401,3 +1401,13 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Existing mandatory PostgreSQL case now explicitly verifies the invalid extra-field
   request is rejected and the correct empty-notes request succeeds. No validation is
   weakened and no production applicant data is changed during verification.
+
+- Private review fix 46bcdc4 passed all hosted checks and admin-only image publication
+  (run 40350027938). The runtime image provenance and all web readiness checks passed;
+  the other five images and environment were retained. Admin HTTPS login returns200.
+- Actual deployed JS was inspected: private request serializes the three-field draft,
+  while publication retains its confirmed payload and idempotency key. No production
+  applicant record or decision was changed to verify this fix. Temporary publication
+  scope/cache settings were cleared after successful activation.
+- User emphasized applications are live: preserve the applicant journey and avoid
+  changes to forms, submission behavior or backend/mail services for admin-only fixes.
