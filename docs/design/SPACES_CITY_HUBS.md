@@ -14,11 +14,13 @@ Inherit the consuming app's existing paper, ink, muted, line, soft and violet va
 
 Images carry community and city identity. Empty image regions use the existing soft violet field, an image icon or a name initial. They must not imply an uploaded asset exists. Explicit image-picker actions and real error/loading text communicate state independently of color.
 
+City directory cards and profile heroes place light text over the saved photograph with dark overlays for legibility. Missing City banners retain a solid dark field or name initial rather than fabricated photography. This treatment belongs to these image-led surfaces and does not replace the application palette.
+
 ## Typography
 
 FG Futurist supplies community/city names, page headings, initials and the established action-button character. Google Sans Flex supplies descriptions, metadata, form controls, labels and progress text. Keep the existing self-hosted faces.
 
-The Create a Space/Edit Space heading is moderately sized (28px, reducing to 25px at 640px). Form fields use Google Sans Flex (14px) with visible labels (13px); progress text is smaller (12px), and the current step has stronger emphasis. Directory community titles are compact (23px, reducing to 20px), with descriptions and member-count metadata subordinate. City profile names are intentionally larger, scaling from 40px to 72px. These sizes describe the current scoped CSS, not a global hierarchy change.
+The Create a Space/Edit Space heading is moderately sized (28px, reducing to 25px at 640px). Form fields use Google Sans Flex (14px) with visible labels (13px); progress text is smaller (12px), and the current step has stronger emphasis. Directory community titles are compact (23px, reducing to 20px), with descriptions and member-count metadata subordinate. City profile names are intentionally larger, scaling from 48px to 76px on desktop and 42px to 60px on mobile. These sizes describe the current scoped CSS, not a global hierarchy change.
 
 ## Layout
 
@@ -42,15 +44,17 @@ On desktop, cover and logo sit side by side with a 24px gap and a 112px logo col
 
 ### Public City Hubs
 
-The directory uses image-led cards with region/country, city name and the API-supplied upcoming-event count. Three columns become two at 960px and one at 640px. Missing banners use an initial rather than invented city photography.
+The directory uses one whole-card link per city, with the saved image and bottom-aligned name/count copy sharing a grid cell. This allows long city names to wrap and contribute to the card's intrinsic height rather than clipping inside an absolutely positioned text layer. Upcoming-event counts appear only when the API supplies a numeric count; absence is not replaced with an invented zero. Three columns become two at 960px and one at 640px. Missing banners use an initial rather than invented city photography. Hover subtly enlarges the image; reduced motion removes that animation.
 
-The profile gives the city name, region/country and time zone a clear opening. A saved banner sits alongside the title on desktop and below it on mobile; without a banner, no empty hero photo is rendered. Upcoming/past event navigation and event results lead the body. City description and the community-directory link occupy the secondary column, which moves below at 960px and narrower. City pages link to ordinary event creation; they do not grant public curation rights.
+The profile opens with a full-width hero using the actual saved banner as a cover photograph, with the city name, a short introduction derived from its saved description and Explore events overlaid. No photo is fabricated when the banner is absent. The introduction uses the first description paragraph, shortened to at most 280 characters before an ellipsis; longer saved copy can appear in an About section below events. Breadcrumb, region/country and time-zone metadata are absent from this public hero.
+
+Explore events uses the shared `SectionJumpButton` to move focus/scroll to the events section without a fragment URL. Existing top navigation visually overlays the hero only when the document contains the actual `.city-profile-page` marker, through scoped `body:has(...)` rules. The directory and other app routes retain their normal header. Mobile adjusts the photo crop, overlay, title size and outer spacing. The body contains upcoming/past event navigation, real results or explicit empty/error states, pagination and ordinary event creation; it adds no subscriptions or public curation controls.
 
 ### Admin City Hub workspace
 
 Admin retains its existing shell. The list exposes each city name, public address, optional thumbnail and publication state, with a Create City Hub action. The editor is capped at 900px; identity, region, country, time zone and publication fields use a two-column grid that becomes one column at 640px. The description spans the full grid, followed by the shared image picker and save/public-address actions.
 
-Event curation follows the saved city details. Existing associations are listed with Remove actions, and search provides eligible published public event choices with Add event/Added state. Curation appears only after a City Hub has a persisted identity. Removing an association leaves the event itself unchanged.
+Event curation follows the saved city details in the separate `CityEventCuration` component. The existing associations use a semantic table with Event, Date, Visibility and action columns. Add events opens a second table of eligible published public events with Event, Date, Location and action columns; Close search hides it. Tables retain captions, scoped headers and focusable, horizontally scrollable regions. Search stacks and table spacing tightens on mobile. Curation appears only after a City Hub has a persisted identity. Removing an association leaves the event itself unchanged.
 
 ## Elevation & Depth
 
@@ -60,7 +64,7 @@ Space form groups, guidelines and archive settings, plus Space/City profile sect
 
 ## Shapes
 
-Cards use gently rounded corners (14px). Media pickers use rounded frames (12px), with a wide cover/banner shape and a square logo shape. Space inputs have clear borders and rounded corners (10px), with a minimum height of 46px and comfortable internal padding. The owner disclosure uses a compact rounded boundary (12px). The crop dialog uses a softer outer frame (16px) around the cropped image region (12px). Existing pill actions remain part of the app language.
+Cards use gently rounded corners (14px). Media pickers use rounded frames (12px), with a wide cover/banner shape and a square logo shape. Space inputs have clear borders and rounded corners (10px), with a minimum height of 46px and comfortable internal padding. The owner disclosure and admin event-table boundaries use compact rounded corners (12px). The crop dialog uses a softer outer frame (16px), a dark stage (12px) and a tighter crop frame (5px). Existing pill actions remain part of the app language.
 
 ## Components
 
@@ -70,11 +74,11 @@ Use `MediaField` from `@hackways/ui/media-field` for Space cover/logo and the ad
 
 The inspected control accepts PNG, JPEG and WebP files, rejects empty files and files larger than 5 MB, shows a local preview and filename, and exposes Change image and Remove actions. Removal of a saved image can be reversed with Keep current before submitting. Client validation is feedback; backend validation remains authoritative. Image selection alone does not upload or persist the asset.
 
-Selecting a valid image opens the shared crop-and-adjust dialog before the field accepts it. A square crop serves logos; Space banners use the default wide crop (3:1) and City banners specify a wider-than-square crop (16:9). Dragging and labeled Zoom, Horizontal position and Vertical position range controls adjust the crop; the ranges provide a keyboard alternative to dragging. Reset restores centered framing and the original zoom. Unneeded movement controls disable when the image already fills that axis.
+Selecting a valid image opens the shared crop-and-adjust dialog before the field accepts it. A square crop serves logos; Space banners use the default wide crop (3:1) and City banners specify 16:9. One labeled Zoom slider with zoom-in/out buttons and a percentage output controls scale. Pointer dragging repositions the image; a focusable canvas supports arrow keys, with Shift for larger steps. A compact group of labeled directional buttons provides a direct alternative to dragging. Directional buttons disable when movement is unavailable or has reached the crop boundary. Reset restores centered framing and the original zoom.
 
-Use image exports the adjustment to a new browser `File` and updates the image field; it does not upload or save the parent form. Cancel, close and Escape discard the pending adjustment while retaining the previous field selection. The native modal has a named heading/description; its setup moves focus to the heading and cleanup returns focus to the previously active element. These are source-backed behaviors awaiting browser verification.
+Use image exports the adjustment to a new browser `File` and updates the image field; it does not modify the original file, upload or save the parent form. Until that confirmation, the previously accepted field selection remains unchanged. Cancel, close and Escape discard the pending adjustment; these dismissal actions are disabled while exporting. The native modal has a named heading/description; its setup moves focus to the heading, locks background scrolling and cleanup restores scrolling and the previously active element's focus. These are source-backed behaviors awaiting browser verification.
 
-The cropper reports image decoding/export failures, rejects decoded dimensions above 40 megapixels, and checks the adjusted output against the existing 5 MB limit. Output width is capped at 768px for square logos or 1600px for other crops and does not exceed the sampled source width. The modal remains scrollable within the viewport and wraps its footer actions on narrow screens. Do not imply that this local image utility replaces backend media validation or Azure completion.
+The cropper reports image decoding/export failures, rejects decoded dimensions above 40 megapixels, and checks the adjusted output against the existing 5 MB limit. Output width is capped at 768px for square logos or 1600px for other crops and does not exceed the sampled source width. The viewport-bounded modal uses a flex column: header and confirmation footer stay outside the scrolling body, while the crop frame scales with the available viewport. Tools stack at narrow widths and footer padding accounts for safe-area insets. Do not imply that this local image utility replaces backend media validation or Azure completion.
 
 ### Image selection and persistence
 
@@ -94,7 +98,9 @@ Directory cards and Space profiles foreground the community rather than the indi
 
 Publication uses the existing shared `Select`, with Draft (hidden), Published and Archived (hidden) options. The page address is supplied at creation and remains stable thereafter. Publishing requires a description in the editor; real backend validation decides acceptance.
 
-Event search is delayed briefly (250ms), cancels older requests and distinguishes loading, failure and no matching eligible events. Add/remove and save actions disable while pending. Success text follows the actual API result. Revision/idempotency transport remains in the existing application calls; visible controls do not establish authorization.
+Event search runs only while Add events is open, waits briefly (250ms), clears superseded choices and cancels older requests. Opening the finder focuses its search field. The available-events table distinguishes loading, failure with Try again, no public events and no matches; already associated events show a disabled Added action. Dates use the saved city's time zone and absent locations say Not listed.
+
+Add/remove and save actions disable while pending. After an association mutation succeeds, the parent editor fetches the latest confirmed city/events and updates the table from that response. If that refresh fails, the interface reports that the selection was saved and offers Reload latest data rather than pretending the table is current. Success text follows the actual mutation result. Revision/idempotency transport remains in the existing application calls; visible controls do not establish authorization.
 
 ### Accessibility and first render
 
@@ -113,6 +119,9 @@ Directories and profiles fetch their essential real records on the server. Space
 - Do group profile-header owner event/settings actions inside one Manage Space disclosure.
 - Do make each Space directory card one link and let profile events fill the body when no guidelines exist.
 - Do use community attribution on Space-linked events while preserving organizer attribution on standalone events.
+- Do use saved city imagery and description, show counts only when supplied, and let long city names determine card height.
+- Do use the shared section-jump control for Explore events and keep city-header overlay styles scoped to actual City profiles.
+- Do preserve direct crop alternatives through keyboard movement and labeled directional buttons alongside the single zoom control.
 - Don't restore the rejected community-page preview card alongside or below the creation form.
 - Don't restore public owner-name labels or an empty generic about sidebar on Space pages.
 - Don't persist a partial Space when Continue only advances to Appearance.
@@ -141,6 +150,14 @@ For this extension, existing global design files are preserved. No shipping rast
 
 Recorded from source on 2026-10-27. Reviewed `AGENTS.md`, `PRODUCT.md`, the architecture and verification guides, existing authentication/brand-icon/management design notes, core/admin global CSS, Space directory/profile/form/membership and upload helper, public event attribution, public City directory/profile/CSS, admin City list/new/detail/editor/CSS, and the shared media/crop controls/CSS and UI usage guide. The final source includes the two-step details/appearance flow, consolidated owner actions, whole-card directory links, community-only public attribution and conditional guidelines sidebar. Root `DESIGN.md` was absent in this checkout during inspection; this task creates only the local surface guide and does not repair global design artifacts or sidecars.
 
-Primary implementation references: [Space directory](../../apps/core-web/app/spaces/page.tsx), [Space profile](../../apps/core-web/app/spaces/[slug]/page.tsx), [Space form](../../apps/core-web/components/spaces/SpaceForm.tsx), [Space membership/owner actions](../../apps/core-web/components/spaces/SpaceMembership.tsx), [Space layout](../../apps/core-web/components/spaces/spaces.css), [event attribution](../../apps/core-web/app/events/[slug]/page.tsx), [public City profile](../../apps/core-web/app/cities/[slug]/page.tsx), [City layout](../../apps/core-web/components/cities/cities.css), [City editor](../../apps/admin-web/components/admin/CityEditor.tsx), [admin City layout](../../apps/admin-web/app/(console)/cities/cities.css), [shared media field](../../packages/ui/src/MediaField.tsx), [crop dialog](../../packages/ui/src/ImageCropDialog.tsx) and [media/crop styles](../../packages/ui/src/media-field.css).
+Subsequent source review covers the full-width City hero and scoped header overlay, intrinsic grid cards for long names, numeric-only event counts, the revised single-zoom/directional crop dialog, and extracted curation tables with on-demand search and confirmed post-mutation refresh. The existing centered admin City Hubs empty state remains. These observations describe the current source; they do not establish a rendered pass or independent verification of backend/external services.
+
+Primary implementation references: [Space directory](../../apps/core-web/app/spaces/page.tsx), [Space profile](../../apps/core-web/app/spaces/[slug]/page.tsx), [Space form](../../apps/core-web/components/spaces/SpaceForm.tsx), [Space membership/owner actions](../../apps/core-web/components/spaces/SpaceMembership.tsx), [Space layout](../../apps/core-web/components/spaces/spaces.css), [event attribution](../../apps/core-web/app/events/[slug]/page.tsx), [City directory](../../apps/core-web/app/cities/page.tsx), [public City profile](../../apps/core-web/app/cities/[slug]/page.tsx), [City layout](../../apps/core-web/components/cities/cities.css), [City editor](../../apps/admin-web/components/admin/CityEditor.tsx), [City event curation](../../apps/admin-web/components/admin/CityEventCuration.tsx), [admin City layout](../../apps/admin-web/app/(console)/cities/cities.css), [shared media field](../../packages/ui/src/MediaField.tsx), [crop dialog](../../packages/ui/src/ImageCropDialog.tsx) and [media/crop styles](../../packages/ui/src/media-field.css).
 
 Browser review was explicitly excluded at the user's request, so no current rendered review was performed. The latest direction restores recognizable inputs, moves optional branding after details, consolidates owner actions and simplifies public community identity; those changes were checked in source. Earlier screenshots do not verify the final two-step layout, validation focus, crop flow, whole-card navigation, conditional sidebar, owner disclosure, divider cleanup or responsive result. This document records source-backed behavior and responsive intent, not a visual pass. Browser keyboard/focus, mobile overflow, reduced motion, crop interaction, authenticated saving/curation and external Azure completion remain unverified. No browser, build or deployment actions were performed by this documentation work. No new tests, fixtures, generated assets or application functionality were added.
+
+### Admin City Hubs empty state
+
+When the admin City Hubs query returns no records, the [list page](../../apps/admin-web/app/(console)/cities/page.tsx) applies an empty-state class that centers the message horizontally and vertically using grid placement. Its [scoped styles](../../apps/admin-web/app/(console)/cities/cities.css) use a bounded minimum height (`clamp(220px, 35vh, 380px)`), centered paragraph text with a maximum width of `48ch`, and no list border. This applies to both the first-City-Hub prompt and No matching cities. Populated records retain their existing rows and separators; data fetching and records are unchanged.
+
+This narrow correction was checked in source only. The supplied screenshot establishes the original left-aligned message/divider issue; it does not verify the centered result. Browser checks are explicitly excluded by the user, so no rendered or responsive visual pass is claimed.

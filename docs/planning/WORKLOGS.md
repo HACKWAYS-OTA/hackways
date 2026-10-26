@@ -6,6 +6,13 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Live analytics production activation and City Hubs empty state
+
+- Release 4ddadc1 passed hosted CI 40403229133: both Go race/integration suites on PostgreSQL 16, SQLc compilation, all frontend type/lint checks, repository and deployment checks. Three immutable candidate images were published.
+- Streamed fresh PostgreSQL/configuration backups to private Azure Blob Storage; encryption, SHA256 and restore catalog were verified. Existing schema 28 stayed clean. Activated only core-backend, global-backend and admin-web, checking database readiness, image provenance and Nginx after each. All six services ready; the three untargeted frontends retained their container identity/start time and environment was unchanged. The first path precondition stopped before mutation and was corrected before activation.
+- Follow-up UI: centered the admin City Hubs empty state; structured curation and on-demand event search as semantic tables; simplified the shared crop dialog to drag/keyboard positioning and one zoom control with bounded header/body/footer; replaced public City split imagery with a full-width photo hero and refined directory tiles. Removed the public breadcrumb and time-zone label. All data and upload/persistence contracts remain with the existing Go APIs. These follow-up UI changes are not yet deployed at this commit.
+- Follow-up checks: core/admin/shared UI type checks and lint passed; source audit and diff whitespace checks passed; detector returned [] on crop, curation and City targets. Independent source review identified and then confirmed fixes for non-drag pan controls and long-name card sizing. Surface guide updated. Browser/render checks remain excluded by user instruction. Hosted candidate checks and activation of this UI follow-up are pending.
+
 ## 2026-10-27 - Live admin analytics intervals
 
 - Replaced the default date-only console report with database-clock sliding 5 min, 1 hr and 24 hr windows. Both Go engines retain dedicated admin authorization, read-only repeatable-read snapshots and bounded request/statement timeouts. SQLc owns all added queries; no schema change.
