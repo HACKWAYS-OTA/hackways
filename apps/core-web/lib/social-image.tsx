@@ -28,7 +28,7 @@ const unavailable = () => new Response('Image generation is busy. Please retry.'
 const imageResponse = (bytes: Uint8Array, key: string) => new Response(new Uint8Array(bytes), { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff', ETag: `"${key}"` } });
 
 export function socialImageMetadata(title: string) {
-  return (['wide', 'square'] as const).map(id => ({ id, size: socialSizes[id], alt: `${title} — Hackways`, contentType: 'image/png' }));
+  return (['wide', 'square'] as const).map(id => ({ id, size: socialSizes[id], alt: `${title} | Hackways`, contentType: 'image/png' }));
 }
 
 export async function renderSocialImage(content: SocialContent, id: string) {

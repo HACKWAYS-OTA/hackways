@@ -39,7 +39,7 @@ export function SocialImage({ content, format = 'wide' }: { content: SocialConte
 }
 
 export function staticSocialMetadata(origin: string, key: string, title: string, description: string) {
-  const images = (['wide', 'square'] as const).map(format => ({ url: new URL(`/social/${key}-${format}.png`, origin).href, ...socialSizes[format], alt: `${title} — Hackways`, type: 'image/png' }));
+  const images = (['wide', 'square'] as const).map(format => ({ url: new URL(`/social/${key}-${format}.png`, origin).href, ...socialSizes[format], alt: `${title} | Hackways`, type: 'image/png' }));
   return { openGraph: { title, description, siteName: 'Hackways', type: 'website' as const, locale: 'en_IN', images }, twitter: { card: 'summary_large_image' as const, title, description, images: [images[0].url] } };
 }
 

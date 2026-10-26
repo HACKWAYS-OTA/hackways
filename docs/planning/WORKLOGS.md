@@ -1461,3 +1461,33 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Source only: no production deployment/restart, applicant flow, session, Go,
   database or mail contract changes. Rendered Rich Results Test, real AI citation
   rates, Search Console and field CWV remain unverified.
+
+## 2026-10-26 - SEO/icons release and live Search Console follow-up
+
+- Source4686c5d passed complete hosted integration and four image publications
+  (run40372691969). All four frontend runtimes activated sequentially. Both Go
+  container identities/start times and runtime environment retained. Azure CLI
+  polling timed out after the operation; an independent read-only VM check proved
+  the active-images completion record and all six runtime identities/health.
+- Live public schema, llms.txt, sitemap, favicon bytes, program/Space canonicals,
+  private noindex and applicant login redirect verified. Admin brand SVG remains
+  protected by its middleware; follow-up changes icon metadata to the public
+  asset origin instead of weakening the admin authentication boundary.
+- User reported Google soft404 for Discover. Anonymous production event listing
+  returned zero upcoming events; the page was mainly an empty catalog state. Added
+  useful server-rendered discovery/registration/community guidance, retaining the
+  genuine empty result and existing search, submission and error behavior. No
+  fabricated event or claim that Google's classification has already cleared.
+- Added separate automatic public catalog sitemap using existing Go read APIs,
+  five-minute on-demand Next data-cache revalidation, one in-flight refresh,
+  pagination/size/deadline bounds and explicit uncached-failure503. Both sitemap
+  URLs are declared in robots. Main sitemap retains all21 static/directory URLs.
+- Local anonymous preview returned200 valid XML containing the actual public Space
+  and ambassador program; no upcoming events were invented. Main21-URL XML and
+  both robots sitemap declarations checked. Public type/lint and affected app/UI
+  checks passed. No new test suite or production test data.
+- Removed em dashes from owned frontend copy/search metadata per user request.
+  Punctuation was not treated as the cause of the empty-catalog soft404.
+- Search Console guide now includes both sitemap submissions and soft404 retest
+  instructions. Google's Indexing API is restricted to eligible job/livestream
+  pages; automatic discovery does not guarantee Google index inclusion.

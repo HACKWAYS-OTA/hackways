@@ -15,7 +15,9 @@ The same checked assets are copied into each of the four independent apps:
 
 All roots use `brandIcons()` from `@hackways/ui/brand-metadata` for browser,
 shortcut and Apple touch links. Organizer-web passes `/manage` because of its
-existing Next.js base path. The other apps use their root paths. Existing
+existing Next.js base path. Admin links to the public brand origin so its login
+page does not fetch protected static paths or require an authentication exception.
+Public/core use root paths. Existing
 private-page noindex policy and social preview artwork remain unchanged.
 
 The public homepage advertises a crawlable 96px PNG and SVG plus the ICO fallback.

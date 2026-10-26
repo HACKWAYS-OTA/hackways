@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
     rules: process.env.NODE_ENV === "production"
       ? { userAgent: "*", allow: "/" }
       : { userAgent: "*", disallow: "/" },
-    sitemap: `${site.url}/sitemap.xml`,
+    sitemap: [`${site.url}/sitemap.xml`, `${site.url}/catalog-sitemap.xml`],
   };
 }

@@ -32,6 +32,10 @@ Open **Sitemaps** in the verified property. Submit:
 
 `https://hackways.in/sitemap.xml`
 
+Also submit the automatically refreshed public catalog sitemap:
+
+`https://hackways.in/catalog-sitemap.xml`
+
 Confirm that Google can fetch it and review the reported status. This sitemap
 lists public pages and directories; private applications and account pages are
 not indexing targets.
@@ -74,3 +78,19 @@ public metadata can be fetched independently while Google processes updates.
 
 No verification token is built into source code for this DNS method. No Google
 Analytics or Tag Manager installation is required to verify the Domain property.
+
+## If Discover is reported as soft 404
+
+A successful fetch and allowed indexing do not guarantee Google considers the page
+useful. The live event API returned zero upcoming public events when this was
+reported. Discover now has substantive server-rendered context and useful links
+in addition to its honest live catalog. After the release, inspect
+`https://hackways.in/discover`, run Test live URL and request indexing where
+offered. Monitor the indexed report after Google recrawls; a local content change
+cannot confirm that Google has cleared its classification.
+
+Google discovers additions through the two sitemaps and internal links. This is
+automatic URL discovery, not guaranteed automatic inclusion in search results.
+The [Indexing API](https://developers.google.com/search/apis/indexing-api/v3/quickstart)
+is restricted to eligible job postings and livestreaming video pages; ordinary
+event, community and marketing pages should use sitemaps and Search Console.

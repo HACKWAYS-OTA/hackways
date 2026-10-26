@@ -70,7 +70,7 @@ export function EventBrowser({ initial, promotions }: { initial: InitialEvents; 
 
   return <div className="feed-container discovery-page">
     <section className="discovery-heading" aria-labelledby="discover-heading">
-      <div><h1 id="discover-heading">Discover events</h1></div>
+      <div><h1 id="discover-heading">Discover events</h1><p>Find hackathons, meetups and conferences on Hackways. Explore a shared interest, meet a community or plan a gathering of your own.</p></div>
       <form id="event-search-form" className="discovery-search" role="search" onSubmit={(action) => { action.preventDefault(); clearTimeout(searchTimer.current); void request(query.trim()); }}>
         <Icon name="search" size={20} /><label className="visually-hidden" htmlFor="event-search">Search events by topic or keyword</label><input id="event-search" type="search" autoComplete="off" placeholder="Search events or topics" value={query} onChange={(action) => setQuery(action.target.value)} />
         {query && <button type="button" className="icon-button" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={16} /></button>}
