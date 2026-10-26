@@ -6,6 +6,13 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - City and shared crop production verification
+
+- Hosted candidate 40407521477 for 697e2b6 passed both PostgreSQL 16 Go race suites, SQLc compilation, all frontend type/lint checks and deployment/source guards. Published immutable core-web and admin-web images only.
+- Fresh database/configuration backups were streamed to private Blob and verified for SHA256, encryption and restore catalog. Activated the two frontend images with readiness and Nginx checks; schema 28 stayed clean, environment unchanged, all six services ready. Core/global backends, public-web and organizer-web retained container identity/start time.
+- External checks returned 200 for /cities/hyderabad, /cities, /spaces, /programs/ambassadors and admin sign-in. Parsed public City HTML includes the actual Hyderabad name and omits visible All cities / Asia/Kolkata labels; the published stylesheet includes the new full-width hero rules. Anonymous live analytics remains 401. No browser/render or real upload interaction is claimed.
+- Removed temporary candidate image-selection/cache-export repository variables after publication. Managed workspace migration 29 and restriction/Bin work remain separate and undeployed.
+
 ## 2026-10-27 - Live analytics production activation and City Hubs empty state
 
 - Release 4ddadc1 passed hosted CI 40403229133: both Go race/integration suites on PostgreSQL 16, SQLc compilation, all frontend type/lint checks, repository and deployment checks. Three immutable candidate images were published.
