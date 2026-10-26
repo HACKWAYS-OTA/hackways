@@ -93,7 +93,7 @@ Admin-web Programs supports creation/settings, bounded searchable applications,
 profile review, private notes and pending/accepted/rejected/waitlisted decisions.
 Private decisions are invisible to applicants until explicit result release. Release
 requires all submitted applications reviewed, a matching revision and recipient
-count, confirmation and a durable idempotency key. Published decisions are locked.
+count, confirmation and a durable idempotency key. Published decisions use an explicit confirmed correction action with an audit trail and update email.
 Submission sends a confirmation and explicit result release sends an email update through the existing outbox. Private review still sends no decision notice. Withdrawal is explicit and irreversible in
 this version. Input remains available after recoverable errors; expired-session
 recovery uses another tab so editors retain answers.

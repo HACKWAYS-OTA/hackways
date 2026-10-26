@@ -35,7 +35,7 @@ export function ProgramReview({ program, application: initial }: { program: Prog
   } finally {setBusy(false);}
  }
  return <div className="program-admin-review"><article className="program-admin-profile">
-  <header><Avatar name={application.full_name} image={application.avatar_url} large /><div><h1>{application.full_name}</h1><p>{application.email}</p><span>{application.city} ? Age {application.age}</span></div></header>
+  <header><Avatar name={application.full_name} image={application.avatar_url} large /><div><h1>{application.full_name}</h1><p>{application.email}</p><span>{application.city} &middot; Age {application.age}</span></div></header>
   <div className="program-profile-actions"><Link className="app-button app-button-primary" href={`/programs/${program.slug}/communications?ids=${application.id}`}>Send communication</Link><span>Send a personal update, including after results are released.</span></div>
   <section><h2>About the applicant</h2><p className="program-admin-prose">{application.biography||'No introduction added.'}</p>{application.phone&&<p>Phone: {application.phone}</p>}{application.profile_url&&<a className="program-admin-profile-link" href={application.profile_url} target="_blank" rel="noopener noreferrer">Open profile or portfolio (new tab)</a>}</section>
   <section><h2>The event idea</h2><p className="program-admin-prose">{application.proposal}</p></section>{application.question_snapshot.map(q=><section key={q.id}><h2>{q.label}</h2><p className="program-admin-prose">{application.answers[q.id]||'Not answered'}</p></section>)}<p className="program-admin-caption">Application {application.id}</p>
@@ -47,6 +47,6 @@ export function ProgramReview({ program, application: initial }: { program: Prog
   </fieldset>
   {published&&editing&&<label className="program-admin-check"><Checkbox checked={confirmed} disabled={busy||uncertain} onCheckedChange={setConfirmed} />Publish this updated result and email the applicant.</label>}
   {uncertain&&<p role="status">The request could not be confirmed. Retry safely before making another change.</p>}{error&&<p className="program-admin-error" role="alert">{error.message}</p>}<ProgramAuthRecovery error={error} />{notice&&<p className="program-admin-success" role="status">{notice}</p>}
-  {(!published||editing)&&<div className="program-review-actions"><button className="app-button app-button-primary" type="submit" disabled={busy||locked||(published&&(!confirmed||decision===application.published_decision))}>{busy?'Saving?':uncertain?'Retry update safely':published?'Publish updated result':'Save private decision'}</button>{published&&<button className="app-button app-button-outline" type="button" disabled={busy||uncertain} onClick={reset}>Cancel</button>}</div>}
+  {(!published||editing)&&<div className="program-review-actions"><button className="app-button app-button-primary" type="submit" disabled={busy||locked||(published&&(!confirmed||decision===application.published_decision))}>{busy?'Saving...':uncertain?'Retry update safely':published?'Publish updated result':'Save private decision'}</button>{published&&<button className="app-button app-button-outline" type="button" disabled={busy||uncertain} onClick={reset}>Cancel</button>}</div>}
  </form></div>;
 }
