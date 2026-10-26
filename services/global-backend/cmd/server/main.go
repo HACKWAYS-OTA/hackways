@@ -183,6 +183,7 @@ func main() {
 			v1.Mount("/analytics", analytics.NewHandler(pool, cfg.SessionSecret, cfg.AppEnv == "development").Routes())
 			v1.Mount("/programs", programHandler.Routes())
 			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
+			v1.Mount("/admin/global/media", storageHandler.AdminRoutes())
 		}
 		v1.Mount("/admin/global/programs", programHandler.AdminRoutes())
 		v1.Mount("/admin/global", admin.NewHandler(pool, runtimeCache).Routes())

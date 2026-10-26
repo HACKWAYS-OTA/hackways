@@ -16,6 +16,7 @@ import (
 	"github.com/hackways/core-backend/db"
 	"github.com/hackways/core-backend/internal/admin"
 	"github.com/hackways/core-backend/internal/auth"
+	"github.com/hackways/core-backend/internal/cities"
 	"github.com/hackways/core-backend/internal/events"
 	"github.com/hackways/core-backend/internal/platform"
 	"github.com/hackways/core-backend/internal/rsvps"
@@ -98,6 +99,7 @@ func main() {
 	rsvpsHandler := rsvps.NewHandler(pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
+		v1.Mount("/admin/core/cities", cities.NewHandler(pool).AdminRoutes())
 		v1.Mount("/admin/core", admin.NewHandler(pool).Routes())
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			platform.RespondJSON(w, http.StatusOK, map[string]string{
@@ -110,6 +112,7 @@ func main() {
 
 			v1.Mount("/rsvps", rsvpsHandler.Routes())
 			v1.Mount("/spaces", spaces.NewHandler(pool).Routes())
+			v1.Mount("/cities", cities.NewHandler(pool).Routes())
 		}
 	})
 

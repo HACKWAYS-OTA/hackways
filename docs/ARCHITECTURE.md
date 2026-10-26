@@ -116,3 +116,8 @@ backend is introduced. Separate consent/action/revocation pages render in core-w
 and admin-web, with a public-web landing page at `/mcp`. See [MCP](backend/MCP.md)
 and the [tool catalog](backend/MCP_TOOLS.md). Enable only after migration 24 and
 verified images; Go 1.25 is limited to global-backend's official MCP SDK requirement.
+
+
+## City Hubs and community branding
+
+City Hubs are admin-curated city pages, separate from owner-managed membership Spaces. Core Go owns metadata, publication and public event visibility. Global Go extends the existing Azure SAS/HEAD-completion flow for Space logos/covers and admin city banners. Additive migrations 27/28 preserve existing workflows. No new service or framework is introduced. See [the contract](backend/CITY_HUBS.md) and [surface guide](design/SPACES_CITY_HUBS.md).

@@ -293,6 +293,32 @@ type AuthRateLimits struct {
 	Attempts    int32              `json:"attempts"`
 }
 
+type CityHubEvents struct {
+	CityID    pgtype.UUID        `json:"city_id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	AddedBy   pgtype.UUID        `json:"added_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type CityHubs struct {
+	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
+	Slug         string             `json:"slug"`
+	Name         string             `json:"name"`
+	Region       string             `json:"region"`
+	Country      string             `json:"country"`
+	Timezone     string             `json:"timezone"`
+	Description  string             `json:"description"`
+	BannerUrl    pgtype.Text        `json:"banner_url"`
+	Status       string             `json:"status"`
+	Revision     int64              `json:"revision"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreationKey  string             `json:"creation_key"`
+	CreationHash string             `json:"creation_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type DiscoverPromotionSettings struct {
 	Singleton bool               `json:"singleton"`
 	ID        pgtype.UUID        `json:"id"`
@@ -754,6 +780,8 @@ type Spaces struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	AdminReference int64              `json:"admin_reference"`
+	LogoUrl        pgtype.Text        `json:"logo_url"`
+	BannerUrl      pgtype.Text        `json:"banner_url"`
 }
 
 type Tickets struct {

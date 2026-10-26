@@ -54,7 +54,10 @@ type Querier interface {
 	AnalyticsTrafficDaily(ctx context.Context, arg AnalyticsTrafficDailyParams) ([]AnalyticsTrafficDailyRow, error)
 	AnalyticsTrafficSummary(ctx context.Context, arg AnalyticsTrafficSummaryParams) (AnalyticsTrafficSummaryRow, error)
 	AppendAdminAudit(ctx context.Context, arg AppendAdminAuditParams) error
+	AttachCityBanner(ctx context.Context, arg AttachCityBannerParams) (AttachCityBannerRow, error)
 	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
+	AttachSpaceImage(ctx context.Context, arg AttachSpaceImageParams) (AttachSpaceImageRow, error)
+	AuditCommunityMedia(ctx context.Context, arg AuditCommunityMediaParams) error
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
 	BoundRecognizedDevices(ctx context.Context, userID pgtype.UUID) error
 	CampaignAudienceCount(ctx context.Context) (int64, error)
@@ -212,14 +215,17 @@ type Querier interface {
 	QueueAdminCustomMessages(ctx context.Context, arg QueueAdminCustomMessagesParams) ([]int64, error)
 	QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error)
 	ReadAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) (AdminSessionChallenges, error)
+	ReadCityUpload(ctx context.Context, id pgtype.UUID) (ReadCityUploadRow, error)
 	ReadConfirmationPass(ctx context.Context, id pgtype.UUID) (ReadConfirmationPassRow, error)
 	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
 	ReadOAuthExchangeUser(ctx context.Context, arg ReadOAuthExchangeUserParams) (pgtype.UUID, error)
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
 	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
+	ReadOwnedUploadSpace(ctx context.Context, arg ReadOwnedUploadSpaceParams) (pgtype.UUID, error)
 	ReadPasswordResetChallenge(ctx context.Context, userID pgtype.UUID) (ReadPasswordResetChallengeRow, error)
 	ReadPromotionPreference(ctx context.Context, email string) (bool, error)
 	ReadRuntimeRollout(ctx context.Context) (ReadRuntimeRolloutRow, error)
+	ReadSpaceImageState(ctx context.Context, arg ReadSpaceImageStateParams) (ReadSpaceImageStateRow, error)
 	RecordAnalyticsBatch(ctx context.Context, arg RecordAnalyticsBatchParams) (RecordAnalyticsBatchRow, error)
 	// Trusted, already verified server-side issuance; password sign-in uses the
 	// separate unverified-session query before the email challenge.

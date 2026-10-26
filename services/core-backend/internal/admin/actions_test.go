@@ -13,6 +13,7 @@ import (
 
 	"github.com/hackways/core-backend/db"
 	"github.com/hackways/core-backend/internal/auth"
+	"github.com/hackways/core-backend/internal/cities"
 	"github.com/hackways/core-backend/internal/testsupport"
 	"github.com/hackways/core-backend/internal/workflows"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -127,6 +128,84 @@ func TestAdminDetailActions(t *testing.T) {
 		t.Fatal("analytics CSV range invalid")
 	}
 	eventPath := "/events/" + strconv.FormatInt(event.AdminReference, 10)
+	// Extend the mandatory isolated admin workflow with real City Hub persistence,
+	// publication, curation, replay and private-event exclusion.
+	cityAdmin, cityPublic := cities.NewHandler(pool).AdminRoutes(), cities.NewHandler(pool).Routes()
+	cityCall := func(method, path, body, key, origin, cookie string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Idempotency-Key", key)
+		if cookie != "" {
+			r.AddCookie(&http.Cookie{Name: cookie, Value: token})
+		}
+		out := httptest.NewRecorder()
+		cityAdmin.ServeHTTP(out, r)
+		return out
+	}
+	cityRead := func(path string) *httptest.ResponseRecorder {
+		out := httptest.NewRecorder()
+		cityPublic.ServeHTTP(out, httptest.NewRequest("GET", path, nil))
+		return out
+	}
+	citySlug := fmt.Sprintf("ci-city-%d", time.Now().UnixNano())
+	cityBody := fmt.Sprintf(`{"slug":%q,"name":"CI city","country":"CI country","timezone":"UTC","description":"Isolated city workflow","status":"draft"}`, citySlug)
+	check(cityCall("POST", "/", cityBody, "city-create-ci-key", "http://localhost:3003", ""), 401)
+	check(cityCall("POST", "/", cityBody, "city-create-ci-key", "http://localhost:3003", auth.DefaultSessionCookie), 401)
+	check(cityCall("POST", "/", cityBody, "city-create-ci-key", "https://untrusted.invalid", auth.AdminSessionCookie), 403)
+	cityResult := cityCall("POST", "/", cityBody, "city-create-ci-key", "http://localhost:3003", auth.AdminSessionCookie)
+	check(cityResult, 200)
+	var cityEnvelope struct {
+		Data struct {
+			ID        pgtype.UUID `json:"id"`
+			Reference int64       `json:"reference"`
+			Revision  int64       `json:"revision"`
+		}
+	}
+	if json.Unmarshal(cityResult.Body.Bytes(), &cityEnvelope) != nil || !cityEnvelope.Data.ID.Valid {
+		t.Fatal("city creation did not return persisted identity")
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM idempotency_records WHERE response_json::text LIKE '%' || $1::text || '%'", uuidString(cityEnvelope.Data.ID))
+		_, _ = pool.Exec(ctx, "DELETE FROM city_hub_events WHERE city_id=$1", cityEnvelope.Data.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM city_hubs WHERE id=$1", cityEnvelope.Data.ID)
+	}()
+	if strings.Contains(cityResult.Body.String(), "creation_key") || strings.Contains(cityResult.Body.String(), "creation_hash") {
+		t.Fatal("city secrets leaked")
+	}
+	replay := cityCall("POST", "/", cityBody, "city-create-ci-key", "http://localhost:3003", auth.AdminSessionCookie)
+	check(replay, 200)
+	if replay.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("city creation retry did not replay")
+	}
+	check(cityRead("/by-slug/"+citySlug), 404)
+	cityPath := "/" + strconv.FormatInt(cityEnvelope.Data.Reference, 10)
+	publish := `{"name":"CI city","country":"CI country","timezone":"UTC","description":"Isolated city workflow","status":"published","revision":1}`
+	check(cityCall("PUT", cityPath, strings.Replace(publish, "UTC", "Invalid/Zone", 1), "city-invalid-zone-key", "http://localhost:3003", auth.AdminSessionCookie), 422)
+	check(cityCall("PUT", cityPath, publish, "city-publish-ci-key", "http://localhost:3003", auth.AdminSessionCookie), 200)
+	check(cityCall("PUT", cityPath, publish, "city-stale-edit-key", "http://localhost:3003", auth.AdminSessionCookie), 409)
+	check(cityRead("/by-slug/"+citySlug), 200)
+	add := fmt.Sprintf(`{"event_id":%q,"revision":2}`, uuidString(event.ID))
+	check(cityCall("POST", cityPath+"/events", add, "city-event-add-key", "http://localhost:3003", auth.AdminSessionCookie), 200)
+	check(cityCall("POST", cityPath+"/events", add, "city-event-add-key", "http://localhost:3003", auth.AdminSessionCookie), 200)
+	feedPath := "/" + uuidString(cityEnvelope.Data.ID) + "/events"
+	if feed := cityRead(feedPath); feed.Code != 200 || !strings.Contains(feed.Body.String(), event.Slug) {
+		t.Fatal("curated public event missing")
+	}
+	if _, err = pool.Exec(ctx, "UPDATE events SET visibility='private' WHERE id=$1", event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if feed := cityRead(feedPath); feed.Code != 200 || strings.Contains(feed.Body.String(), event.Slug) {
+		t.Fatal("private event leaked into city feed")
+	}
+	if _, err = pool.Exec(ctx, "UPDATE events SET visibility='public' WHERE id=$1", event.ID); err != nil {
+		t.Fatal(err)
+	}
+	remove := fmt.Sprintf(`{"event_id":%q,"revision":3,"remove":true}`, uuidString(event.ID))
+	check(cityCall("POST", cityPath+"/events", remove, "city-event-remove-key", "http://localhost:3003", auth.AdminSessionCookie), 200)
+	archiveCity := `{"name":"CI city","country":"CI country","timezone":"UTC","description":"Isolated city workflow","status":"archived","revision":4}`
+	check(cityCall("PUT", cityPath, archiveCity, "city-archive-ci-key", "http://localhost:3003", auth.AdminSessionCookie), 200)
+	check(cityRead("/by-slug/"+citySlug), 404)
 	edit := fmt.Sprintf(`{"title":"Reviewed event","description":"Reviewed description","capacity":2,"visibility":"private","revision":%d}`, event.Revision)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "https://attacker.invalid", "reason", auth.AdminSessionCookie), 403)
 	check(request("PUT", eventPath, edit, "admin-event-edit-key", "http://localhost:3003", "x", auth.AdminSessionCookie), 422)

@@ -293,6 +293,32 @@ type AuthRateLimits struct {
 	Attempts    int32              `json:"attempts"`
 }
 
+type CityHubEvents struct {
+	CityID    pgtype.UUID        `json:"city_id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	AddedBy   pgtype.UUID        `json:"added_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type CityHubs struct {
+	ID           pgtype.UUID        `json:"id"`
+	Reference    int64              `json:"reference"`
+	Slug         string             `json:"slug"`
+	Name         string             `json:"name"`
+	Region       string             `json:"region"`
+	Country      string             `json:"country"`
+	Timezone     string             `json:"timezone"`
+	Description  string             `json:"description"`
+	BannerUrl    pgtype.Text        `json:"banner_url"`
+	Status       string             `json:"status"`
+	Revision     int64              `json:"revision"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreationKey  string             `json:"creation_key"`
+	CreationHash string             `json:"creation_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type DiscoverPromotionSettings struct {
 	Singleton bool               `json:"singleton"`
 	ID        pgtype.UUID        `json:"id"`
@@ -583,6 +609,72 @@ type PlatformAdministrators struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type ProgramActivity struct {
+	ID            int64              `json:"id"`
+	ProgramID     pgtype.UUID        `json:"program_id"`
+	ApplicationID pgtype.UUID        `json:"application_id"`
+	ActorID       pgtype.UUID        `json:"actor_id"`
+	Action        string             `json:"action"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type ProgramApplications struct {
+	ID                pgtype.UUID        `json:"id"`
+	ProgramID         pgtype.UUID        `json:"program_id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	FullName          string             `json:"full_name"`
+	City              string             `json:"city"`
+	Phone             string             `json:"phone"`
+	Biography         string             `json:"biography"`
+	ProfileUrl        string             `json:"profile_url"`
+	Proposal          string             `json:"proposal"`
+	AgeConfirmed      bool               `json:"age_confirmed"`
+	Age               int32              `json:"age"`
+	Answers           []byte             `json:"answers"`
+	QuestionSnapshot  []byte             `json:"question_snapshot"`
+	Status            string             `json:"status"`
+	Decision          string             `json:"decision"`
+	ReviewerNotes     string             `json:"reviewer_notes"`
+	ReviewedBy        pgtype.UUID        `json:"reviewed_by"`
+	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
+	PublishedDecision pgtype.Text        `json:"published_decision"`
+	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	Revision          int64              `json:"revision"`
+	SubmittedAt       pgtype.Timestamptz `json:"submitted_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ProgramReleases struct {
+	ID               pgtype.UUID        `json:"id"`
+	ProgramID        pgtype.UUID        `json:"program_id"`
+	RequestKey       string             `json:"request_key"`
+	PayloadHash      string             `json:"payload_hash"`
+	ApplicationCount int32              `json:"application_count"`
+	ReleasedBy       pgtype.UUID        `json:"released_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+type Programs struct {
+	ID               pgtype.UUID        `json:"id"`
+	Slug             string             `json:"slug"`
+	Title            string             `json:"title"`
+	Summary          string             `json:"summary"`
+	Overview         string             `json:"overview"`
+	Responsibilities string             `json:"responsibilities"`
+	Recognition      string             `json:"recognition"`
+	Status           string             `json:"status"`
+	MinimumAge       int32              `json:"minimum_age"`
+	Questions        []byte             `json:"questions"`
+	OpensAt          pgtype.Timestamptz `json:"opens_at"`
+	ClosesAt         pgtype.Timestamptz `json:"closes_at"`
+	Revision         int64              `json:"revision"`
+	ReviewRevision   int64              `json:"review_revision"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PromotionContacts struct {
 	ID             pgtype.UUID        `json:"id"`
 	Reference      int64              `json:"reference"`
@@ -688,6 +780,8 @@ type Spaces struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	AdminReference int64              `json:"admin_reference"`
+	LogoUrl        pgtype.Text        `json:"logo_url"`
+	BannerUrl      pgtype.Text        `json:"banner_url"`
 }
 
 type Tickets struct {

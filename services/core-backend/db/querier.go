@@ -13,8 +13,10 @@ import (
 type Querier interface {
 	AccountEventInvitation(ctx context.Context, arg AccountEventInvitationParams) (bool, error)
 	ActiveDiscoverPromotions(ctx context.Context, at pgtype.Timestamptz) ([]ActiveDiscoverPromotionsRow, error)
+	AddCityEvent(ctx context.Context, arg AddCityEventParams) error
 	AdjustWorkflowInventory(ctx context.Context, arg AdjustWorkflowInventoryParams) error
 	AdminAuditDetail(ctx context.Context, id int64) (AdminAuditDetailRow, error)
+	AdminCityEvents(ctx context.Context, arg AdminCityEventsParams) ([]AdminCityEventsRow, error)
 	AdminCoreOverview(ctx context.Context) (AdminCoreOverviewRow, error)
 	AdminDiscoverPromotions(ctx context.Context) ([]AdminDiscoverPromotionsRow, error)
 	AdminEditEvent(ctx context.Context, arg AdminEditEventParams) (pgtype.UUID, error)
@@ -24,6 +26,7 @@ type Querier interface {
 	AdminEventRegistrations(ctx context.Context, arg AdminEventRegistrationsParams) ([]AdminEventRegistrationsRow, error)
 	AdminEventTickets(ctx context.Context, arg AdminEventTicketsParams) ([]AdminEventTicketsRow, error)
 	AdminListAudit(ctx context.Context, arg AdminListAuditParams) ([]AdminListAuditRow, error)
+	AdminListCities(ctx context.Context, arg AdminListCitiesParams) ([]AdminListCitiesRow, error)
 	AdminListEvents(ctx context.Context, arg AdminListEventsParams) ([]AdminListEventsRow, error)
 	AdminListModeration(ctx context.Context, arg AdminListModerationParams) ([]AdminListModerationRow, error)
 	AdminListRegistrations(ctx context.Context, arg AdminListRegistrationsParams) ([]AdminListRegistrationsRow, error)
@@ -41,13 +44,17 @@ type Querier interface {
 	AnalyticsRegistrationSummary(ctx context.Context, arg AnalyticsRegistrationSummaryParams) (AnalyticsRegistrationSummaryRow, error)
 	AnalyticsTopEvents(ctx context.Context, arg AnalyticsTopEventsParams) ([]AnalyticsTopEventsRow, error)
 	AppendWorkflowAudit(ctx context.Context, arg AppendWorkflowAuditParams) error
+	BumpCityRevision(ctx context.Context, id pgtype.UUID) error
 	CancelEventRegistrations(ctx context.Context, eventID pgtype.UUID) error
 	CheckInWorkflowTicket(ctx context.Context, arg CheckInWorkflowTicketParams) (Tickets, error)
+	CityEventChoices(ctx context.Context, q_ string) ([]CityEventChoicesRow, error)
+	CityEventEligible(ctx context.Context, id pgtype.UUID) (bool, error)
 	ClaimGuestEventRegistration(ctx context.Context, arg ClaimGuestEventRegistrationParams) (Rsvps, error)
 	CleanupWorkflowKeys(ctx context.Context) error
 	ClearDiscoverPromotions(ctx context.Context) error
 	CountEventInvitations(ctx context.Context, eventID pgtype.UUID) (int64, error)
 	CountNewEventInvitationRecipients(ctx context.Context, arg CountNewEventInvitationRecipientsParams) (int64, error)
+	CreateCity(ctx context.Context, arg CreateCityParams) (CityHubs, error)
 	CreateEventRecord(ctx context.Context, arg CreateEventRecordParams) (Events, error)
 	CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error)
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
@@ -108,16 +115,19 @@ type Querier interface {
 	LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.UUID) (LatestRegistrationAnswersRow, error)
 	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error
 	ListAccountRegistrations(ctx context.Context, arg ListAccountRegistrationsParams) ([]ListAccountRegistrationsRow, error)
+	ListCityEvents(ctx context.Context, arg ListCityEventsParams) ([]Events, error)
 	ListEventInvitations(ctx context.Context, arg ListEventInvitationsParams) ([]ListEventInvitationsRow, error)
 	ListManagedEvents(ctx context.Context, arg ListManagedEventsParams) ([]Events, error)
 	ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]ListMySpacesRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]Events, error)
+	ListPublicCities(ctx context.Context, arg ListPublicCitiesParams) ([]ListPublicCitiesRow, error)
 	ListPublicSpaces(ctx context.Context, arg ListPublicSpacesParams) ([]ListPublicSpacesRow, error)
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
 	ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventParams) ([]Rsvps, error)
 	ListRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) ([]ListRegistrationQuestionsRow, error)
 	ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams) ([]Events, error)
 	ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditParams) ([]ListWorkflowAuditRow, error)
+	LockCity(ctx context.Context, reference int64) (CityHubs, error)
 	LockDiscoverPromotionSettings(ctx context.Context) (LockDiscoverPromotionSettingsRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
 	LockOwnedActiveSpace(ctx context.Context, arg LockOwnedActiveSpaceParams) (Spaces, error)
@@ -134,8 +144,10 @@ type Querier interface {
 	NextDiscoverPromotionChange(ctx context.Context, at pgtype.Timestamptz) (pgtype.Timestamptz, error)
 	PromotionEventChoices(ctx context.Context, arg PromotionEventChoicesParams) ([]PromotionEventChoicesRow, error)
 	ReadCheckInAttendee(ctx context.Context, arg ReadCheckInAttendeeParams) (ReadCheckInAttendeeRow, error)
+	ReadCityAdmin(ctx context.Context, reference int64) (CityHubs, error)
 	ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error)
 	ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) (Spaces, error)
+	ReadPublicCity(ctx context.Context, slug string) (ReadPublicCityRow, error)
 	ReadPublicSpace(ctx context.Context, slug string) (ReadPublicSpaceRow, error)
 	ReadRegistrationForm(ctx context.Context, id pgtype.UUID) (ReadRegistrationFormRow, error)
 	ReadSpaceCreation(ctx context.Context, arg ReadSpaceCreationParams) (Spaces, error)
@@ -146,6 +158,7 @@ type Querier interface {
 	// separate unverified-session query before the email challenge.
 	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	RegistrationWaitlistPosition(ctx context.Context, id pgtype.UUID) (int64, error)
+	RemoveCityEvent(ctx context.Context, arg RemoveCityEventParams) error
 	ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPParams) (Rsvps, error)
 	RevokeEventTickets(ctx context.Context, eventID pgtype.UUID) error
 	RevokeWorkflowTicket(ctx context.Context, rsvpID pgtype.UUID) error
@@ -161,6 +174,7 @@ type Querier interface {
 	StoreIdempotentResponse(ctx context.Context, arg StoreIdempotentResponseParams) error
 	TransitionWorkflowEvent(ctx context.Context, arg TransitionWorkflowEventParams) (Events, error)
 	UndoCheckInWorkflowTicket(ctx context.Context, arg UndoCheckInWorkflowTicketParams) (Tickets, error)
+	UpdateCity(ctx context.Context, arg UpdateCityParams) (CityHubs, error)
 	UpdateDiscoverPromotionSettings(ctx context.Context, updatedBy pgtype.UUID) error
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
 	UpdateRegistrationForm(ctx context.Context, arg UpdateRegistrationFormParams) error

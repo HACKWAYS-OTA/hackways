@@ -1,0 +1,27 @@
+.city-admin-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-block: 28px 32px; }
+.city-admin-heading h1 { font-size: 36px; margin-bottom: 8px; }
+.city-admin-list { border-top: 1px solid var(--line); }
+.city-admin-list > a { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 20px; border-bottom: 1px solid var(--line); }
+.city-admin-list > a > span:first-child { display: flex; align-items: center; gap: 18px; }
+.city-admin-list > a > span:first-child, .city-admin-list > a > span:first-child > span, .city-linked-events > div > span, .city-event-choices > div > span { min-width: 0; overflow-wrap: anywhere; }
+.city-admin-list img { flex-shrink: 0; }
+.city-admin-list img { width: 88px; height: 56px; object-fit: cover; border-radius: 10px; }
+.city-admin-list strong { display: block; font-size: 18px; }
+.city-admin-list small { color: var(--muted); }
+.city-admin-list > a > span:last-child { color: var(--muted); font-size: 13px; text-transform: capitalize; }
+.city-editor { max-width: 900px; }
+.city-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.city-editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-bottom: 28px; }
+.city-editor .field { display: grid; align-content: start; gap: 8px; }
+.city-editor small { color: var(--muted); font-size: 12px; }
+.city-editor-description { grid-column: 1 / -1; }
+.city-editor .media-field { max-width: 600px; margin-bottom: 28px; }
+.city-editor > .field-error, .city-editor > .admin-action-success { margin-top: 20px; }
+.city-curation { margin-top: 48px; padding-top: 16px; }
+.city-curation h2 { font-size: 26px; margin-bottom: 12px; }
+.city-linked-events { margin-block: 24px; }
+.city-linked-events > div, .city-event-choices > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 16px; border-bottom: 1px solid var(--line); }
+.city-linked-events small, .city-event-choices small { display: block; }
+.city-event-choices { margin-top: 12px; }
+.city-address-prefix { color: var(--muted); font-size: 12px; }
+@media(max-width: 640px) { .city-admin-heading { align-items: flex-start; flex-direction: column; } .city-admin-heading h1 { font-size: 29px; } .city-editor-fields { grid-template-columns: minmax(0, 1fr); } .city-admin-list > a { gap: 16px; } .city-admin-list img { width: 64px; height: 48px; } .city-linked-events > div, .city-event-choices > div { align-items: flex-start; } }

@@ -1527,3 +1527,13 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Search Console guide now states the intentionally minimal empty catalog may
   still receive Google's soft404 classification; Google index inclusion is not
   claimed. User's clean-interface direction takes precedence over added prose.
+
+
+## 2026-10-27 - Spaces creation and admin-managed City Hubs
+
+- Discover cleanup source558fb17 passed hosted run40383526308 and was activated core-web only; live Discover returns200 without the removed visible guide. Other runtimes/environment retained.
+- Added compact Space cards, saved logo/cover profile presentation, and a page-style creation/settings composer with branding on the left, editable community copy on the right and toolbar submission. User rejected the preview card and sequential form; both were removed. Custom shared media controls now open crop/adjust before upload (square logo, wide cover; zoom, position, reset/cancel). Removed decorative section dividers from related surfaces.
+- Added real public Cities directory/profile and City Hubs admin creation, editing, publication and event curation. Go/PostgreSQL remain authoritative; private/draft/deleted events are excluded at read time. No cities or production fixtures seeded.
+- Migrations27/28 are additive. Resource-scoped create-only SAS and Azure HEAD completion extend existing storage; image retries preserve persisted records, ownership and revision checks. No auth, ambassador submission or mail transport implementation changed.
+- All workspace type checks and lint passed without warnings. Both Go builds/vet passed; core isolated PostgreSQL suite passed62 cases. The full global isolated PostgreSQL suite also passed, including the extended application/media case. Hosted race/full checks and immutable image publication are pending.
+- Source reviewer scored conflict-recovery, file reselection and wrapping fixes resolved. Visual approval is not claimed; browser work was stopped, then explicitly excluded by the user. Production activation of this new feature release is still pending.

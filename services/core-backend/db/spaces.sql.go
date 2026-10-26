@@ -14,7 +14,7 @@ import (
 const createSpace = `-- name: CreateSpace :one
 INSERT INTO spaces(organizer_id,name,slug,description,guidelines,website_url,creation_key,creation_hash)
 VALUES($1,$2,COALESCE(NULLIF(trim(regexp_replace(lower($2),'[^a-z0-9]+','-','g'),'-'),''),'space') || '-' || left(gen_random_uuid()::text,8),$3,$4,$5,$6,$7)
-ON CONFLICT(organizer_id,creation_key) DO NOTHING RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
+ON CONFLICT(organizer_id,creation_key) DO NOTHING RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url
 `
 
 type CreateSpaceParams struct {
@@ -53,6 +53,8 @@ func (q *Queries) CreateSpace(ctx context.Context, arg CreateSpaceParams) (Space
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
@@ -86,7 +88,7 @@ func (q *Queries) LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error {
 }
 
 const listMySpaces = `-- name: ListMySpaces :many
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(o.user_id=$1)::boolean AS owned,
 (SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id
@@ -110,6 +112,8 @@ type ListMySpacesRow struct {
 	Description string             `json:"description"`
 	Guidelines  string             `json:"guidelines"`
 	WebsiteUrl  string             `json:"website_url"`
+	LogoUrl     pgtype.Text        `json:"logo_url"`
+	BannerUrl   pgtype.Text        `json:"banner_url"`
 	Status      string             `json:"status"`
 	Revision    int64              `json:"revision"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
@@ -141,6 +145,8 @@ func (q *Queries) ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]L
 			&i.Description,
 			&i.Guidelines,
 			&i.WebsiteUrl,
+			&i.LogoUrl,
+			&i.BannerUrl,
 			&i.Status,
 			&i.Revision,
 			&i.CreatedAt,
@@ -160,7 +166,7 @@ func (q *Queries) ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]L
 }
 
 const listPublicSpaces = `-- name: ListPublicSpaces :many
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id
 WHERE s.status='active' AND ($1::text='' OR to_tsvector('simple',s.name || ' ' || s.description) @@ plainto_tsquery('simple',$1::text))
@@ -181,6 +187,8 @@ type ListPublicSpacesRow struct {
 	Description string             `json:"description"`
 	Guidelines  string             `json:"guidelines"`
 	WebsiteUrl  string             `json:"website_url"`
+	LogoUrl     pgtype.Text        `json:"logo_url"`
+	BannerUrl   pgtype.Text        `json:"banner_url"`
 	Status      string             `json:"status"`
 	Revision    int64              `json:"revision"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
@@ -206,6 +214,8 @@ func (q *Queries) ListPublicSpaces(ctx context.Context, arg ListPublicSpacesPara
 			&i.Description,
 			&i.Guidelines,
 			&i.WebsiteUrl,
+			&i.LogoUrl,
+			&i.BannerUrl,
 			&i.Status,
 			&i.Revision,
 			&i.CreatedAt,
@@ -312,7 +322,7 @@ func (q *Queries) ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams
 }
 
 const lockOwnedActiveSpace = `-- name: LockOwnedActiveSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url FROM spaces WHERE id=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
 `
 
 type LockOwnedActiveSpaceParams struct {
@@ -338,12 +348,14 @@ func (q *Queries) LockOwnedActiveSpace(ctx context.Context, arg LockOwnedActiveS
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const lockOwnedActiveSpaceBySlug = `-- name: LockOwnedActiveSpaceBySlug :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE slug=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url FROM spaces WHERE slug=$1 AND organizer_id=$2 AND status='active' FOR UPDATE
 `
 
 type LockOwnedActiveSpaceBySlugParams struct {
@@ -369,12 +381,14 @@ func (q *Queries) LockOwnedActiveSpaceBySlug(ctx context.Context, arg LockOwnedA
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const lockSpace = `-- name: LockSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 FOR UPDATE
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url FROM spaces WHERE id=$1 FOR UPDATE
 `
 
 func (q *Queries) LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error) {
@@ -395,12 +409,14 @@ func (q *Queries) LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const readOwnedSpace = `-- name: ReadOwnedSpace :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE id=$1 AND organizer_id=$2
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url FROM spaces WHERE id=$1 AND organizer_id=$2
 `
 
 type ReadOwnedSpaceParams struct {
@@ -426,12 +442,14 @@ func (q *Queries) ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const readPublicSpace = `-- name: ReadPublicSpace :one
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.slug=$1
 `
@@ -444,6 +462,8 @@ type ReadPublicSpaceRow struct {
 	Description string             `json:"description"`
 	Guidelines  string             `json:"guidelines"`
 	WebsiteUrl  string             `json:"website_url"`
+	LogoUrl     pgtype.Text        `json:"logo_url"`
+	BannerUrl   pgtype.Text        `json:"banner_url"`
 	Status      string             `json:"status"`
 	Revision    int64              `json:"revision"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
@@ -463,6 +483,8 @@ func (q *Queries) ReadPublicSpace(ctx context.Context, slug string) (ReadPublicS
 		&i.Description,
 		&i.Guidelines,
 		&i.WebsiteUrl,
+		&i.LogoUrl,
+		&i.BannerUrl,
 		&i.Status,
 		&i.Revision,
 		&i.CreatedAt,
@@ -474,7 +496,7 @@ func (q *Queries) ReadPublicSpace(ctx context.Context, slug string) (ReadPublicS
 }
 
 const readSpaceCreation = `-- name: ReadSpaceCreation :one
-SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference FROM spaces WHERE organizer_id=$1 AND creation_key=$2
+SELECT id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url FROM spaces WHERE organizer_id=$1 AND creation_key=$2
 `
 
 type ReadSpaceCreationParams struct {
@@ -500,6 +522,8 @@ func (q *Queries) ReadSpaceCreation(ctx context.Context, arg ReadSpaceCreationPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
@@ -539,7 +563,7 @@ func (q *Queries) ReadSpaceMembership(ctx context.Context, arg ReadSpaceMembersh
 }
 
 const readSpaceSummaryByID = `-- name: ReadSpaceSummaryByID :one
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1
 `
@@ -552,6 +576,8 @@ type ReadSpaceSummaryByIDRow struct {
 	Description string             `json:"description"`
 	Guidelines  string             `json:"guidelines"`
 	WebsiteUrl  string             `json:"website_url"`
+	LogoUrl     pgtype.Text        `json:"logo_url"`
+	BannerUrl   pgtype.Text        `json:"banner_url"`
 	Status      string             `json:"status"`
 	Revision    int64              `json:"revision"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
@@ -571,6 +597,8 @@ func (q *Queries) ReadSpaceSummaryByID(ctx context.Context, id pgtype.UUID) (Rea
 		&i.Description,
 		&i.Guidelines,
 		&i.WebsiteUrl,
+		&i.LogoUrl,
+		&i.BannerUrl,
 		&i.Status,
 		&i.Revision,
 		&i.CreatedAt,
@@ -647,7 +675,7 @@ func (q *Queries) SetEventSpace(ctx context.Context, arg SetEventSpaceParams) (E
 
 const setSpaceStatus = `-- name: SetSpaceStatus :one
 UPDATE spaces SET status=$3,revision=revision+1,updated_at=clock_timestamp()
-WHERE id=$1 AND organizer_id=$2 AND revision=$4 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
+WHERE id=$1 AND organizer_id=$2 AND revision=$4 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url
 `
 
 type SetSpaceStatusParams struct {
@@ -680,13 +708,15 @@ func (q *Queries) SetSpaceStatus(ctx context.Context, arg SetSpaceStatusParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const updateSpace = `-- name: UpdateSpace :one
 UPDATE spaces SET name=$3,description=$4,guidelines=$5,website_url=$6,revision=revision+1,updated_at=clock_timestamp()
-WHERE id=$1 AND organizer_id=$2 AND revision=$7 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference
+WHERE id=$1 AND organizer_id=$2 AND revision=$7 RETURNING id, organizer_id, name, slug, description, guidelines, website_url, status, revision, creation_key, creation_hash, created_at, updated_at, admin_reference, logo_url, banner_url
 `
 
 type UpdateSpaceParams struct {
@@ -725,6 +755,8 @@ func (q *Queries) UpdateSpace(ctx context.Context, arg UpdateSpaceParams) (Space
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AdminReference,
+		&i.LogoUrl,
+		&i.BannerUrl,
 	)
 	return i, err
 }

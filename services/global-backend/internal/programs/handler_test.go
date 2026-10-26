@@ -17,6 +17,7 @@ import (
 
 	"github.com/hackways/global-backend/db"
 	"github.com/hackways/global-backend/internal/auth"
+	"github.com/hackways/global-backend/internal/storage"
 	"github.com/hackways/global-backend/internal/testsupport"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -83,6 +84,58 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 		}
 	}()
 	h := New(pool)
+	// Verify community media authorization/CAS using this mandatory suite's
+	// existing isolated identities. No storage calls or production data are used.
+	var mediaOrganizer, mediaSpace pgtype.UUID
+	if e = pool.QueryRow(ctx, "INSERT INTO organizers(user_id,display_name,slug) VALUES($1,'CI community',$2) RETURNING id", ids[1], "media-owner-"+nonce[:12]).Scan(&mediaOrganizer); e != nil {
+		t.Fatal(e)
+	}
+	if e = pool.QueryRow(ctx, "INSERT INTO spaces(organizer_id,name,slug,description,creation_key,creation_hash) VALUES($1,'CI media',$2,'Isolated media permissions','ci-community-media-key','ci') RETURNING id", mediaOrganizer, "media-"+nonce[:12]).Scan(&mediaSpace); e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM audit_log WHERE entity_id=$1", mediaSpace)
+		_, _ = pool.Exec(ctx, "DELETE FROM spaces WHERE id=$1", mediaSpace)
+		_, _ = pool.Exec(ctx, "DELETE FROM organizers WHERE id=$1", mediaOrganizer)
+	}()
+	media := storage.NewHandler(storage.NewAzureBlobSASSigner(storage.AzureSASConfig{}), pool)
+	mediaAPI := auth.RequireAuth(sm)(media.Routes())
+	mediaCall := func(user int, path, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if user >= 0 {
+			req.AddCookie(&http.Cookie{Name: auth.DefaultSessionCookie, Value: tokens[user]})
+		}
+		out := httptest.NewRecorder()
+		mediaAPI.ServeHTTP(out, req)
+		return out
+	}
+	mediaID := fmt.Sprintf("%x-%x-%x-%x-%x", mediaSpace.Bytes[:4], mediaSpace.Bytes[4:6], mediaSpace.Bytes[6:8], mediaSpace.Bytes[8:10], mediaSpace.Bytes[10:])
+	removeImage := fmt.Sprintf(`{"resource_id":%q,"kind":"logo","revision":1,"remove":true}`, mediaID)
+	if got := mediaCall(-1, "/space-image/complete", removeImage); got.Code != 401 {
+		t.Fatalf("anonymous image mutation: %d", got.Code)
+	}
+	if got := mediaCall(2, "/space-image/complete", removeImage); got.Code != 404 {
+		t.Fatalf("cross-owner image mutation: %d", got.Code)
+	}
+	for i := 0; i < 2; i++ {
+		if got := mediaCall(1, "/space-image/complete", removeImage); got.Code != 200 {
+			t.Fatalf("image removal/replay: %d %s", got.Code, got.Body.String())
+		}
+	}
+	if _, e = q.AttachSpaceImage(ctx, db.AttachSpaceImageParams{ID: mediaSpace, UserID: ids[1], Kind: "banner", ImageUrl: pgtype.Text{String: "https://example.invalid/ci-banner.png", Valid: true}, Revision: 2}); e != nil {
+		t.Fatal(e)
+	}
+	if got := mediaCall(1, "/space-image/complete", strings.Replace(removeImage, `"logo"`, `"banner"`, 1)); got.Code != 409 {
+		t.Fatalf("stale image mutation: %d", got.Code)
+	}
+	intentBody := fmt.Sprintf(`{"resource_id":%q,"category":"space-banners","filename":"image.png","mime_type":"image/png","size":100}`, mediaID)
+	if got := mediaCall(2, "/upload-intent", intentBody); got.Code != 404 {
+		t.Fatalf("cross-owner upload signing: %d", got.Code)
+	}
+	if got := mediaCall(1, "/upload-intent", intentBody); got.Code != 503 {
+		t.Fatalf("unconfigured storage must report unavailable: %d", got.Code)
+	}
 	public, admin := h.Routes(), h.AdminRoutes()
 	call := func(isAdmin bool, user int, method, path, body, key string) *httptest.ResponseRecorder {
 		t.Helper()

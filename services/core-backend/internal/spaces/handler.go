@@ -96,6 +96,8 @@ type spaceRecord struct {
 	Description string             `json:"description"`
 	Guidelines  string             `json:"guidelines"`
 	WebsiteURL  string             `json:"website_url"`
+	LogoURL     pgtype.Text        `json:"logo_url"`
+	BannerURL   pgtype.Text        `json:"banner_url"`
 	Status      string             `json:"status"`
 	Revision    int64              `json:"revision"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
@@ -103,7 +105,7 @@ type spaceRecord struct {
 }
 
 func view(s db.Spaces) spaceRecord {
-	return spaceRecord{s.ID, s.OrganizerID, s.Name, s.Slug, s.Description, s.Guidelines, s.WebsiteUrl, s.Status, s.Revision, s.CreatedAt, s.UpdatedAt}
+	return spaceRecord{s.ID, s.OrganizerID, s.Name, s.Slug, s.Description, s.Guidelines, s.WebsiteUrl, s.LogoUrl, s.BannerUrl, s.Status, s.Revision, s.CreatedAt, s.UpdatedAt}
 }
 func reply(w http.ResponseWriter, status int, s db.Spaces) {
 	platform.RespondJSON(w, status, struct {

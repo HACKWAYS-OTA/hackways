@@ -32,6 +32,7 @@ func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/upload-intent", h.CreateUploadIntent)
 	r.Post("/event-banner/complete", h.CompleteEventBanner)
+	r.Post("/space-image/complete", h.CompleteSpaceImage)
 	return r
 }
 func (h *Handler) CreateUploadIntent(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +73,17 @@ func (h *Handler) CreateUploadIntent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.Category = "event-banners/" + uuidPath(eventID)
+	case "space-logos", "space-banners":
+		var id pgtype.UUID
+		if id.Scan(req.ResourceID) != nil || !id.Valid || h.queries == nil {
+			platform.RespondError(w, 400, "INVALID_RESOURCE", "Choose a saved Space", nil)
+			return
+		}
+		if _, err := h.queries.ReadOwnedUploadSpace(r.Context(), db.ReadOwnedUploadSpaceParams{ID: id, UserID: user.UserID}); err != nil {
+			mediaFailure(w, err)
+			return
+		}
+		req.Category = category + "/" + uuidPath(id)
 	default:
 		platform.RespondError(w, 400, "INVALID_CATEGORY", "Use avatars or event-banners", nil)
 		return

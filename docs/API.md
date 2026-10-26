@@ -197,3 +197,8 @@ See [the current analytics and audience contract](backend/ANALYTICS.md) for admi
 reports/CSV, optional public ingestion, recipient search and selected-audience
 configuration. New signup requests accept optional `promotional_email` (default
 true for new identities); default initialization preserves existing unsubscribes.
+
+
+## City Hubs and Space images
+
+See [City Hubs and community media](backend/CITY_HUBS.md) for the public/admin city APIs, owner/admin media permissions, revision and replay rules, and direct Azure completion.

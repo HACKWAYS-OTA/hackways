@@ -4,8 +4,16 @@
 .spaces-search input { width: 100%; min-width: 0; padding: 9px 0; border: 0; background: transparent; font-size: 16px; outline: none; }
 .spaces-search:focus-within { outline: 2px solid var(--violet); outline-offset: 2px; }
 .spaces-search button { min-height: 40px; }
-.space-directory { margin-top: 16px; }
-.space-directory-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start; gap: 24px; padding-block: 28px; border-bottom: 1px solid var(--line); }
+.space-directory { display: grid; gap: 16px; margin-top: 28px; }
+.space-directory-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start; gap: 24px; padding: 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface, #fff); }
+.space-directory-row:focus-within { outline: 2px solid var(--violet); outline-offset: 3px; }
+.space-mark { overflow: hidden; }
+.space-mark img { width: 100%; height: 100%; object-fit: cover; }
+.space-profile-banner { margin-top: 26px; aspect-ratio: 3.2; overflow: hidden; border-radius: 14px; background: #f0eaf6; }
+.space-profile-banner img { width: 100%; height: 100%; object-fit: cover; }
+.space-profile-name .space-mark { width: 88px; height: 88px; font-size: 36px; }
+.space-profile-banner + .space-profile { padding-top: 28px; }
+.space-brand-fields { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 20px; align-items: start; }
 .space-mark { display: inline-grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border-radius: 16px; background: #f0eaf6; color: #76568d; font-family: "FG Futurist"; font-size: 28px; }
 .space-directory-row h2 { font-size: 23px; line-height: 1.4; margin: 5px 0 8px; overflow-wrap: anywhere; }
 .space-directory-row h2 a:hover { text-decoration: underline; }
@@ -14,7 +22,7 @@
 .space-owner-name { display: inline-block; margin-top: 12px; }
 .space-open { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 21px; font-size: 13px; }
 .space-open:hover { color: var(--violet); }
-.space-profile { display: flex; align-items: flex-start; justify-content: space-between; gap: 48px; padding-block: 36px; border-bottom: 1px solid var(--line); }
+.space-profile { display: flex; align-items: flex-start; justify-content: space-between; gap: 48px; padding-block: 36px; }
 .space-profile-copy { min-width: 0; max-width: 740px; }
 .space-profile-name { display: flex; align-items: center; gap: 20px; }
 .space-profile h1 { font-size: 32px; line-height: 1.3; overflow-wrap: anywhere; }
@@ -35,20 +43,48 @@
 .space-about p { color: var(--muted); font-size: 13px; line-height: 1.8; }
 .space-about p + h2 { margin-top: 32px; }
 .space-guidelines { white-space: pre-wrap; overflow-wrap: anywhere; }
-.space-archive-notice { padding: 16px 0; color: #805c2e; font-size: 13px; border-bottom: 1px solid var(--line); }
-.space-form-page { width: min(680px, calc(100% - 80px)); margin-inline: auto; padding-block: 48px 80px; }
-.space-form-page > .desk-heading { margin-top: 24px; }
-.space-form-fields { display: grid; gap: 24px; margin: 0; padding: 0; border: 0; min-width: 0; }
-.space-save { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding-top: 6px; }
-.space-save p { font-size: 12px; color: var(--muted); max-width: 42ch; }
-.space-archive-settings { padding-top: 32px; margin-top: 40px; border-top: 1px solid var(--line); }
+.space-archive-notice { padding: 16px 0; color: #805c2e; font-size: 13px; }
+.space-form-page { width: min(1040px, calc(100% - 80px)); margin-inline: auto; padding-block: 32px 80px; }
+.space-creation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 48px; }
+.space-creation-toolbar h1 { font-family: "Google Sans Flex"; font-size: 20px; letter-spacing: 0; -webkit-text-stroke: 0; margin-top: 12px; }
+.space-studio-back { font-size: 12px; }
+.space-studio-back svg { transform: rotate(180deg); }
+.space-composer-fields { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 64px; padding: 0; margin: 0; border: 0; min-width: 0; }
+.space-composer-brand { min-width: 0; }
+.space-composer-brand .space-brand-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.space-composer-brand .media-field-banner .media-field-preview { aspect-ratio: 1.9; }
+.space-composer-brand .media-field-logo { max-width: 88px; }
+.space-composer-brand .media-field-logo > small { width: 190px; }
+.space-composer-copy { min-width: 0; display: grid; align-content: start; gap: 22px; padding-top: 18px; }
+.space-composer-copy .app-input { min-height: 40px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 15px; line-height: 1.8; }
+.space-composer-copy .app-input:focus { outline: 2px solid var(--violet); outline-offset: 8px; border-radius: 3px; }
+.space-composer-copy .app-input::placeholder { color: #74667f; opacity: 1; }
+.space-composer-copy .space-name-input { font-family: "FG Futurist"; font-size: 36px; line-height: 1.3; min-height: 54px; letter-spacing: -.025em; }
+.space-composer-copy > .field:first-child > label, .space-website-field .field > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.space-composer-copy textarea { resize: vertical; }
+.space-composer-copy .space-description-input { min-height: 160px; }
+.space-website-field { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.space-website-field > .field { flex: 1; min-width: 0; }
+.space-studio-guidelines { padding-block: 4px; color: var(--muted); }
+.space-studio-guidelines summary { display: flex; align-items: center; gap: 12px; min-height: 40px; font-size: 14px; list-style: none; cursor: pointer; }
+.space-studio-guidelines summary::-webkit-details-marker { display: none; }
+.space-studio-guidelines summary > svg:last-child { margin-left: auto; }
+.space-studio-guidelines[open] summary { margin-bottom: 18px; }
+.space-studio-guidelines[open] summary > svg:last-child { transform: rotate(180deg); }
+.space-composer > .journey-error { margin-top: 32px; }
+.space-archive-settings { padding-top: 32px; margin-top: 40px; }
 .space-archive-settings h2 { font-size: 21px; margin-bottom: 12px; }
 .space-archive-settings p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
-@media (max-width: 1000px) { .space-body { grid-template-columns: minmax(0, 1fr); gap: 32px; } .space-about { border-top: 1px solid var(--line); padding-top: 28px; } }
+@media (max-width: 1000px) { .space-body { grid-template-columns: minmax(0, 1fr); gap: 32px; } .space-about { padding-top: 28px; } }
+
 @media (max-width: 640px) {
  .spaces-page, .space-form-page { width: calc(100% - 40px); padding-block: 30px 56px; }
  .spaces-page .desk-tabs { gap: 20px; font-size: 13px; }
- .space-directory-row { grid-template-columns: 48px minmax(0, 1fr); gap: 16px; padding-block: 24px; }
+ .space-directory-row { grid-template-columns: 48px minmax(0, 1fr); gap: 16px; padding: 20px; }
+ .space-profile-banner { aspect-ratio: 1.9; }
+ .space-brand-fields { grid-template-columns: minmax(0, 1fr) 96px; gap: 16px; }
+ .space-brand-fields .media-field-banner .media-field-preview { aspect-ratio: 1.7; }
+ .space-profile-name .space-mark { width: 64px; height: 64px; font-size: 28px; }
  .space-mark { width: 48px; height: 48px; border-radius: 12px; font-size: 23px; }
  .space-directory-row h2 { font-size: 20px; }
  .space-directory-row p { font-size: 13px; }
@@ -63,6 +99,7 @@
  .space-body { padding-top: 16px; }
  .space-event-list .catalog-event { grid-template-columns: 105px minmax(0, 1fr); gap: 16px; }
  .space-event-list .catalog-event-open { grid-column: 2; }
- .space-save { flex-direction: column-reverse; align-items: flex-start; gap: 18px; }
- .space-save .app-button { width: 100%; }
 }
+
+@media (max-width: 900px) { .space-composer-fields { grid-template-columns: 250px minmax(0, 1fr); gap: 40px; } .space-composer-copy .space-name-input { font-size: 30px; } }
+@media (max-width: 680px) { .space-creation-toolbar { margin-bottom: 32px; } .space-composer-fields { grid-template-columns: minmax(0, 1fr); gap: 28px; } .space-composer-brand .space-brand-fields { grid-template-columns: minmax(0, 1fr) 88px; align-items: start; gap: 20px; } .space-composer-brand .media-field-logo > small { width: auto; } .space-composer-copy { padding-top: 0; } .space-composer-copy .space-name-input { font-size: 29px; } .space-creation-toolbar > button { padding-inline: 18px; font-size: 12px; } }

@@ -88,7 +88,14 @@ export interface RegistrationAnswerSnapshot extends RegistrationAnswer { label: 
 export interface Space {
   id: string; organizer_id: string; name: string; slug: string; description: string;
   guidelines: string; website_url: string; status: 'active' | 'archived'; revision: number;
+  logo_url?: string | null; banner_url?: string | null;
   created_at: string; updated_at: string; owner_name?: string; member_count?: number; owned?: boolean;
+}
+
+export interface CityHub {
+  id: string; reference?: number; slug: string; name: string; region: string; country: string;
+  timezone: string; description: string; banner_url: string | null; event_count?: number;
+  status?: 'draft' | 'published' | 'archived'; revision?: number; updated_at?: string;
 }
 
 export interface ApiResponse<T> {

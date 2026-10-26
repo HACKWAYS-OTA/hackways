@@ -1,22 +1,22 @@
 -- name: ListPublicSpaces :many
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id
 WHERE s.status='active' AND (sqlc.arg(q)::text='' OR to_tsvector('simple',s.name || ' ' || s.description) @@ plainto_tsquery('simple',sqlc.arg(q)::text))
 ORDER BY s.created_at DESC,s.id LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: ReadPublicSpace :one
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.slug=$1;
 
 -- name: ReadSpaceSummaryByID :one
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1;
 
 -- name: ListMySpaces :many
-SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.status,s.revision,s.created_at,s.updated_at,
+SELECT s.id,s.organizer_id,s.name,s.slug,s.description,s.guidelines,s.website_url,s.logo_url,s.banner_url,s.status,s.revision,s.created_at,s.updated_at,
 o.display_name AS owner_name,(o.user_id=sqlc.arg(user_id))::boolean AS owned,
 (SELECT count(*) FROM space_memberships m WHERE m.space_id=s.id)::bigint AS member_count
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id

@@ -56,9 +56,9 @@ async function readFeed(base: string, path: string, signal: AbortSignal): Promis
 // are cached, so sitemap reads do not put database queries on every request.
 const cachedCatalog = unstable_cache(async (core: string, global: string) => {
   const signal = AbortSignal.timeout(8000);
-  const feeds = await Promise.all([readFeed(core, 'events', signal), readFeed(core, 'spaces', signal), readFeed(global, 'programs', signal)]);
+  const feeds = await Promise.all([readFeed(core, 'events', signal), readFeed(core, 'spaces', signal), readFeed(core, 'cities', signal), readFeed(global, 'programs', signal)]);
   return Array.from(new Map(feeds.flat().map(entry => [entry.url, entry])).values());
-}, ['public-catalog-sitemap-v1'], { revalidate: 300 });
+}, ['public-catalog-sitemap-v2'], { revalidate: 300 });
 
 let pending: Promise<Entry[]> | undefined;
 export async function catalogSitemap(): Promise<Entry[]> {

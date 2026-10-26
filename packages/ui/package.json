@@ -14,6 +14,7 @@
     "./auth-recovery": "./src/AuthRecovery.tsx",
     "./session-refresh": "./src/SessionRefresh.tsx",
     "./avatar": "./src/Avatar.tsx",
+    "./media-field": "./src/MediaField.tsx",
     "./social-image": "./src/SocialImage.tsx",
     "./social-pages": "./src/SocialPages.ts",
     "./brand-metadata": "./src/BrandMetadata.ts",
