@@ -1389,3 +1389,15 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Final admin activation completed: 9f684d6 image provenance verified, all four web
   readiness checks passed, other five images and runtime environment retained.
   Temporary publication scope/cache settings were removed after both successful runs.
+
+
+### 2026-10-26 ? Private review save regression
+
+- Root cause: the shared review form serialized the released-result confirmation
+  field into private saves. Go correctly rejects unknown fields, causing a misleading
+  decision/notes validation message even for Accept with empty notes.
+- Private saves now serialize only decision, notes and revision. Confirmed remains
+  exclusive to the published-decision request and its durable retry payload.
+- Existing mandatory PostgreSQL case now explicitly verifies the invalid extra-field
+  request is rejected and the correct empty-notes request succeeds. No validation is
+  weakened and no production applicant data is changed during verification.

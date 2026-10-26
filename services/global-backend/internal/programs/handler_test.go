@@ -189,6 +189,22 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 		}{app.Revision, decision, "PRIVATE_REVIEW_NOTE_MUST_NOT_LEAK"})
 		check(call(true, 0, "POST", "/"+slug+"/applications/"+id.(string)+"/decision", string(raw), ""), 200)
 	}
+	// The private endpoint deliberately rejects release-only fields. Its actual
+	// payload accepts empty optional notes and must not include confirmed:false.
+	current := mine(1)
+	invalidPrivate, _ := json.Marshal(struct {
+		Revision  int64  `json:"revision"`
+		Decision  string `json:"decision"`
+		Notes     string `json:"notes"`
+		Confirmed bool   `json:"confirmed"`
+	}{current.Revision, "accepted", "", false})
+	check(call(true, 0, "POST", "/"+slug+"/applications/"+aID.(string)+"/decision", string(invalidPrivate), ""), 400)
+	validPrivate, _ := json.Marshal(struct {
+		Revision int64  `json:"revision"`
+		Decision string `json:"decision"`
+		Notes    string `json:"notes"`
+	}{current.Revision, "accepted", ""})
+	check(call(true, 0, "POST", "/"+slug+"/applications/"+aID.(string)+"/decision", string(validPrivate), ""), 200)
 	saveDecision(1, "accepted")
 	w = call(false, 1, "GET", "/"+slug+"/application", "", "")
 	check(w, 200)

@@ -20,10 +20,11 @@ export function ProgramReview({ program, application: initial }: { program: Prog
  async function save(event:FormEvent<HTMLFormElement>) {
   event.preventDefault();if(busy||locked||(published&&(!confirmed||decision===application.published_decision)))return;
   setBusy(true);setError(null);setNotice('');
-  const body:Update={decision,notes,revision:application.revision,confirmed:published&&confirmed};
+  const draft={decision,notes,revision:application.revision};
+  const body:Update={...draft,confirmed:published&&confirmed};
   if(published&&!attempt.current)attempt.current={key:crypto.randomUUID(),body};
   try {
-   const result=await adminRequest<{application:AdminProgramApplication}>(`global/programs/${program.slug}/applications/${application.id}/${published?'published-decision':'decision'}`,{method:'POST',headers:{'Content-Type':'application/json',...(published&&attempt.current?{'Idempotency-Key':attempt.current.key}:{})},body:JSON.stringify(published&&attempt.current?attempt.current.body:body)},true);
+   const result=await adminRequest<{application:AdminProgramApplication}>(`global/programs/${program.slug}/applications/${application.id}/${published?'published-decision':'decision'}`,{method:'POST',headers:{'Content-Type':'application/json',...(published&&attempt.current?{'Idempotency-Key':attempt.current.key}:{})},body:JSON.stringify(published&&attempt.current?attempt.current.body:draft)},true);
    setApplication(result.application);setDecision(result.application.decision);setNotes(result.application.reviewer_notes);setEditing(false);setConfirmed(false);setUncertain(false);attempt.current=null;
    setNotice(published?'Updated result published. An update email has been scheduled.':'Private decision saved. Release results when you are ready to share them.');router.refresh();
   } catch(cause) {
