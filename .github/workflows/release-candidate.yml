@@ -32,7 +32,7 @@ jobs:
       max-parallel: 2
       fail-fast: true
       matrix:
-        service: [core-backend, global-backend, public-web, core-web, organizer-web, admin-web]
+        service: ${{ fromJSON(vars.HACKWAYS_CANDIDATE_SERVICES || '["core-backend","global-backend","public-web","core-web","organizer-web","admin-web"]') }}
     env:
       DOCKER_BUILD_RECORD_UPLOAD: 'false'
       DOCKER_BUILD_SUMMARY: 'false'
@@ -72,7 +72,7 @@ jobs:
             NEXT_PUBLIC_APP_URL=https://hackways.in
             NEXT_PUBLIC_ORGANIZER_URL=https://hackways.in/manage
           cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          cache-to: ${{ vars.HACKWAYS_SKIP_CACHE_EXPORT != 'true' && format('type=gha,mode=max,scope={0}', matrix.service) || '' }}
       - name: Record immutable image identity
         env:
           SERVICE: ${{ matrix.service }}

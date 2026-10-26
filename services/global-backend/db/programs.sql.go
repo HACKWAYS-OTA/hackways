@@ -596,6 +596,74 @@ func (q *Queries) ProgramApplicationsAdmin(ctx context.Context, arg ProgramAppli
 	return items, nil
 }
 
+const programCommunicationAudience = `-- name: ProgramCommunicationAudience :many
+SELECT a.id,a.user_id,a.full_name,u.email,a.published_decision,a.revision,a.city,a.proposal,a.profile_url,a.submitted_at
+FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= $1 AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
+AND ($2::boolean=false OR a.id=ANY($3::uuid[]))
+AND ($4::text='' OR a.decision= $4)
+AND ($5::text='' OR a.full_name ILIKE '%'|| $5||'%' OR u.email ILIKE '%'|| $5||'%' OR a.city ILIKE '%'|| $5||'%')
+ORDER BY a.id LIMIT 2001
+`
+
+type ProgramCommunicationAudienceParams struct {
+	ProgramID      pgtype.UUID   `json:"program_id"`
+	Selected       bool          `json:"selected"`
+	ApplicationIds []pgtype.UUID `json:"application_ids"`
+	DecisionFilter string        `json:"decision_filter"`
+	Search         string        `json:"search"`
+}
+
+type ProgramCommunicationAudienceRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	FullName          string             `json:"full_name"`
+	Email             string             `json:"email"`
+	PublishedDecision pgtype.Text        `json:"published_decision"`
+	Revision          int64              `json:"revision"`
+	City              string             `json:"city"`
+	Proposal          string             `json:"proposal"`
+	ProfileUrl        string             `json:"profile_url"`
+	SubmittedAt       pgtype.Timestamptz `json:"submitted_at"`
+}
+
+func (q *Queries) ProgramCommunicationAudience(ctx context.Context, arg ProgramCommunicationAudienceParams) ([]ProgramCommunicationAudienceRow, error) {
+	rows, err := q.db.Query(ctx, programCommunicationAudience,
+		arg.ProgramID,
+		arg.Selected,
+		arg.ApplicationIds,
+		arg.DecisionFilter,
+		arg.Search,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProgramCommunicationAudienceRow
+	for rows.Next() {
+		var i ProgramCommunicationAudienceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.Email,
+			&i.PublishedDecision,
+			&i.Revision,
+			&i.City,
+			&i.Proposal,
+			&i.ProfileUrl,
+			&i.SubmittedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const programCreate = `-- name: ProgramCreate :one
 INSERT INTO programs(slug,title,summary,overview,responsibilities,recognition,status,minimum_age,questions,opens_at,closes_at,created_by)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, slug, title, summary, overview, responsibilities, recognition, status, minimum_age, questions, opens_at, closes_at, revision, review_revision, created_by, created_at, updated_at
@@ -720,6 +788,91 @@ func (q *Queries) ProgramEnqueueReceipt(ctx context.Context, id pgtype.UUID) (in
 	return result.RowsAffected(), nil
 }
 
+const programExportCount = `-- name: ProgramExportCount :one
+SELECT count(*)::bigint FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= $1 AND a.status='submitted'
+AND ($2::text='' OR a.decision= $2)
+AND ($3::text='' OR a.full_name ILIKE '%'|| $3||'%' OR u.email ILIKE '%'|| $3||'%' OR a.city ILIKE '%'|| $3||'%')
+`
+
+type ProgramExportCountParams struct {
+	ProgramID      pgtype.UUID `json:"program_id"`
+	DecisionFilter string      `json:"decision_filter"`
+	Search         string      `json:"search"`
+}
+
+func (q *Queries) ProgramExportCount(ctx context.Context, arg ProgramExportCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, programExportCount, arg.ProgramID, arg.DecisionFilter, arg.Search)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const programExportPage = `-- name: ProgramExportPage :many
+SELECT a.full_name,u.email,a.phone,a.city,a.profile_url,a.biography,a.proposal,a.decision,a.published_decision,a.submitted_at
+FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= $1 AND a.status='submitted'
+AND ($2::text='' OR a.decision= $2)
+AND ($3::text='' OR a.full_name ILIKE '%'|| $3||'%' OR u.email ILIKE '%'|| $3||'%' OR a.city ILIKE '%'|| $3||'%')
+ORDER BY a.submitted_at,a.id LIMIT 100 OFFSET $4
+`
+
+type ProgramExportPageParams struct {
+	ProgramID      pgtype.UUID `json:"program_id"`
+	DecisionFilter string      `json:"decision_filter"`
+	Search         string      `json:"search"`
+	PageOffset     int32       `json:"page_offset"`
+}
+
+type ProgramExportPageRow struct {
+	FullName          string             `json:"full_name"`
+	Email             string             `json:"email"`
+	Phone             string             `json:"phone"`
+	City              string             `json:"city"`
+	ProfileUrl        string             `json:"profile_url"`
+	Biography         string             `json:"biography"`
+	Proposal          string             `json:"proposal"`
+	Decision          string             `json:"decision"`
+	PublishedDecision pgtype.Text        `json:"published_decision"`
+	SubmittedAt       pgtype.Timestamptz `json:"submitted_at"`
+}
+
+func (q *Queries) ProgramExportPage(ctx context.Context, arg ProgramExportPageParams) ([]ProgramExportPageRow, error) {
+	rows, err := q.db.Query(ctx, programExportPage,
+		arg.ProgramID,
+		arg.DecisionFilter,
+		arg.Search,
+		arg.PageOffset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProgramExportPageRow
+	for rows.Next() {
+		var i ProgramExportPageRow
+		if err := rows.Scan(
+			&i.FullName,
+			&i.Email,
+			&i.Phone,
+			&i.City,
+			&i.ProfileUrl,
+			&i.Biography,
+			&i.Proposal,
+			&i.Decision,
+			&i.PublishedDecision,
+			&i.SubmittedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const programListPublic = `-- name: ProgramListPublic :many
 SELECT id, slug, title, summary, overview, responsibilities, recognition, status, minimum_age, questions, opens_at, closes_at, revision, review_revision, created_by, created_at, updated_at FROM programs WHERE status IN ('open','closed') ORDER BY created_at DESC,id LIMIT 51 OFFSET $1
 `
@@ -791,13 +944,49 @@ func (q *Queries) ProgramLock(ctx context.Context, slug string) (Programs, error
 	return i, err
 }
 
+const programMailContext = `-- name: ProgramMailContext :one
+SELECT a.full_name,a.city,a.proposal,a.profile_url,a.submitted_at,a.published_decision,p.title,p.slug
+FROM email_outbox o JOIN program_applications a ON a.id=(o.payload_json->>'application_id')::uuid
+JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
+WHERE o.id= $1 AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
+AND lower(u.email)=lower(o.recipient_email)
+AND (o.template_type<>'program_results_released' OR a.published_at IS NOT NULL)
+`
+
+type ProgramMailContextRow struct {
+	FullName          string             `json:"full_name"`
+	City              string             `json:"city"`
+	Proposal          string             `json:"proposal"`
+	ProfileUrl        string             `json:"profile_url"`
+	SubmittedAt       pgtype.Timestamptz `json:"submitted_at"`
+	PublishedDecision pgtype.Text        `json:"published_decision"`
+	Title             string             `json:"title"`
+	Slug              string             `json:"slug"`
+}
+
+func (q *Queries) ProgramMailContext(ctx context.Context, id pgtype.UUID) (ProgramMailContextRow, error) {
+	row := q.db.QueryRow(ctx, programMailContext, id)
+	var i ProgramMailContextRow
+	err := row.Scan(
+		&i.FullName,
+		&i.City,
+		&i.Proposal,
+		&i.ProfileUrl,
+		&i.SubmittedAt,
+		&i.PublishedDecision,
+		&i.Title,
+		&i.Slug,
+	)
+	return i, err
+}
+
 const programNotificationActive = `-- name: ProgramNotificationActive :one
 SELECT EXISTS(SELECT 1 FROM email_outbox o
  JOIN program_applications a ON a.id=(o.payload_json->>'application_id')::uuid
  JOIN users u ON u.id=a.user_id
  WHERE o.id= $1 AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
  AND lower(u.email)=lower(o.recipient_email)
- AND (o.template_type='program_application_received' OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)))
+ AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)))
 `
 
 func (q *Queries) ProgramNotificationActive(ctx context.Context, id pgtype.UUID) (bool, error) {
@@ -805,6 +994,44 @@ func (q *Queries) ProgramNotificationActive(ctx context.Context, id pgtype.UUID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const programQueueCommunications = `-- name: ProgramQueueCommunications :one
+WITH recipients AS MATERIALIZED (
+ SELECT a.id,a.user_id,a.full_name,u.email,gen_random_uuid() AS outbox_id
+ FROM program_applications a JOIN users u ON u.id=a.user_id
+ WHERE a.program_id= $1 AND a.status='submitted' AND a.id=ANY($2::uuid[])
+ AND u.deleted_at IS NULL AND u.email_verified ORDER BY a.id FOR SHARE OF u
+), outboxes AS (
+ INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json)
+ SELECT outbox_id,email,full_name,'program_communication',
+ jsonb_build_object('application_id',id,'promotion_subject',$3::text,'promotion_body',$4::text) FROM recipients
+ RETURNING id
+), deliveries AS (
+ INSERT INTO admin_custom_message_deliveries(message_id,user_id,outbox_id)
+ SELECT $5,r.user_id,r.outbox_id FROM recipients r JOIN outboxes o ON o.id=r.outbox_id RETURNING outbox_id
+) SELECT count(*)::bigint FROM deliveries
+`
+
+type ProgramQueueCommunicationsParams struct {
+	ProgramID      pgtype.UUID   `json:"program_id"`
+	ApplicationIds []pgtype.UUID `json:"application_ids"`
+	Subject        string        `json:"subject"`
+	Body           string        `json:"body"`
+	MessageID      pgtype.UUID   `json:"message_id"`
+}
+
+func (q *Queries) ProgramQueueCommunications(ctx context.Context, arg ProgramQueueCommunicationsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, programQueueCommunications,
+		arg.ProgramID,
+		arg.ApplicationIds,
+		arg.Subject,
+		arg.Body,
+		arg.MessageID,
+	)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const programRead = `-- name: ProgramRead :one

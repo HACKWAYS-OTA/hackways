@@ -3,9 +3,12 @@ package programs
 // These cases extend the existing mandatory PostgreSQL CI suite. They never
 // create application fixtures outside an explicitly isolated _test database.
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -65,6 +68,8 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 		}
 	}
 	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM admin_custom_message_deliveries WHERE message_id IN (SELECT id FROM admin_custom_messages WHERE actor_user_id=$1)", ids[0])
+		_, _ = pool.Exec(ctx, "DELETE FROM admin_custom_messages WHERE actor_user_id=$1", ids[0])
 		_, _ = pool.Exec(ctx, "DELETE FROM email_outbox WHERE recipient_email LIKE $1", "program-%-"+nonce+"@example.invalid")
 		_, _ = pool.Exec(ctx, "DELETE FROM program_activity WHERE program_id IN (SELECT id FROM programs WHERE slug=$1)", slug)
 		_, _ = pool.Exec(ctx, "DELETE FROM program_releases WHERE program_id IN (SELECT id FROM programs WHERE slug=$1)", slug)
@@ -223,9 +228,85 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 	if got := mine(2).PublishedDecision; !got.Valid || got.String != "rejected" {
 		t.Fatal("cross-user result mismatch")
 	}
+	// Real authorized Excel response and communications use the same isolated PostgreSQL records.
+	exportPath := "/" + slug + "/applications/export.xlsx"
+	check(call(true, -1, "GET", exportPath, "", ""), 401)
+	check(call(true, 1, "GET", exportPath, "", ""), 403)
+	exported := call(true, 0, "GET", exportPath, "", "")
+	check(exported, 200)
+	if !strings.Contains(exported.Header().Get("Content-Type"), "spreadsheetml.sheet") {
+		t.Fatal("not an Excel workbook")
+	}
+	archive, err := zip.NewReader(bytes.NewReader(exported.Body.Bytes()), int64(exported.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet := ""
+	for _, file := range archive.File {
+		stream, e := file.Open()
+		if e != nil {
+			t.Fatal(e)
+		}
+		data, e := io.ReadAll(stream)
+		stream.Close()
+		if e != nil {
+			t.Fatal(e)
+		}
+		if file.Name == "xl/worksheets/sheet1.xml" {
+			sheet = string(data)
+		}
+	}
+	if strings.Contains(sheet, "<f>") {
+		t.Fatal("export must not execute applicant formulas")
+	}
+	for _, expected := range []string{"Applicant 1", "Applicant 2", "autoFilter", "state=\"frozen\"", "r=\"F5\" s=\"7\""} {
+		if !strings.Contains(sheet, expected) {
+			t.Fatalf("Excel missing %s", expected)
+		}
+	}
+	t.Setenv("ACS_ENDPOINT", "https://unit.communication.azure.com")
+	t.Setenv("ACS_ACCESS_KEY", "mandatory-ci-not-a-live-key")
+	t.Setenv("ACS_SENDER_ADDRESS", "notify@example.invalid")
+	t.Setenv("EMAIL_OUTBOX_TEMPLATE_FILTER", "")
+	communication := communicationBody{Subject: "Hello {{name}}", Body: "Your {{program}} result is {{decision}}.", Scope: "selected", IDs: []string{aID.(string)}}
+	raw, _ = json.Marshal(communication)
+	check(call(true, 1, "POST", "/"+slug+"/communications/preview", string(raw), ""), 403)
+	response := call(true, 0, "POST", "/"+slug+"/communications/preview", string(raw), "")
+	check(response, 200)
+	var preview struct {
+		Count int    `json:"count"`
+		Hash  string `json:"audience_hash"`
+		HTML  string `json:"html"`
+	}
+	if json.Unmarshal(response.Body.Bytes(), &preview) != nil || preview.Count != 1 || !strings.Contains(preview.HTML, "Applicant 1") || !strings.Contains(preview.HTML, "accepted") {
+		t.Fatal("actual recipient preview missing")
+	}
+	communication.Confirmed = true
+	communication.ExpectedCount = preview.Count
+	communication.AudienceHash = strings.Repeat("0", 64)
+	raw, _ = json.Marshal(communication)
+	check(call(true, 0, "POST", "/"+slug+"/communications/send", string(raw), "program-communication-ci-stale"), 409)
+	communication.AudienceHash = preview.Hash
+	raw, _ = json.Marshal(communication)
+	check(call(true, 0, "POST", "/"+slug+"/communications/send", string(raw), "program-communication-ci-final"), 202)
+	check(call(true, 0, "POST", "/"+slug+"/communications/send", string(raw), "program-communication-ci-final"), 200)
+	communication.Body = "Different body"
+	raw, _ = json.Marshal(communication)
+	check(call(true, 0, "POST", "/"+slug+"/communications/send", string(raw), "program-communication-ci-final"), 409)
+	communication.IDs = []string{"00000000-0000-0000-0000-000000000001"}
+	raw, _ = json.Marshal(communication)
+	check(call(true, 0, "POST", "/"+slug+"/communications/preview", string(raw), ""), 409)
+	var outboxID pgtype.UUID
+	if err = pool.QueryRow(ctx, "SELECT id FROM email_outbox WHERE recipient_email LIKE $1 AND template_type='program_communication'", "program-1-"+nonce+"@example.invalid").Scan(&outboxID); err != nil {
+		t.Fatal(err)
+	}
+	mailContext, err := q.ProgramMailContext(ctx, outboxID)
+	if err != nil || mailContext.FullName != "Applicant 1" || mailContext.PublishedDecision.String != "accepted" {
+		t.Fatal("mail hydration lost actual applicant context", err)
+	}
 	var messages int
-	if e = pool.QueryRow(ctx, "SELECT count(*) FROM email_outbox WHERE recipient_email LIKE $1", "program-%-"+nonce+"@example.invalid").Scan(&messages); e != nil || messages != 4 {
-		t.Fatal("expected exactly two receipts and two release notices, despite duplicate submissions/releases")
+	if e = pool.QueryRow(ctx, "SELECT count(*) FROM email_outbox WHERE recipient_email LIKE $1", "program-%-"+nonce+"@example.invalid").Scan(&messages); e != nil || messages != 5 {
+		t.Fatal("expected two receipts, two release notices and one communication despite retries")
 	}
 	if got := adminProgramRead(); len(got.Releases) != 1 || got.Stats.Released != 2 {
 		t.Fatal("release retry duplicated effects")
@@ -241,6 +322,9 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 		Revision int64 `json:"revision"`
 	}{app.Revision})
 	check(call(false, 1, "POST", "/"+slug+"/application/withdraw", string(raw), ""), 200)
+	if active, e := q.ProgramNotificationActive(ctx, outboxID); e != nil || active {
+		t.Fatal("withdrawn applicant remains eligible for email")
+	}
 	if mine(1).Status != "withdrawn" {
 		t.Fatal("withdrawal did not persist")
 	}

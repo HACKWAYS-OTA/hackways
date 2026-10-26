@@ -103,36 +103,41 @@ func uuid(id pgtype.UUID) string {
 }
 
 type templatePayload struct {
-	ProgramTitle     string             `json:"program_title"`
-	ProgramSlug      string             `json:"program_slug"`
-	PassQR           bool               `json:"-"`
-	CampaignDesign   *CampaignDesign    `json:"campaign_design,omitempty"`
-	PromotionSubject string             `json:"promotion_subject"`
-	PromotionBody    string             `json:"promotion_body"`
-	ActionLabel      string             `json:"action_label"`
-	UnsubscribeURL   string             `json:"unsubscribe_url"`
-	IsTest           bool               `json:"is_test"`
-	VerificationHash string             `json:"verification_hash"`
-	DeviceName       string             `json:"device_name"`
-	BrowserName      string             `json:"browser_name"`
-	ApproxLocation   string             `json:"approx_location"`
-	DeviceLabel      string             `json:"device_label"`
-	SignedInAt       time.Time          `json:"signed_in_at"`
-	Code             string             `json:"verification_code"`
-	Title            string             `json:"event_title"`
-	StartsAt         time.Time          `json:"starts_at"`
-	EndsAt           time.Time          `json:"ends_at"`
-	OfferExpiresAt   pgtype.Timestamptz `json:"offer_expires_at"`
-	CustomMessage    string             `json:"custom_message"`
-	RecipientName    string             `json:"recipient_name"`
-	OrganizerName    string             `json:"organizer_name"`
-	SpaceName        string             `json:"space_name"`
-	Location         string             `json:"location"`
-	EventURL         string             `json:"event_url"`
-	ActionURL        string             `json:"action_url"`
-	EventBannerURL   string             `json:"event_banner_url"`
-	Reason           string             `json:"reason"`
-	TicketCode       string             `json:"ticket_code"`
+	ProgramDecision    string             `json:"program_decision,omitempty"`
+	ProgramCity        string             `json:"program_city,omitempty"`
+	ProgramProposal    string             `json:"program_proposal,omitempty"`
+	ProgramProfileURL  string             `json:"program_profile_url,omitempty"`
+	ProgramSubmittedAt time.Time          `json:"program_submitted_at,omitempty"`
+	ProgramTitle       string             `json:"program_title"`
+	ProgramSlug        string             `json:"program_slug"`
+	PassQR             bool               `json:"-"`
+	CampaignDesign     *CampaignDesign    `json:"campaign_design,omitempty"`
+	PromotionSubject   string             `json:"promotion_subject"`
+	PromotionBody      string             `json:"promotion_body"`
+	ActionLabel        string             `json:"action_label"`
+	UnsubscribeURL     string             `json:"unsubscribe_url"`
+	IsTest             bool               `json:"is_test"`
+	VerificationHash   string             `json:"verification_hash"`
+	DeviceName         string             `json:"device_name"`
+	BrowserName        string             `json:"browser_name"`
+	ApproxLocation     string             `json:"approx_location"`
+	DeviceLabel        string             `json:"device_label"`
+	SignedInAt         time.Time          `json:"signed_in_at"`
+	Code               string             `json:"verification_code"`
+	Title              string             `json:"event_title"`
+	StartsAt           time.Time          `json:"starts_at"`
+	EndsAt             time.Time          `json:"ends_at"`
+	OfferExpiresAt     pgtype.Timestamptz `json:"offer_expires_at"`
+	CustomMessage      string             `json:"custom_message"`
+	RecipientName      string             `json:"recipient_name"`
+	OrganizerName      string             `json:"organizer_name"`
+	SpaceName          string             `json:"space_name"`
+	Location           string             `json:"location"`
+	EventURL           string             `json:"event_url"`
+	ActionURL          string             `json:"action_url"`
+	EventBannerURL     string             `json:"event_banner_url"`
+	Reason             string             `json:"reason"`
+	TicketCode         string             `json:"ticket_code"`
 }
 
 var registrationStateTemplates = map[string]struct{}{
@@ -207,7 +212,7 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		actionURL = strings.TrimSpace(payload.EventURL)
 	}
 	actionURL = safeHTTPSURL(actionURL)
-	if template.ID == "program_application_received" || template.ID == "program_results_released" {
+	if isProgramMail(template.ID) {
 		actionURL = programApplicationURL(payload.ProgramSlug)
 	}
 	if template.ID == "password_reset_requested" {
@@ -226,6 +231,9 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 		if template.ID == "password_reset_requested" {
 			label = "Reset password"
 		}
+		if isProgramMail(template.ID) {
+			label = "View your application"
+		}
 		if isConfirmation(template.ID) {
 			label = "My pass"
 		}
@@ -240,6 +248,9 @@ func renderHTML(template EmailTemplate, subject, body string, payload templatePa
 	banner := ""
 	if bannerURL := safeHTTPSURL(payload.EventBannerURL); bannerURL != "" {
 		banner = `<img src="` + html.EscapeString(bannerURL) + `" alt="" style="display:block;width:100%;max-height:260px;object-fit:cover;margin:0 0 28px;">`
+		if isProgramMail(template.ID) {
+			banner = `<img src="` + html.EscapeString(bannerURL) + `" alt="Hackways Ambassadors" width="600" style="display:block;width:100%;max-width:600px;height:auto;margin:0 0 28px;">`
+		}
 	}
 	unsubscribe := ""
 	if template.ID == "admin_promotion" {
@@ -295,12 +306,28 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	subject, body := template.Subject, template.Copy
 	switch e.TemplateType {
 	case "program_application_received":
+		subject = "Thanks for applying to " + payload.ProgramTitle
 		body = "Thanks for applying to " + payload.ProgramTitle + ". We will review your profile and email you our decision."
 		if payload.ProgramSlug == "ambassadors" {
 			body += " Results will be shared at the end of November."
 		}
 	case "program_results_released":
-		body = "Your application update for " + payload.ProgramTitle + " is ready. Sign in to your Hackways account to view your result. Thank you for sharing your ideas with us."
+		subject = "Your " + payload.ProgramTitle + " application result"
+		switch payload.ProgramDecision {
+		case "accepted":
+			body = "Congratulations! Your application to " + payload.ProgramTitle + " has been accepted. Welcome to the program."
+		case "rejected":
+			body = "Thank you for applying to " + payload.ProgramTitle + ". Your application was not selected this time. We appreciate the time and ideas you shared with us."
+		case "waitlisted":
+			body = "Thank you for applying to " + payload.ProgramTitle + ". Your application has been placed on the waiting list."
+		default:
+			return EmailMessage{}, errors.New("a published program decision is required")
+		}
+	case "program_communication":
+		subject, body = strings.Join(strings.Fields(programMerge(payload.PromotionSubject, payload)), " "), programMerge(payload.PromotionBody, payload)
+		if subject == "" || body == "" {
+			return EmailMessage{}, errors.New("program communication content is missing")
+		}
 	case "admin_promotion", "admin_service_message":
 		subject = payload.PromotionSubject
 		body = payload.PromotionBody
@@ -367,6 +394,19 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	} else {
 		body = appendTemplateContext(body, templatePayload{StartsAt: payload.StartsAt, Location: payload.Location, OrganizerName: payload.OrganizerName, SpaceName: payload.SpaceName, TicketCode: payload.TicketCode})
 	}
+	if isProgramMail(e.TemplateType) {
+		if payload.RecipientName != "" {
+			body = "Hi " + payload.RecipientName + ",\n\n" + body
+		}
+		if e.TemplateType == "program_application_received" {
+			if payload.ProgramCity != "" {
+				body += "\n\nYour community: " + payload.ProgramCity
+			}
+			if payload.ProgramProposal != "" {
+				body += "\n\nYour event idea:\n" + payload.ProgramProposal
+			}
+		}
+	}
 	htmlBody := renderHTML(template, subject, body, payload)
 	if e.TemplateType == "admin_promotion" && safeHTTPSURL(payload.UnsubscribeURL) != "" {
 		body += "\n\nUnsubscribe: " + safeHTTPSURL(payload.UnsubscribeURL)
@@ -377,7 +417,7 @@ func render(e db.ClaimEmailOutboxRow) (EmailMessage, error) {
 	if e.TemplateType == "password_reset_requested" {
 		body += "\n\nReset password: " + safeResetURL(payload.ActionURL)
 	}
-	if e.TemplateType == "program_application_received" || e.TemplateType == "program_results_released" {
+	if isProgramMail(e.TemplateType) {
 		body += "\n\nYour application: " + programApplicationURL(payload.ProgramSlug)
 	}
 	senderClass := "event"
@@ -406,7 +446,11 @@ func isOTPTemplate(id string) bool {
 	}
 }
 func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
-	msg, err := render(e)
+	e, err := w.prepareProgramMail(ctx, e)
+	var msg EmailMessage
+	if err == nil {
+		msg, err = render(e)
+	}
 	if err == nil {
 		err = w.current(ctx, e)
 	}
@@ -466,7 +510,7 @@ func (w *OutboxWorker) dispatch(ctx context.Context, e db.ClaimEmailOutboxRow) {
 var errSuperseded = errors.New("notification superseded; no provider send was attempted")
 
 func (w *OutboxWorker) current(ctx context.Context, e db.ClaimEmailOutboxRow) error {
-	if e.TemplateType == "program_application_received" || e.TemplateType == "program_results_released" {
+	if isProgramMail(e.TemplateType) {
 		active, err := w.queries.ProgramNotificationActive(ctx, e.ID)
 		if err != nil {
 			return err

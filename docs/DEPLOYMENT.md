@@ -107,3 +107,12 @@ are bound to the original ACS resource and must be reconciled there; blindly
 replaying them in another region can duplicate delivery. Resume and verify actual
 provider acceptance after configuration. This is a regional standby/cutover
 procedure, not automatic failover or a whole-platform availability guarantee.
+
+
+### Scoped candidate image publication
+
+`HACKWAYS_CANDIDATE_SERVICES` optionally selects a JSON service array (default all
+six) for image publication; full mandatory integration still runs. This patch selects
+`global-backend` and `admin-web`, retaining the other four immutable runtime refs.
+`HACKWAYS_SKIP_CACHE_EXPORT=true` skips optional cache writes after cache exporter
+stalls; cache reads remain enabled. Neither variable triggers automatic deployment.

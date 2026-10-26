@@ -271,8 +271,8 @@ func TestOutboxWorker_StateTransitions_LivePostgres(t *testing.T) {
 
 func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 	catalog := EmailTemplateCatalog()
-	if len(catalog) != 45 {
-		t.Fatalf("expected 45 email templates, got %d", len(catalog))
+	if len(catalog) != 46 {
+		t.Fatalf("expected 46 email templates, got %d", len(catalog))
 	}
 	seen := make(map[string]bool, len(catalog))
 	for _, template := range catalog {
@@ -280,7 +280,7 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 			t.Fatalf("duplicate template id %q", template.ID)
 		}
 		seen[template.ID] = true
-		payload := `{"event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example","promotion_subject":"Campaign preview","promotion_body":"Campaign message"}`
+		payload := `{"program_title":"Hackways Ambassadors","program_slug":"ambassadors","program_decision":"accepted","recipient_name":"Ada","event_title":"A & B <launch>","custom_message":"Welcome <back>","location":"Main Hall","organizer_name":"Ada Organisers","space_name":"Builders Space","event_banner_url":"https://media.hackways.in/banner.jpg","action_url":"https://app.hackways.in/events/example","promotion_subject":"Campaign preview","promotion_body":"Campaign message"}`
 		if template.ID == "password_reset_requested" {
 			payload = strings.Replace(payload, "https://app.hackways.in/events/example", "https://hackways.in/auth/reset-password?key=example", 1)
 		}
@@ -304,6 +304,9 @@ func TestEmailTemplateCatalog_RendersCleanLayouts(t *testing.T) {
 			t.Fatalf("template %q is missing organiser or space context", template.ID)
 		}
 		actionLabel := "Open in Hackways"
+		if isProgramMail(template.ID) {
+			actionLabel = "View your application"
+		}
 		if isConfirmation(template.ID) {
 			actionLabel = "My pass"
 		}
@@ -454,17 +457,43 @@ func TestAccountMailPreviewConfiguration(t *testing.T) {
 
 func TestProgramApplicationMailPresentation(t *testing.T) {
 	t.Setenv("APP_ENV", "production")
-	payload := []byte(`{"program_title":"Hackways Ambassadors","program_slug":"ambassadors"}`)
-	for _, template := range []string{"program_application_received", "program_results_released"} {
-		message, err := render(db.ClaimEmailOutboxRow{TemplateType: template, PayloadJson: payload})
-		if err != nil || !strings.Contains(message.BodyHTML, "https://hackways.in/programs/ambassadors/application") || !strings.Contains(message.BodyText, "Hackways Ambassadors") {
-			t.Fatal("program notification is missing its safe application link or program title")
+	details := ProgramMailDetails{Name: "Ada <Builder>", Title: "Hackways Ambassadors", Slug: "ambassadors", City: "Hyderabad", Proposal: "A local builders workshop"}
+	for _, decision := range []string{"", "accepted", "rejected", "waitlisted"} {
+		details.Decision = decision
+		payload := templatePayload{}
+		applyProgramDetails(&payload, details)
+		raw, _ := json.Marshal(payload)
+		template := "program_results_released"
+		if decision == "" {
+			template = "program_application_received"
 		}
-		if template == "program_application_received" && (!strings.Contains(message.BodyText, "Thanks for applying") || !strings.Contains(message.BodyText, "end of November")) {
-			t.Fatal("ambassador receipt must confirm application and the announced result window")
+		message, err := render(db.ClaimEmailOutboxRow{TemplateType: template, PayloadJson: raw})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if strings.Contains(message.BodyText, "accepted") || strings.Contains(message.BodyText, "rejected") || strings.Contains(message.BodyText, "reviewer_notes") {
-			t.Fatal("program mail must send applicants to their authenticated result")
+		for _, text := range []string{"Hi Ada <Builder>", "Hackways Ambassadors", "https://hackways.in/programs/ambassadors/application"} {
+			if !strings.Contains(message.BodyText, text) {
+				t.Fatalf("missing personalized context %q", text)
+			}
 		}
+		if !strings.Contains(message.BodyHTML, "https://hackways.in/programs/ambassadors.jpg") || strings.Contains(message.BodyHTML, "Hi Ada <Builder>") {
+			t.Fatal("banner or escaped greeting missing")
+		}
+		expected := map[string]string{"": "end of November", "accepted": "has been accepted", "rejected": "not selected", "waitlisted": "waiting list"}[decision]
+		if !strings.Contains(message.BodyText, expected) {
+			t.Fatalf("missing result context %s", decision)
+		}
+	}
+	message, err := RenderProgramCommunicationPreview(details, "Hello {{name}} from {{program}}", "Your result: {{decision}}. {{application_url}}")
+	if err != nil || !strings.Contains(message.Subject, "Ada <Builder>") || !strings.Contains(message.BodyText, "waitlisted") {
+		t.Fatal("communication personalization failed", err)
+	}
+	details.Decision = ""
+	message, err = RenderProgramCommunicationPreview(details, "Application update", "Your result: {{decision}}")
+	if err != nil || !strings.Contains(message.BodyText, "under review") {
+		t.Fatal("unreleased result must remain private")
+	}
+	if _, err = render(db.ClaimEmailOutboxRow{TemplateType: "program_results_released", PayloadJson: []byte(`{"program_title":"Program"}`)}); err == nil {
+		t.Fatal("result without published decision accepted")
 	}
 }

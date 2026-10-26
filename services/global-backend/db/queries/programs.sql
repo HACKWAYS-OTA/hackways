@@ -84,8 +84,55 @@ SELECT EXISTS(SELECT 1 FROM email_outbox o
  JOIN users u ON u.id=a.user_id
  WHERE o.id= @id AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
  AND lower(u.email)=lower(o.recipient_email)
- AND (o.template_type='program_application_received' OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)));
+ AND (o.template_type IN ('program_application_received','program_communication') OR (o.template_type='program_results_released' AND a.published_at IS NOT NULL)));
 -- name: ProgramReleaseList :many
 SELECT id,application_count,created_at FROM program_releases WHERE program_id= @program_id ORDER BY created_at DESC,id LIMIT 20;
 -- name: ProgramActivityAppend :exec
 INSERT INTO program_activity(program_id,application_id,actor_id,action) VALUES(@program_id,sqlc.narg(application_id),@actor_id,@action);
+
+-- name: ProgramMailContext :one
+SELECT a.full_name,a.city,a.proposal,a.profile_url,a.submitted_at,a.published_decision,p.title,p.slug
+FROM email_outbox o JOIN program_applications a ON a.id=(o.payload_json->>'application_id')::uuid
+JOIN programs p ON p.id=a.program_id JOIN users u ON u.id=a.user_id
+WHERE o.id= @id AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
+AND lower(u.email)=lower(o.recipient_email)
+AND (o.template_type<>'program_results_released' OR a.published_at IS NOT NULL);
+
+-- name: ProgramCommunicationAudience :many
+SELECT a.id,a.user_id,a.full_name,u.email,a.published_decision,a.revision,a.city,a.proposal,a.profile_url,a.submitted_at
+FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= @program_id AND a.status='submitted' AND u.deleted_at IS NULL AND u.email_verified
+AND (@selected::boolean=false OR a.id=ANY(@application_ids::uuid[]))
+AND (@decision_filter::text='' OR a.decision= @decision_filter)
+AND (@search::text='' OR a.full_name ILIKE '%'|| @search||'%' OR u.email ILIKE '%'|| @search||'%' OR a.city ILIKE '%'|| @search||'%')
+ORDER BY a.id LIMIT 2001;
+
+-- name: ProgramQueueCommunications :one
+WITH recipients AS MATERIALIZED (
+ SELECT a.id,a.user_id,a.full_name,u.email,gen_random_uuid() AS outbox_id
+ FROM program_applications a JOIN users u ON u.id=a.user_id
+ WHERE a.program_id= @program_id AND a.status='submitted' AND a.id=ANY(@application_ids::uuid[])
+ AND u.deleted_at IS NULL AND u.email_verified ORDER BY a.id FOR SHARE OF u
+), outboxes AS (
+ INSERT INTO email_outbox(id,recipient_email,recipient_name,template_type,payload_json)
+ SELECT outbox_id,email,full_name,'program_communication',
+ jsonb_build_object('application_id',id,'promotion_subject',@subject::text,'promotion_body',@body::text) FROM recipients
+ RETURNING id
+), deliveries AS (
+ INSERT INTO admin_custom_message_deliveries(message_id,user_id,outbox_id)
+ SELECT @message_id,r.user_id,r.outbox_id FROM recipients r JOIN outboxes o ON o.id=r.outbox_id RETURNING outbox_id
+) SELECT count(*)::bigint FROM deliveries;
+
+-- name: ProgramExportCount :one
+SELECT count(*)::bigint FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= @program_id AND a.status='submitted'
+AND (@decision_filter::text='' OR a.decision= @decision_filter)
+AND (@search::text='' OR a.full_name ILIKE '%'|| @search||'%' OR u.email ILIKE '%'|| @search||'%' OR a.city ILIKE '%'|| @search||'%');
+
+-- name: ProgramExportPage :many
+SELECT a.full_name,u.email,a.phone,a.city,a.profile_url,a.biography,a.proposal,a.decision,a.published_decision,a.submitted_at
+FROM program_applications a JOIN users u ON u.id=a.user_id
+WHERE a.program_id= @program_id AND a.status='submitted'
+AND (@decision_filter::text='' OR a.decision= @decision_filter)
+AND (@search::text='' OR a.full_name ILIKE '%'|| @search||'%' OR u.email ILIKE '%'|| @search||'%' OR a.city ILIKE '%'|| @search||'%')
+ORDER BY a.submitted_at,a.id LIMIT 100 OFFSET @page_offset;

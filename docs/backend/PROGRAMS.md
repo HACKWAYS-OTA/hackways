@@ -31,8 +31,9 @@ Submission writes a `program_application_received` email to the existing transac
 outbox inside the same transaction. Release atomically publishes the eligible decisions
 and inserts one `program_results_released` notice per active verified applicant.
 Repeated submit/release requests cannot create duplicate messages. Private decisions
-and reviewer notes never enter email payloads; notices link to the authenticated
-application. The bounded ACS worker rechecks recipient ownership, verified email,
+and reviewer notes never enter email payloads. The worker hydrates the current applicant
+name, program and published decision from PostgreSQL before rendering; result notices
+include the actual released outcome, with the authenticated application as a secondary link. The bounded ACS worker rechecks recipient ownership, verified email,
 account state and publication before dispatch. Withdrawal supersedes pending notices.
 Ambassador confirmation copy includes the user-announced end-of-November result window;
 this is an editorial deadline, not a new automatic release scheduler.
@@ -79,8 +80,9 @@ age, configurable domains, draft/submit/retry, private decisions, release confli
 publication idempotency, ownership, withdrawal, confirmation/notification deduplication
 and absence of result notifications before release. Run
 against an explicit isolated `_test` database. See the worklog for commands actually
-executed and verification limitations. Nginx routing is prepared in source only;
-no production migration or deployment has been performed for this work.
+executed and verification limitations. Nginx routing has been verified in production;
+production is live at schema 26, with the six source-3ac0bfc services and Europe ACS.
+The follow-up communications/export release is recorded separately in WORKLOGS.md.
 
 ## Ambassador contact requirements
 
@@ -89,3 +91,33 @@ a WhatsApp number normalized to E.164, city, name, introduction and event propos
 Incomplete drafts remain saveable. Age stays a backend eligibility check, not a
 promotional headline. Migration 26 updates only the original seeded copy; administrator
 custom text is preserved.
+
+## Applicant communications and Excel export
+
+Admin program workspaces offer a formatted `.xlsx` workbook, per-applicant mail,
+selected recipients, filtered groups and all submitted applicants. Exports contain
+contact details, profile, proposal, submitted date (typed Excel date in IST), review
+decision and published result. Headers freeze, filters are enabled, phone values stay
+text, and formula-looking applicant text cannot execute. Export snapshots are read-only,
+repeatable-read, limited to 5,000 rows / 8 MiB with one concurrent export per process.
+
+- GET `/{slug}/applications/export.xlsx?q=&decision=` uses the admin API base.
+- POST `/{slug}/communications/preview`: subject, body, scope (`selected`, `all`,
+  `filtered`), selected `ids`, optional `decision` and `search`. Returns actual count,
+  audience hash and a real recipient's personalized HTML preview.
+- POST `/{slug}/communications/send`: same draft, `audience_hash`, `expected_count`,
+  `confirmed: true`, plus durable `Idempotency-Key`. Changed audiences conflict.
+
+Selected groups allow 200 IDs; filtered/all sends cap at 2,000 eligible applicants.
+Current verified accounts only; withdrawn applications are excluded. The existing
+PostgreSQL admin-message delivery tables and transactional email outbox own scheduling,
+retry identity and tracking. No schema change or second queue is introduced. Scheduling
+success does not assert inbox delivery. Request retries reuse the same key and exact
+draft; changed payloads conflict. Admin origin, session and daily verification apply.
+
+Personalization supports `{{name}}`, `{{program}}`, `{{decision}}` and
+`{{application_url}}`; only published outcomes populate the decision token. Program
+receipt, result and communication messages use the supplied ambassador banner for the
+ambassadors slug. Receipts include the actual event proposal and November window;
+result notices explain accepted, not-selected or waitlisted outcomes. Already-sent
+messages are not automatically resent by deployment.

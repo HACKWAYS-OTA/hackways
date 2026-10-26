@@ -1251,3 +1251,28 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   outage during executable replacement is resolved: HTTP 200, correct application
   return path, and healthy auth/database check. All app type/lint checks and shared
   UI checks passed; the only detector finding is the user-requested hero gradient.
+
+
+### 2026-10-26 ? Launch activated; applicant communication follow-up
+
+- Previous release verified live: all six runtimes source
+  `3ac0bfc3fbd9d93068b34761f9bf72a816bb107c`, schema 26 clean, Europe ACS active.
+  Four images use the organization registry; admin/organizer use the authorized
+  private personal mirror. Organization integration passed; optional image cache
+  export stalled. Personal GitHub-hosted retry completed all checks and six images.
+- Europe credentials originate in Key Vault `hackways-mail-eu-kv`; VM managed
+  identity retrieved the key. India remains manual standby. Provider operations
+  were drained before cutover. DB/config recovery backups passed download SHA checks.
+- Public HTTP verified ambassadors, directory, role and application return paths.
+  Linux landscape/square OG PNGs passed, with canary memory peak 136,036,352 bytes
+  under 250 MiB. Default urllib UA gets Cloudflare 403; browser/Facebook UAs get 200.
+  Organizer readiness correctly uses `/manage`.
+- Follow-up implements personalized receipt/result context, supplied ambassador mail
+  banner, formatted real XLSX export and individual/selected/filtered/all admin mail.
+  Existing Go/SQLc/PostgreSQL outbox/delivery tables are reused without a migration.
+- Local global Go checks: 134 passed, no failures/skips. Admin type/lint passed.
+  SQLc generation/compile and Go vet passed. Windows CGO is disabled, so Linux CI
+  owns race checks. DB checks cover XLSX ZIP/MIME/date/freeze, auth, audiences,
+  stale preview conflicts, idempotency and private decision handling.
+- Browser automation remains unavailable; rendered/keyboard QA is not claimed.
+  Follow-up image build and activation remain pending at this entry.
