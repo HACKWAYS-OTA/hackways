@@ -135,10 +135,13 @@ helpers, public notice routes/footer links and home/discovery metadata, Go
 utilities/site-content/storage handlers, rich-text validator/renderer and migration
 33, studio editor and shared 404 families, plus the phase-2 editorial topic-library
 migration 32 and admin component. The 120-topic/12-theme/720-phrase count was
-inspected in migration source. The supplied live baseline is d0/schema 31;
-migrations 32/33 and current phase-3 source are not claimed active by this guide.
-Browser review was excluded. No browser checks, tests, builds or
-deployment actions were performed by this documentation pass. Keyboard/focus,
-responsive rendering, authenticated saves, Azure completion and public freshness
-remain unverified here. This guide describes in-progress source behavior and does
-not establish activation or feature completion.
+inspected in migration source and subsequently verified against production schema33.
+Release6b3d46c98eb1 passed full hosted CI40549822456 and activated all five targeted
+images. Public HTTP checks verified metadata, footer-only notice discovery and
+branded/noindex public recovery pages; running admin assets contain the new canvas,
+font, image and Markdown controls. Both404 families also passed one-off Node SSR
+checks. All six services are ready; existing authored content and environment
+were preserved. Browser review was excluded. Keyboard/focus interaction, visual
+responsive review, authenticated notice editing and actual Azure upload completion
+were not exercised in production; compilation/asset checks do not establish those
+interaction results.

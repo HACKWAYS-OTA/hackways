@@ -12,8 +12,8 @@ records across 12 themes, six phrases each (720 phrases). Phase 3 adds migration
 existing Markdown rows. Rich-text documents must be objects of at most 1 MiB;
 Markdown rows have no document. The title constraint now permits titleless drafts
 while requiring a nonblank published title. Down guards retain authored content.
-These describe checked-in source. The supplied live baseline remains d0/schema
-31; neither later migration nor the phase-3 frontend is claimed deployed here.
+Production release6b3d46c98eb1 activated schema33 after verified recovery backups;
+all five targeted images are live. Core engine be1bace was retained unchanged.
 
 ## Administration
 
@@ -152,10 +152,17 @@ Existing SAS regression covers scoped create-only notice URLs. No fixture notice
 or keyword plans are created in production. Source-only Markdown SSR checks cover
 formatting, tables, image dimensions and script/fragment rejection. User excludes
 browser checks; no visual or authenticated production editor claim is made.
-This phase-3 documentation pass inspected source only and ran no tests, builds,
-browser checks or authenticated cloud uploads. Autosave/retry interaction,
-formatting parity, image resize, responsive layout, 404 presentation and Azure
-completion are not independently verified by this pass.
+Release6b3d46c passed full hosted CI40549822456:63 core and136 global backend
+cases with PostgreSQL16/race detection, no failed/skipped cases, frontend types/
+lint, source/SQLc and deployment checks. All five images were digest/source-label
+verified before sequential activation. Schema33 and actual library counts were
+verified in production; all six runtimes are healthy, environment retained.
+Public HTTP verified primary routes, both sitemaps, robots, branded/noindex404s,
+broader metadata and footer-only notice links. Compiled admin editor controls were
+verified in the running image. Internal checks confirmed the branded/noindex
+admin404 prerender, login redirects307 and unauthenticated library401; external
+admin ingress continues to reject unapproved access403. Browser interaction and authenticated production
+notice editing/Azure completion were not exercised. Those limits remain explicit.
 
 For a future release, deploy external CI images only. Back up the database and
 configuration, verify the actual migration baseline, and apply approved 32/33 in

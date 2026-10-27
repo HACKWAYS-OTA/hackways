@@ -1698,3 +1698,34 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   the admin canvas and preserves authored image widths in public/editor rendering;
   removed unused textarea-composer CSS. Dependency lockfile is committed with the
   editor packages; earlier publication attempts were superseded before activation.
+
+
+## 2026-10-27 - Notice document studio and SEO library live
+
+- Release6b3d46c98eb16deb75ab34171f713ae3a5877fd8 passed hosted run40549822456:
+  63 core/136 global PostgreSQL16 race cases, zero failures/skips, frontend
+  types/lint, SQLc/source/deployment checks, and five production image builds.
+  Earlier candidates were superseded before activation; dependency lock and
+  final typography/image sizing/punctuation fixes are included in this release.
+- Fresh encrypted DB/config backups had matching SHA256 and a valid PostgreSQL
+  restore catalog. Additive32/33 applied cleanly from31; actual library counts
+  are120 topics,12 themes,720 distinct phrases. Existing authored records retained.
+  Global Go and all four web apps activated sequentially with verified immutable
+  digests/source labels. Core be1bace identity/start time and private environment
+  retained. All six ready with no OOM indication.
+- Live public HTTP200:home, Discover, Hyderabad, ambassadors, notices, both
+  sitemaps and robots. Missing public/notice/organizer pages return branded404
+  and noindex; organizer recovery points to /manage. Broader home metadata and
+  footer-only notice discovery verified. Running admin assets include canvas,
+  font, image and Markdown controls. External admin probes correctly receive
+  existing ingress403; this restriction was preserved, not bypassed for review.
+- Local source/isolated preview database synced to schema33; updated global API
+  is healthy. External preview mail/storage remain deliberately unavailable.
+  No browser or authenticated production editor/upload interaction was performed.
+  Temporary CI publication variables removed; backups and activation evidence
+  remain in the protected operations folder/release directory.
+
+- Final internal check verified the branded/noindex admin404 prerender, anonymous
+  route redirects to login307 and real keyword-library API rejection401. The
+  initial unauthenticated admin HTTP probe followed a login redirect to200; it
+  was corrected to check redirect behavior without weakening middleware.
