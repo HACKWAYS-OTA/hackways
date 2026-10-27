@@ -1662,3 +1662,34 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Verified private streamed database/configuration backups and restore catalog. Applied additive migrations27/28: schema28 clean. Activated core/global engines independently, then public/core/admin web, and patched only City route additions in existing ingress. All six runtimes ready, no OOM, organizer runtime identity retained, runtime environment unchanged.
 - Live HTTP200 verified Cities, Spaces, Discover, Ambassadors, login, both sitemaps and public City API. Whole-card Space anchors and absent visible owner attribution confirmed; the supplied public community event no longer displays gathering/owner labels. Static sitemap includes Cities. No City Hubs were seeded (actual public list empty). Temporary publisher variables removed.
 - User then requested a separate managed-team workspace with Space/event role assignment. Planning/source work is pending separately; it is not included in this deployed release. Browser work was explicitly excluded by the user; actual Azure upload and authenticated admin creation were not exercised with production records.
+
+
+## 2026-10-27 - Notices/SEO baseline live; document studio candidate
+
+- Baseline d0e2cd39 passed hosted full CI40535894845 and five image publications.
+  Encrypted DB/config backups and restore catalog were checked; schema31 applied
+  cleanly and global Go plus four web apps activated. Core stayed on be1bace. All
+  six ready, environment retained. Live200:home/city/ambassadors/notices/sitemaps/
+  robots. No notices/plans seeded; authenticated cloud authoring was not exercised.
+- Candidate replaces textarea with admin-only Tiptap3.32.0 document canvas and
+  Hugeicons toolbar:fonts/sizes/colours/highlight/alignment/spacing, undo/redo,
+  lists/quotes/code/tables, image paste/drop/upload/resize/descriptions, Markdown
+  import/export. Public SSR uses an allowlisted React renderer, not Tiptap.
+- Additive schema33 stores bounded validated rich JSON alongside Markdown. Drafts
+  allow empty titles for image-first authoring; publishing requires actual title
+  and content. Blank summaries derive authored text. Slugs lock at first publish.
+  Draft autosave preserves concurrent local edits and replays uncertain receipts;
+  confirmed4xx errors permit corrected requests. No production data replacement.
+- Schema32 adds120 topics/12 themes/720 unique editorial keyword ideas. No invented
+  search volumes, keyword stuffing or empty public topic pages. Broader metadata
+  reflects existing home/discovery/city/ambassador platform subjects.
+- Two branded404 families replace default/plain errors across independent apps;
+  organizer recovery respects /manage. Public notice discovery remains footer-only.
+- Both Go local isolated PostgreSQL18 full suites/vet and all workspace types/lint
+  passed. Extended existing mandatory admin CI regression covers library auth and
+  counts, titleless draft replay, rich document publication/summary/JSON/styles,
+  stable published slugs, tables/lists, unsafe URLs and unknown attrs. One-off Node
+  SSR checked escaping, dimensions, Tiptap schema and both404 recovery designs.
+  Source review recovery/compatibility findings were fixed and confirmed resolved;
+  source audit and Impeccable detector passed. No browser/visual validation claimed.
+  Hosted PostgreSQL16/race checks, images and candidate activation pending.

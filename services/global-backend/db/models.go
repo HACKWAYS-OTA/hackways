@@ -804,6 +804,13 @@ type RuntimeRolloutVersions struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type SeoTopicLibrary struct {
+	TopicKey string   `json:"topic_key"`
+	Theme    string   `json:"theme"`
+	Title    string   `json:"title"`
+	Keywords []string `json:"keywords"`
+}
+
 type Sessions struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`
@@ -832,6 +839,8 @@ type SiteNotices struct {
 	UpdatedBy   pgtype.UUID        `json:"updated_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Document    []byte             `json:"document"`
+	BodyFormat  string             `json:"body_format"`
 }
 
 type SiteSeoPages struct {

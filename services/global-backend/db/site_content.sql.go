@@ -12,7 +12,7 @@ import (
 )
 
 const adminNotice = `-- name: AdminNotice :one
-SELECT id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at FROM site_notices WHERE reference=$1
+SELECT id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at, document, body_format FROM site_notices WHERE reference=$1
 `
 
 func (q *Queries) AdminNotice(ctx context.Context, reference int64) (SiteNotices, error) {
@@ -32,12 +32,14 @@ func (q *Queries) AdminNotice(ctx context.Context, reference int64) (SiteNotices
 		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Document,
+		&i.BodyFormat,
 	)
 	return i, err
 }
 
 const adminNoticeBySlug = `-- name: AdminNoticeBySlug :one
-SELECT id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at FROM site_notices WHERE slug=$1
+SELECT id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at, document, body_format FROM site_notices WHERE slug=$1
 `
 
 func (q *Queries) AdminNoticeBySlug(ctx context.Context, slug string) (SiteNotices, error) {
@@ -57,6 +59,8 @@ func (q *Queries) AdminNoticeBySlug(ctx context.Context, slug string) (SiteNotic
 		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Document,
+		&i.BodyFormat,
 	)
 	return i, err
 }
@@ -223,18 +227,49 @@ func (q *Queries) AdminSeoSuggestions(ctx context.Context) ([]AdminSeoSuggestion
 	return items, nil
 }
 
+const adminSeoTopicLibrary = `-- name: AdminSeoTopicLibrary :many
+SELECT topic_key,theme,title,keywords FROM seo_topic_library ORDER BY theme,title LIMIT 151
+`
+
+func (q *Queries) AdminSeoTopicLibrary(ctx context.Context) ([]SeoTopicLibrary, error) {
+	rows, err := q.db.Query(ctx, adminSeoTopicLibrary)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SeoTopicLibrary
+	for rows.Next() {
+		var i SeoTopicLibrary
+		if err := rows.Scan(
+			&i.TopicKey,
+			&i.Theme,
+			&i.Title,
+			&i.Keywords,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createNotice = `-- name: CreateNotice :one
-INSERT INTO site_notices(slug,title,summary,body,status,published_at,created_by,updated_by)
-VALUES($1,$2,$3,$4,$5,CASE WHEN $5='published' THEN clock_timestamp() END,$6,$6) RETURNING id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at
+INSERT INTO site_notices(slug,title,summary,body,status,published_at,created_by,updated_by,document,body_format)
+VALUES($1,$2,$3,$4,$5,CASE WHEN $5='published' THEN clock_timestamp() END,$6,$6,$7::jsonb,$8) RETURNING id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at, document, body_format
 `
 
 type CreateNoticeParams struct {
-	Slug      string      `json:"slug"`
-	Title     string      `json:"title"`
-	Summary   string      `json:"summary"`
-	Body      string      `json:"body"`
-	Status    string      `json:"status"`
-	CreatedBy pgtype.UUID `json:"created_by"`
+	Slug       string      `json:"slug"`
+	Title      string      `json:"title"`
+	Summary    string      `json:"summary"`
+	Body       string      `json:"body"`
+	Status     string      `json:"status"`
+	CreatedBy  pgtype.UUID `json:"created_by"`
+	Document   []byte      `json:"document"`
+	BodyFormat string      `json:"body_format"`
 }
 
 func (q *Queries) CreateNotice(ctx context.Context, arg CreateNoticeParams) (SiteNotices, error) {
@@ -245,6 +280,8 @@ func (q *Queries) CreateNotice(ctx context.Context, arg CreateNoticeParams) (Sit
 		arg.Body,
 		arg.Status,
 		arg.CreatedBy,
+		arg.Document,
+		arg.BodyFormat,
 	)
 	var i SiteNotices
 	err := row.Scan(
@@ -261,6 +298,8 @@ func (q *Queries) CreateNotice(ctx context.Context, arg CreateNoticeParams) (Sit
 		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Document,
+		&i.BodyFormat,
 	)
 	return i, err
 }
@@ -320,7 +359,7 @@ func (q *Queries) LockSiteUtility(ctx context.Context, lockKey string) error {
 }
 
 const publicNotice = `-- name: PublicNotice :one
-SELECT slug,title,summary,body,published_at,updated_at FROM site_notices WHERE slug=$1 AND status='published'
+SELECT slug,title,summary,body,document,body_format,published_at,updated_at FROM site_notices WHERE slug=$1 AND status='published'
 `
 
 type PublicNoticeRow struct {
@@ -328,6 +367,8 @@ type PublicNoticeRow struct {
 	Title       string             `json:"title"`
 	Summary     string             `json:"summary"`
 	Body        string             `json:"body"`
+	Document    []byte             `json:"document"`
+	BodyFormat  string             `json:"body_format"`
 	PublishedAt pgtype.Timestamptz `json:"published_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
@@ -340,6 +381,8 @@ func (q *Queries) PublicNotice(ctx context.Context, slug string) (PublicNoticeRo
 		&i.Title,
 		&i.Summary,
 		&i.Body,
+		&i.Document,
+		&i.BodyFormat,
 		&i.PublishedAt,
 		&i.UpdatedAt,
 	)
@@ -542,28 +585,34 @@ func (q *Queries) RecordNoticeImage(ctx context.Context, arg RecordNoticeImagePa
 }
 
 const updateNotice = `-- name: UpdateNotice :one
-UPDATE site_notices SET title=$1,summary=$2,body=$3,status=$4,
-published_at=CASE WHEN $4='published' THEN coalesce(published_at,clock_timestamp()) ELSE published_at END,
-revision=revision+1,updated_at=clock_timestamp(),updated_by=$5
-WHERE reference=$6 AND revision=$7 RETURNING id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at
+UPDATE site_notices SET slug=$1,title=$2,summary=$3,body=$4,status=$5,document=$6::jsonb,body_format=$7,
+published_at=CASE WHEN $5='published' THEN coalesce(published_at,clock_timestamp()) ELSE published_at END,
+revision=revision+1,updated_at=clock_timestamp(),updated_by=$8
+WHERE reference=$9 AND revision=$10 AND (slug=$1 OR published_at IS NULL) RETURNING id, reference, slug, title, summary, body, status, revision, published_at, created_by, updated_by, created_at, updated_at, document, body_format
 `
 
 type UpdateNoticeParams struct {
-	Title     string      `json:"title"`
-	Summary   string      `json:"summary"`
-	Body      string      `json:"body"`
-	Status    string      `json:"status"`
-	Actor     pgtype.UUID `json:"actor"`
-	Reference int64       `json:"reference"`
-	Revision  int64       `json:"revision"`
+	Slug       string      `json:"slug"`
+	Title      string      `json:"title"`
+	Summary    string      `json:"summary"`
+	Body       string      `json:"body"`
+	Status     string      `json:"status"`
+	Document   []byte      `json:"document"`
+	BodyFormat string      `json:"body_format"`
+	Actor      pgtype.UUID `json:"actor"`
+	Reference  int64       `json:"reference"`
+	Revision   int64       `json:"revision"`
 }
 
 func (q *Queries) UpdateNotice(ctx context.Context, arg UpdateNoticeParams) (SiteNotices, error) {
 	row := q.db.QueryRow(ctx, updateNotice,
+		arg.Slug,
 		arg.Title,
 		arg.Summary,
 		arg.Body,
 		arg.Status,
+		arg.Document,
+		arg.BodyFormat,
 		arg.Actor,
 		arg.Reference,
 		arg.Revision,
@@ -583,6 +632,8 @@ func (q *Queries) UpdateNotice(ctx context.Context, arg UpdateNoticeParams) (Sit
 		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Document,
+		&i.BodyFormat,
 	)
 	return i, err
 }

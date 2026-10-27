@@ -11,8 +11,8 @@ import { AmbassadorsHeroArt } from '@/components/ambassadors/AmbassadorsHeroArt'
 import './ambassadors.css';
 
 const pageDefaults: Metadata = { ...pageSocialMetadata('ambassadors'),
-  title: 'Ambassadors',
-  description: 'Bring your community together as a Hackways ambassador. Host your events on Hackways and receive recognition for your contributions.',
+  title: { absolute: 'Hackways Ambassadors | Community Leadership & Tech Events' },
+  description: 'Join the Hackways ambassador program to build tech communities, host events and develop community leadership. Explore the role and apply online.',
   alternates: { canonical: '/ambassadors' },
 };
 export function generateMetadata() { return managedMetadata("/ambassadors", pageDefaults); }

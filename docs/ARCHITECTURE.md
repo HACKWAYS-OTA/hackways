@@ -130,3 +130,14 @@ verified images; Go 1.25 is limited to global-backend's official MCP SDK require
 ## City Hubs and community branding
 
 City Hubs are admin-curated city pages, separate from owner-managed membership Spaces. Core Go owns metadata, publication and public event visibility. Global Go extends the existing Azure SAS/HEAD-completion flow for Space logos/covers and admin city banners. Additive migrations 27/28 preserve existing workflows. No new service or framework is introduced. See [the contract](backend/CITY_HUBS.md) and [surface guide](design/SPACES_CITY_HUBS.md).
+
+
+## Notices and editorial SEO utilities
+
+Global Go owns notice publication, revisions, audit/idempotency, scoped Azure
+image attachments and reviewed page metadata. Schema31 introduced those records;
+32 adds the private 120-topic/720-keyword editorial library and33 adds bounded
+structured documents alongside existing Markdown. The Tiptap3.32.0 editor is
+admin-web only; public-web renders validated JSON with React on the server.
+No extra backend, database adapter or media proxy is introduced. See
+[the notice/SEO contract](backend/NOTICES_SEO.md).

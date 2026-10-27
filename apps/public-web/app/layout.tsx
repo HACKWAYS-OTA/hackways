@@ -15,8 +15,8 @@ import "./globals.css";
 export const metadata: Metadata = { ...pageSocialMetadata('platform'),
   icons: brandIcons(),
   metadataBase: new URL(site.url),
-  title: { default: "Hackways | Find your next tech event", template: "%s | Hackways" },
-  description: "Discover hackathons, meetups, and conferences. Find your next tech event, or bring your own community together with Hackways.",
+  title: { default: "Hackathons, Tech Meetups & Developer Events | Hackways", template: "%s | Hackways" },
+  description: "Discover hackathons, developer meetups, workshops and conferences. Explore AI, software, data, cloud, cybersecurity, startups and design with Hackways.",
 };
 
 export default function RootLayout({

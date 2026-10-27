@@ -6,6 +6,15 @@ migration 31 adds notices, verified image references, per-page SEO plans and the
 public-entity publication projection. It creates no notices or keyword records.
 Its down migration retains content for forward recovery.
 
+Phase 2 adds migration 32's admin-only PostgreSQL editorial topic library: 120
+records across 12 themes, six phrases each (720 phrases). Phase 3 adds migration
+33's nullable JSONB `document` and `body_format` (`markdown`/`richtext`), preserving
+existing Markdown rows. Rich-text documents must be objects of at most 1 MiB;
+Markdown rows have no document. The title constraint now permits titleless drafts
+while requiring a nonblank published title. Down guards retain authored content.
+These describe checked-in source. The supplied live baseline remains d0/schema
+31; neither later migration nor the phase-3 frontend is claimed deployed here.
+
 ## Administration
 
 The existing dedicated admin session, explicit grant and daily verification protect
@@ -24,12 +33,31 @@ request cannot create another notice or revision.
 - GET `/utilities/seo/suggestions`: actual recorded consented public page views
   over the last 7 days, bounded to 10 eligible results from 30 grouped candidates.
   These are not Google trends, search positions or search-volume estimates.
+- GET `/utilities/seo/library`: admin-only editorial topic records, bounded to
+  150 with a two-second query timeout. The manager browses/searches/filters them;
+  per-page editors can append case-insensitively deduplicated additions to the
+  local keyword draft, refusing an addition above 2,000. Save is still required.
+  No library phrases are injected into pages or turned into empty topic pages.
 
-Notice slugs are immutable after creation, lowercase letters/digits/hyphens and
-at most 120 characters. Title is required and at most 180; summary 500; Markdown
-body 100,000. Publishing requires a nonempty summary/body. Draft and archived
-notices are absent from anonymous detail/list responses. Archiving is reversible;
-it does not delete text, image references or the first publication date.
+Notice slugs use lowercase letters/digits/hyphens and at most 120 characters.
+They remain editable until first publication, then stay fixed through archive and
+republication. An initially blank slug is derived deterministically from the
+receipt key, so image-first/titleless draft creation can replay exactly. Title
+is at most 180 characters, summary 500 and fallback body 100,000. Publishing
+requires a real title and meaningful text or image content. A blank summary is
+derived from actual document text/image alt text, capped at 180 characters, with
+the actual title as fallback. Draft and archived notices are absent from anonymous
+detail/list responses. Archiving is reversible; it does not delete content, image
+references or the first publication date.
+
+Draft autosave waits two seconds after authored changes and serializes writes.
+Published/archived records do not autosave. Manual Save draft, Publish changes and
+Archive use the same revision-aware transport. The studio generates an audited
+operation reason when its optional change note is blank. Before any newer write,
+an uncertain save replays the exact original request body, reason and receipt
+key; it does not substitute newly edited content under that key. Confirmed
+snapshots update the revision without overwriting edits made in flight. Retry save
+and Check saved version retain unsaved content; checking is not automatic merge.
 
 SEO plans support title 90, description 320, canonical public path 240, noindex,
 editorial notes 4,000 and up to 2,000 unique planning keywords of 1-64 characters.
@@ -68,16 +96,34 @@ public published events have Event JSON-LD from actual event fields. Meeting URL
 tickets and Space-owner account attribution stay out of structured data. There
 are no invented prices, ratings or eligibility/ranking guarantees.
 
-## Markdown and media
+## Documents, Markdown and media
 
-The shared renderer uses react-markdown 10.1.0 and remark-gfm 4.0.1. The editor
-supports formatting controls, write/split/preview, bounded undo/redo, Markdown
-tables, links, lists, code and image descriptions. Preview uses deferred input
-and loads its parser on demand. Raw HTML is disabled; executable links and signed
-image URLs are not rendered. GFM tasks use the shared checkbox. In-page actions
-use the shared section jump, without creating fragment navigation URLs.
+Tiptap packages are pinned to 3.32.0 in admin-web only. Its Docs-like studio edits
+structured JSON with shared Select/Toggle controls, fonts/sizes/colors, emphasis,
+alignment/spacing, lists, quotes, code, links, resizable tables, undo/redo and
+images. Markdown import inserts at the cursor; export downloads the compatible
+Markdown representation and leaves richer styling in the saved document. No
+editor library is required by the public reader.
 
-New image uploads first save actual entered notice fields as a draft when needed.
+Go's typed validator accepts a `doc` root and explicit node/mark allowlists. It
+checks structure, at most 10,000 nodes, depth 32, 100,000 text characters, bounded
+table/image attributes, supported fonts, sizes 8-72px/pt, line height 1-3 and hex
+colors. Links reject credentials, executable schemes and fragments; image URLs
+reject signed SAS credentials. Unsupported content fails with `INVALID_DOCUMENT`.
+Go derives the legacy fallback body from validated content instead of trusting a
+second client body. Existing revision, authorization and audited receipt rules
+apply to document saves.
+
+Public rich text is rendered through `@hackways/ui/document` as explicit React
+elements and allowed styles, without arbitrary HTML/CSS. Legacy Markdown uses
+react-markdown 10.1.0 and remark-gfm 4.0.1 with raw HTML disabled, safe URLs,
+shared task checkboxes and section-jump actions without fragment navigation.
+Both formats retain focusable overflow regions for tables and image dimensions.
+
+New image uploads first save actual entered notice fields as a titleless draft
+when needed. Picker, pasted and dropped images use the same upload path. Inserted
+image descriptions start from the filename and are editable; width presets,
+aspect-preserving resize and removal update the document rather than the blob.
 `/api/v1/admin/global/media/notice-image/intent` issues a 15-minute create-only SAS
 under `notice-images/{notice-id}/` for PNG/JPEG/WebP up to 5 MB. The browser uploads
 directly to Azure, omitting application credentials. No media is proxied through
@@ -91,6 +137,12 @@ to URLs referenced by the currently saved published body; pending image uploads
 are not exposed by the public API. Existing
 Azure configuration/CORS remains required; missing configuration returns 503.
 
+Two shared branded 404 families provide presentation recovery: platform
+public/core/management routes return to discovery or the workspace, while admin
+uses a separate console composition with console/event/Space/Bin links. Missing
+or unpublished notice slugs still return the actual 404 path. These components
+do not weaken authorization or synthesize records.
+
 ## Verification and operation
 
 Existing mandatory PostgreSQL administration regressions cover publication,
@@ -100,12 +152,19 @@ Existing SAS regression covers scoped create-only notice URLs. No fixture notice
 or keyword plans are created in production. Source-only Markdown SSR checks cover
 formatting, tables, image dimensions and script/fragment rejection. User excludes
 browser checks; no visual or authenticated production editor claim is made.
+This phase-3 documentation pass inspected source only and ran no tests, builds,
+browser checks or authenticated cloud uploads. Autosave/retry interaction,
+formatting parity, image resize, responsive layout, 404 presentation and Azure
+completion are not independently verified by this pass.
 
-Deploy external CI images only. Back up the database/configuration, verify schema 30,
-apply approved 31, start global Go before the four frontends, and install the scoped
-public `/api/v1/site/` Nginx location. Preserve environment and the core engine.
-Rollback may retain 31 and the prior enforcing runtime; never roll back account
-restriction enforcement to a pre-retirement engine once decisions exist.
+For a future release, deploy external CI images only. Back up the database and
+configuration, verify the actual migration baseline, and apply approved 32/33 in
+sequence after 31 before starting a schema-33 global runtime. Frontends consuming
+documents follow the matching Go engine. Preserve the scoped public
+`/api/v1/site/` Nginx location, environment and independent core engine. Retain
+additive content schemas on runtime rollback; choose a compatible enforcing
+runtime rather than dropping authored data. Never roll back account restriction
+enforcement to a pre-retirement engine once decisions exist.
 
 Guidance: [Google SEO basics](https://developers.google.com/search/docs/fundamentals/seo-starter-guide),
 [Article data](https://developers.google.com/search/docs/appearance/structured-data/article),

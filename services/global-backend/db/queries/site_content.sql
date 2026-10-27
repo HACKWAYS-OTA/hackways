@@ -4,7 +4,7 @@ WHERE status='published' ORDER BY published_at DESC,id
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: PublicNotice :one
-SELECT slug,title,summary,body,published_at,updated_at FROM site_notices WHERE slug=$1 AND status='published';
+SELECT slug,title,summary,body,document,body_format,published_at,updated_at FROM site_notices WHERE slug=$1 AND status='published';
 
 -- name: AdminNotices :many
 SELECT id,reference,slug,title,summary,status,revision,published_at,updated_at FROM site_notices WHERE (sqlc.arg(q)::text='' OR title ILIKE '%'||sqlc.arg(q)||'%' OR slug ILIKE '%'||sqlc.arg(q)||'%')
@@ -21,14 +21,14 @@ SELECT * FROM site_notices WHERE slug=$1;
 SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(lock_key)::text,0));
 
 -- name: CreateNotice :one
-INSERT INTO site_notices(slug,title,summary,body,status,published_at,created_by,updated_by)
-VALUES($1,$2,$3,$4,$5,CASE WHEN $5='published' THEN clock_timestamp() END,$6,$6) RETURNING *;
+INSERT INTO site_notices(slug,title,summary,body,status,published_at,created_by,updated_by,document,body_format)
+VALUES($1,$2,$3,$4,$5,CASE WHEN $5='published' THEN clock_timestamp() END,$6,$6,sqlc.narg(document)::jsonb,sqlc.arg(body_format)) RETURNING *;
 
 -- name: UpdateNotice :one
-UPDATE site_notices SET title=sqlc.arg(title),summary=sqlc.arg(summary),body=sqlc.arg(body),status=sqlc.arg(status),
+UPDATE site_notices SET slug=sqlc.arg(slug),title=sqlc.arg(title),summary=sqlc.arg(summary),body=sqlc.arg(body),status=sqlc.arg(status),document=sqlc.narg(document)::jsonb,body_format=sqlc.arg(body_format),
 published_at=CASE WHEN sqlc.arg(status)='published' THEN coalesce(published_at,clock_timestamp()) ELSE published_at END,
 revision=revision+1,updated_at=clock_timestamp(),updated_by=sqlc.arg(actor)
-WHERE reference=sqlc.arg(reference) AND revision=sqlc.arg(revision) RETURNING *;
+WHERE reference=sqlc.arg(reference) AND revision=sqlc.arg(revision) AND (slug=sqlc.arg(slug) OR published_at IS NULL) RETURNING *;
 
 -- name: AdminSeoPages :many
 SELECT path,title,description,noindex,revision,cardinality(planning_keywords)::int AS keyword_count FROM site_seo_pages WHERE sqlc.arg(q)::text='' OR path ILIKE '%'||sqlc.arg(q)||'%' OR title ILIKE '%'||sqlc.arg(q)||'%'
@@ -75,3 +75,6 @@ WHERE n.slug=$1 AND n.status='published' AND position(i.url in n.body)>0 ORDER B
 SELECT route,count(*)::bigint AS views FROM analytics_events
 WHERE event_name='page_view' AND created_at >= transaction_timestamp()-INTERVAL '7 days'
 GROUP BY route ORDER BY count(*) DESC,route LIMIT 30;
+
+-- name: AdminSeoTopicLibrary :many
+SELECT topic_key,theme,title,keywords FROM seo_topic_library ORDER BY theme,title LIMIT 151;

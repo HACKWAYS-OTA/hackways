@@ -101,12 +101,23 @@ included in `options`; only absent values show the placeholder.
 ## Notice Markdown and server metadata
 
 `@hackways/ui/markdown` and `/markdown.css` share safe CommonMark/GFM presentation
-between public notices and the editor preview. Raw HTML stays disabled; task
+for legacy public notices. Raw HTML stays disabled; task
 controls use the shared checkbox and in-page actions use section-jump. The
-Markdown parser is loaded on demand in the editor, while public rendering stays
-on the server. Image size props preserve known upload dimensions.
+Public Markdown rendering stays on the server. Image size props preserve known upload dimensions.
 
 `@hackways/ui/seo` is server-only presentation over Go's reviewed public settings.
 It preserves existing metadata on transport failure; private keyword plans are
 never returned by the public API. Keep Go publication checks authoritative and
 private pages noindex. See the [contract](../../docs/backend/NOTICES_SEO.md).
+
+
+`@hackways/ui/document` renders validated rich notice JSON with React elements
+and an allowlist of styles and URLs; it never imports the admin Tiptap editor or
+renders arbitrary HTML. Font/colour/alignment, table/list attributes and image
+sizes survive publication. The admin-only document editor imports/exports
+Markdown separately; JSON remains authoritative for richer formatting.
+
+`@hackways/ui/not-found` and `/not-found.css` provide two distinct recovery
+surfaces: public platform and admin console. All four apps install their own
+not-found routes; organizer recovery uses its configured base URL. These are
+presentation only and do not weaken backend authorization or publish records.

@@ -23,3 +23,5 @@
 .hw-notice-markdown hr { border:0; height:1px; background:var(--line,#ddd); margin:2em 0; }
 .hw-notice-markdown .contains-task-list { list-style:none; padding-inline-start:0; }
 .hw-notice-markdown .hw-checkbox { vertical-align:middle; margin-inline-end:8px; }
+
+.hw-notice-document h5,.hw-notice-document h6 { margin:1.8em 0 .7em; line-height:1.4; }.hw-notice-document th,.hw-notice-document td { border:1px solid var(--line,#ddd); vertical-align:top; }.hw-notice-document th { background:var(--soft,#f7f4fa); }.hw-notice-document td>p:last-child,.hw-notice-document th>p:last-child { margin-bottom:0; }

@@ -1,2 +1,3 @@
-import Link from 'next/link';
-export default function EventNotFound() { return <div className="feed-container route-loading"><section className="feed-state"><h1>This event isn&apos;t available.</h1><p>The link may have changed, or the event may no longer be published.</p><Link href="/discover" className="app-button app-button-primary">Discover events</Link></section></div>; }
+import { PlatformNotFound } from '@hackways/ui/not-found';
+import '@hackways/ui/not-found.css';
+export default function NotFound(){ return <PlatformNotFound title="This event isn?t available." description="The link may have changed, or this event may no longer be public. Explore what?s coming up next." primaryHref="/discover"/>; }

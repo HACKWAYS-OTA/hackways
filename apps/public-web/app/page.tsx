@@ -1,5 +1,5 @@
 import { managedMetadata } from '@hackways/ui/seo';
-import { pageSocialMetadata } from '@/lib/social-metadata';
+import { staticSocialMetadata } from '@hackways/ui/social-image';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FAQ } from "@/components/site/FAQ";
@@ -13,7 +13,9 @@ import { LandingNavigation } from "@/components/site/LandingNavigation";
 import { site } from "@/lib/site";
 import { siteIdentity } from '@/lib/structured-data';
 
-const pageDefaults: Metadata = { ...pageSocialMetadata('platform'), title: { absolute: "Hackways | Find your next tech event" }, description: "Discover hackathons, meetups, and conferences. Find your next tech event, or bring your own community together with Hackways.", alternates: { canonical: "/" } };
+const searchTitle = 'Hackathons, Tech Meetups & Developer Events';
+const searchDescription = 'Discover hackathons, developer meetups, workshops and conferences. Explore AI, software, data, cloud, cybersecurity, startups and design with Hackways.';
+const pageDefaults: Metadata = { ...staticSocialMetadata(site.url, 'platform', searchTitle, searchDescription), title: { absolute: `${searchTitle} | Hackways` }, description: searchDescription, alternates: { canonical: '/' } };
 export function generateMetadata() { return managedMetadata("/", pageDefaults); }
 
 export default function HomePage() {
@@ -27,7 +29,7 @@ export default function HomePage() {
             <TextAnimate as="h1" id="hero-heading" className="hero-headline" animation="blurInUp" by="word" duration={0.9} delay={0.15} startOnView={false} once>
               {"Good things happen\nwhen people meet."}
             </TextAnimate>
-            <p className="hero-description">Find your next tech event. Meet people who share your curiosity, or bring a community together around an idea.</p>
+            <p className="hero-description">Discover hackathons, developer meetups and tech events. Meet people who share your interests, learn together or bring your own community to Hackways.</p>
             <div className="hero-cta-group">
               <a className="button button-primary hero-cta" href={`${site.app}/discover`}>
                 Explore events

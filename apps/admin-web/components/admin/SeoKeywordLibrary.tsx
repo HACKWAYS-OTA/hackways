@@ -1,0 +1,12 @@
+'use client';
+import { useMemo, useState } from 'react';
+import { Select } from '@hackways/ui/select';
+import type { SeoTopic } from '@/lib/utilities';
+export function SeoKeywordLibrary({ topics, onAdd, disabled = false }: { topics:SeoTopic[]|null; onAdd?:(keywords:string[])=>void; disabled?:boolean }) {
+ const [query,setQuery]=useState(''),[theme,setTheme]=useState('all'),[limit,setLimit]=useState(18);
+ const themes=useMemo(()=>topics?Array.from(new Set(topics.map(topic=>topic.theme))).sort():[],[topics]);
+ const matching=useMemo(()=>topics?.filter(topic=>(theme==='all'||topic.theme===theme)&&[topic.title,topic.theme,...topic.keywords].join(' ').toLowerCase().includes(query.trim().toLowerCase()))||[],[topics,theme,query]);
+ if(!topics)return <p className="journey-error" role="status">Keyword ideas could not be loaded. You can keep editing your plan; refresh to retry the library.</p>;
+ const total=topics.reduce((sum,topic)=>sum+topic.keywords.length,0);
+ return <details className="seo-keyword-library"><summary>Keyword ideas <span>{topics.length} topics · {total} phrases</span></summary><div className="seo-library-content"><p>Choose themes that match this page. These are editorial ideas, without search-volume or ranking estimates.</p><div className="seo-library-filters"><label className="field">Find a topic<input className="app-input" type="search" value={query} maxLength={100} onChange={event=>{setQuery(event.target.value);setLimit(18);}} placeholder="AI, careers, design..." disabled={disabled} /></label><label className="field">Theme<Select label="Keyword theme" value={theme} options={[{value:'all',label:'All themes'},...themes.map(value=>({value,label:value}))]} onValueChange={value=>{setTheme(value);setLimit(18);}} disabled={disabled} /></label></div><ul className="seo-topic-list">{matching.slice(0,limit).map(topic=><li key={topic.topic_key}><details><summary>{topic.title}<small>{topic.theme}</small></summary><ul>{topic.keywords.map(word=><li key={word}>{word}</li>)}</ul></details>{onAdd&&<button className="app-button app-button-outline app-button-sm" type="button" disabled={disabled} onClick={()=>onAdd(topic.keywords)} aria-label={`Add keyword ideas for ${topic.title}`}>Add terms</button>}</li>)}</ul>{!matching.length&&<p>No topics match this search.</p>}{matching.length>limit&&<button className="app-button app-button-outline app-button-sm" type="button" disabled={disabled} onClick={()=>setLimit(value=>Math.min(topics.length,value+18))}>Show more topics</button>}</div></details>;
+}

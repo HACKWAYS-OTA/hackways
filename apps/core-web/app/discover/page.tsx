@@ -1,12 +1,15 @@
 import { managedMetadata } from '@hackways/ui/seo';
-import { pageSocialMetadata } from '@/lib/social-metadata';
+import { staticSocialMetadata } from '@hackways/ui/social-image';
+import { site } from '@/lib/site';
 import type { Metadata } from 'next';
 import { EventBrowser } from '@/components/events/EventBrowser';
 import { listEvents, PAGE_SIZE, type InitialEvents } from '@/lib/events';
 import { ApiClientError } from '@/lib/api';
 import { listPromotions } from '@/lib/promotions';
 import { runtimeFeatures } from '@/lib/runtime';
-const pageDefaults: Metadata = { ...pageSocialMetadata('discover'), title: 'Discover events', description: 'Discover tech events, hackathons, meetups and conferences on Hackways. Explore published events, find your community and reserve your place.', alternates: { canonical: '/discover' } };
+const searchTitle = 'Hackathons, Meetups & Tech Events';
+const searchDescription = 'Find published hackathons, developer meetups, workshops and conferences. Explore AI, software, data, cloud, cybersecurity, startups and community events.';
+const pageDefaults: Metadata = { ...staticSocialMetadata(site.app, 'discover', searchTitle, searchDescription), title: searchTitle, description: searchDescription, alternates: { canonical: '/discover' } };
 export function generateMetadata() { return managedMetadata("/discover", pageDefaults); }
 export default async function DiscoverPage() {
   let initial: InitialEvents;

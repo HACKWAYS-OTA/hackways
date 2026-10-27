@@ -3,6 +3,7 @@
 package sitecontent
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,6 +21,11 @@ var Slug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,119}$`)
 var publicPath = regexp.MustCompile(`^/(?:discover|spaces|cities|programs|ambassadors|notices|about|contact|acceptable-use|cookies|terms|privacy|help|organizers|mcp(?:/setup)?|(?:events|spaces|cities|programs|notice|help)/[a-zA-Z0-9-]{1,180})?$`)
 
 func PublicPath(path string) bool { return publicPath.MatchString(path) && path != "/spaces/new" }
+
+type publicDocumentView struct {
+	db.PublicNoticeRow
+	Document json.RawMessage `json:"document"`
+}
 
 type Handler struct{ queries *db.Queries }
 
@@ -99,9 +105,9 @@ func (h *Handler) Notice(w http.ResponseWriter, r *http.Request) {
 		images = []db.PublicNoticeImagesRow{}
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data   db.PublicNoticeRow         `json:"data"`
+		Data   publicDocumentView         `json:"data"`
 		Images []db.PublicNoticeImagesRow `json:"images"`
-	}{row, images})
+	}{publicDocumentView{row, json.RawMessage(row.Document)}, images})
 }
 func (h *Handler) Seo(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")

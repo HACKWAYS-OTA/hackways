@@ -26,7 +26,10 @@
     "./markdown": "./src/NoticeMarkdown.tsx",
     "./markdown.css": "./src/notice-markdown.css",
     "./mcp": "./src/MCPConnection.tsx",
-    "./mcp.css": "./src/mcp.css"
+    "./mcp.css": "./src/mcp.css",
+    "./document": "./src/NoticeDocument.tsx",
+    "./not-found": "./src/NotFound.tsx",
+    "./not-found.css": "./src/not-found.css"
   },
   "sideEffects": [
     "**/*.css"

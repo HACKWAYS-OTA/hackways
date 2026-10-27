@@ -57,6 +57,7 @@ type Querier interface {
 	AdminSeoPage(ctx context.Context, path string) (SiteSeoPages, error)
 	AdminSeoPages(ctx context.Context, arg AdminSeoPagesParams) ([]AdminSeoPagesRow, error)
 	AdminSeoSuggestions(ctx context.Context) ([]AdminSeoSuggestionsRow, error)
+	AdminSeoTopicLibrary(ctx context.Context) ([]SeoTopicLibrary, error)
 	AdminSerializeAction(ctx context.Context, scope string) error
 	AdminSessionCodeActive(ctx context.Context, codeHash string) (bool, error)
 	AdminSessionVerificationDeadline(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error)

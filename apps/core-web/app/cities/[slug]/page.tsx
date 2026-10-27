@@ -10,7 +10,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/cities/cities.css';
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const city = await readCity(params.slug), title = `Events in ${city.name}`, description = city.description.slice(0, 160), path = `/cities/${city.slug}`;
+  const city = await readCity(params.slug), title = `Hackathons & Tech Events in ${city.name}`, description = `Discover public hackathons, tech meetups and community events in ${city.name}. Explore published gatherings and connect through Hackways.`, path = `/cities/${city.slug}`;
   return managedMetadata(path, { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path, ...(city.banner_url ? { images: [{ url: city.banner_url, alt: city.name }] } : {}) }, twitter: { card: 'summary_large_image' as const, title, description, ...(city.banner_url ? { images: [city.banner_url] } : {}) } });
 }
 export default async function CityPage({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {

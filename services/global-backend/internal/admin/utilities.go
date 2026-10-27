@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,13 +20,15 @@ import (
 )
 
 type noticeBody struct {
-	Reference int64  `json:"reference"`
-	Revision  int64  `json:"revision"`
-	Slug      string `json:"slug"`
-	Title     string `json:"title"`
-	Summary   string `json:"summary"`
-	Body      string `json:"body"`
-	Status    string `json:"status"`
+	Reference  int64                     `json:"reference"`
+	Revision   int64                     `json:"revision"`
+	Slug       string                    `json:"slug"`
+	Title      string                    `json:"title"`
+	Summary    string                    `json:"summary"`
+	Body       string                    `json:"body"`
+	Status     string                    `json:"status"`
+	Document   *sitecontent.DocumentNode `json:"document"`
+	BodyFormat string                    `json:"body_format"`
 }
 type seoBody struct {
 	Revision    int64    `json:"revision"`
@@ -38,12 +41,18 @@ type seoBody struct {
 	Notes       string   `json:"notes"`
 }
 type utilitySaved struct {
-	ID        pgtype.UUID `json:"id"`
-	Reference int64       `json:"reference"`
-	Revision  int64       `json:"revision"`
-	Slug      string      `json:"slug,omitempty"`
-	Path      string      `json:"path,omitempty"`
-	Status    string      `json:"status,omitempty"`
+	ID           pgtype.UUID `json:"id"`
+	Reference    int64       `json:"reference"`
+	Revision     int64       `json:"revision"`
+	Slug         string      `json:"slug,omitempty"`
+	Path         string      `json:"path,omitempty"`
+	Status       string      `json:"status,omitempty"`
+	HasPublished bool        `json:"has_published"`
+	Summary      string      `json:"summary,omitempty"`
+}
+type noticeDocumentView struct {
+	db.SiteNotices
+	Document json.RawMessage `json:"document"`
 }
 type utilityConflict struct{}
 
@@ -59,7 +68,27 @@ func (h *Handler) mountUtilities(r chi.Router) {
 	r.Get("/utilities/seo", h.SeoList)
 	r.Get("/utilities/seo/page", h.SeoDetail)
 	r.Get("/utilities/seo/suggestions", h.SeoSuggestions)
+	r.Get("/utilities/seo/library", h.SeoTopicLibrary)
 	r.Post("/utilities/seo", h.SaveSeo)
+}
+func (h *Handler) SeoTopicLibrary(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	rows, e := h.queries.AdminSeoTopicLibrary(ctx)
+	if e != nil {
+		platform.RespondDatabaseError(w, e)
+		return
+	}
+	if len(rows) > 150 {
+		platform.RespondError(w, 503, "LIBRARY_LIMIT", "The keyword library exceeds its supported size. Contact the platform operator.", nil)
+		return
+	}
+	if rows == nil {
+		rows = []db.SeoTopicLibrary{}
+	}
+	platform.RespondJSON(w, 200, struct {
+		Data []db.SeoTopicLibrary `json:"data"`
+	}{rows})
 }
 func (h *Handler) NoticeBySlug(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
@@ -73,8 +102,8 @@ func (h *Handler) NoticeBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data db.SiteNotices `json:"data"`
-	}{row})
+		Data noticeDocumentView `json:"data"`
+	}{noticeDocumentView{row, json.RawMessage(row.Document)}})
 }
 func (h *Handler) SeoSuggestions(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -130,8 +159,8 @@ func (h *Handler) NoticeDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data db.SiteNotices `json:"data"`
-	}{row})
+		Data noticeDocumentView `json:"data"`
+	}{noticeDocumentView{row, json.RawMessage(row.Document)}})
 }
 func (h *Handler) SeoList(w http.ResponseWriter, r *http.Request) {
 	search, _, limit, offset, ok := pageParams(w, r)
@@ -263,8 +292,37 @@ func (h *Handler) SaveNotice(w http.ResponseWriter, r *http.Request) {
 	body.Title = strings.TrimSpace(body.Title)
 	body.Summary = strings.TrimSpace(body.Summary)
 	body.Body = strings.TrimSpace(body.Body)
-	if body.Reference < 0 || body.Revision < 0 || body.Reference == 0 && body.Revision != 0 || body.Reference > 0 && body.Revision < 1 || !sitecontent.Slug.MatchString(body.Slug) || !textWithin(body.Title, 1, 180) || !textWithin(body.Summary, 0, 500) || !textWithin(body.Body, 0, 100000) || (body.Status != "draft" && body.Status != "published" && body.Status != "archived") || body.Status == "published" && (body.Body == "" || body.Summary == "") {
-		platform.RespondError(w, 422, "INVALID_NOTICE", "Provide a title and valid address. Published notices also need a summary and content.", nil)
+	if body.Slug == "" && body.Reference == 0 {
+		sum := sha256.Sum256([]byte("notice:" + r.Header.Get("Idempotency-Key")))
+		body.Slug = fmt.Sprintf("notice-%x", sum[:12])
+	}
+	var document []byte
+	meaningful := body.Body != ""
+	if body.Document != nil {
+		var err error
+		body.Body, meaningful, err = sitecontent.ValidateDocument(body.Document)
+		if err != nil {
+			platform.RespondError(w, 422, "INVALID_DOCUMENT", err.Error(), nil)
+			return
+		}
+		body.BodyFormat = "richtext"
+		document, _ = json.Marshal(body.Document)
+		if len(document) > 1048576 {
+			platform.RespondError(w, 422, "INVALID_DOCUMENT", "The document exceeds 1 MB", nil)
+			return
+		}
+	} else {
+		if body.BodyFormat != "" && body.BodyFormat != "markdown" {
+			platform.RespondError(w, 422, "INVALID_DOCUMENT", "Provide a notice document", nil)
+			return
+		}
+		body.BodyFormat = "markdown"
+	}
+	if body.Status == "published" && body.Summary == "" {
+		body.Summary = sitecontent.DocumentSummary(body.Document, body.Title)
+	}
+	if body.Reference < 0 || body.Revision < 0 || body.Reference == 0 && body.Revision != 0 || body.Reference > 0 && body.Revision < 1 || !sitecontent.Slug.MatchString(body.Slug) || !textWithin(body.Title, 0, 180) || !textWithin(body.Summary, 0, 500) || !textWithin(body.Body, 0, 100000) || (body.Status != "draft" && body.Status != "published" && body.Status != "archived") || body.Status == "published" && (body.Title == "" || !meaningful) {
+		platform.RespondError(w, 422, "INVALID_NOTICE", "Add a title and content before publishing, and use a valid page address.", nil)
 		return
 	}
 	canonical, _ := json.Marshal(body)
@@ -272,18 +330,18 @@ func (h *Handler) SaveNotice(w http.ResponseWriter, r *http.Request) {
 		var row db.SiteNotices
 		var e error
 		if body.Reference == 0 {
-			row, e = q.CreateNotice(r.Context(), db.CreateNoticeParams{Slug: body.Slug, Title: body.Title, Summary: body.Summary, Body: body.Body, Status: body.Status, CreatedBy: actor})
+			row, e = q.CreateNotice(r.Context(), db.CreateNoticeParams{Slug: body.Slug, Title: body.Title, Summary: body.Summary, Body: body.Body, Status: body.Status, CreatedBy: actor, Document: document, BodyFormat: body.BodyFormat})
 		} else {
 			previous, err := q.AdminNotice(r.Context(), body.Reference)
 			if err != nil {
 				return utilitySaved{}, pgtype.UUID{}, err
 			}
-			if previous.Slug != body.Slug {
+			if previous.Slug != body.Slug && previous.PublishedAt.Valid {
 				return utilitySaved{}, pgtype.UUID{}, utilityConflict{}
 			}
-			row, e = q.UpdateNotice(r.Context(), db.UpdateNoticeParams{Reference: body.Reference, Revision: body.Revision, Title: body.Title, Summary: body.Summary, Body: body.Body, Status: body.Status, Actor: actor})
+			row, e = q.UpdateNotice(r.Context(), db.UpdateNoticeParams{Slug: body.Slug, Document: document, BodyFormat: body.BodyFormat, Reference: body.Reference, Revision: body.Revision, Title: body.Title, Summary: body.Summary, Body: body.Body, Status: body.Status, Actor: actor})
 		}
-		return utilitySaved{Reference: row.Reference, Revision: row.Revision, Slug: row.Slug, Status: row.Status}, row.ID, e
+		return utilitySaved{Reference: row.Reference, Revision: row.Revision, Slug: row.Slug, Status: row.Status, HasPublished: row.PublishedAt.Valid, Summary: row.Summary}, row.ID, e
 	})
 }
 func (h *Handler) SaveSeo(w http.ResponseWriter, r *http.Request) {

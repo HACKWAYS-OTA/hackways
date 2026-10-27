@@ -208,6 +208,33 @@ func TestAdminRecordActions(t *testing.T) {
 		}
 	})
 	t.Run("notice publishing and private SEO plans", func(t *testing.T) {
+		catalog := get("/utilities/seo/library")
+		var library struct {
+			Data []db.SeoTopicLibrary `json:"data"`
+		}
+		if catalog.Code != 200 || json.Unmarshal(catalog.Body.Bytes(), &library) != nil || len(library.Data) != 120 {
+			t.Fatalf("topic library %d %s", catalog.Code, catalog.Body.String())
+		}
+		terms := map[string]bool{}
+		themes := map[string]bool{}
+		for _, topic := range library.Data {
+			themes[topic.Theme] = true
+			if len(topic.Keywords) != 6 {
+				t.Fatal("topic must have six ideas")
+			}
+			for _, word := range topic.Keywords {
+				if len(word) > 64 || terms[strings.ToLower(word)] {
+					t.Fatal("invalid or duplicate library term")
+				}
+				terms[strings.ToLower(word)] = true
+			}
+		}
+		if len(terms) != 720 || len(themes) != 12 {
+			t.Fatal("topic/keyword library count mismatch")
+		}
+		if got := request("GET", "/utilities/seo/library", actionBody{}, "", "", "", auth.DefaultSessionCookie).Code; got != 401 {
+			t.Fatalf("ordinary account accessed admin keyword library %d", got)
+		}
 		public := sitecontent.NewHandler(pool).Routes()
 		read := func(path string) *httptest.ResponseRecorder {
 			rec := httptest.NewRecorder()
@@ -233,6 +260,67 @@ func TestAdminRecordActions(t *testing.T) {
 			_, _ = pool.Exec(ctx, "DELETE FROM site_notices WHERE created_by=$1", actor.ID)
 			_, _ = pool.Exec(ctx, "DELETE FROM site_seo_pages WHERE updated_by=$1", actor.ID)
 		}()
+
+		// Image-first drafts require no invented title or manually chosen address.
+		documentDraft := noticeBody{Status: "draft"}
+		draftBytes, _ := json.Marshal(documentDraft)
+		var documentSaved struct {
+			Data utilitySaved `json:"data"`
+		}
+		for attempt := 0; attempt < 2; attempt++ {
+			rec := send("/utilities/notices", draftBytes, "doc-initial-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie)
+			if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &documentSaved) != nil || documentSaved.Data.Slug == "" || documentSaved.Data.Revision != 1 {
+				t.Fatalf("image-first draft/replay %d %s", rec.Code, rec.Body.String())
+			}
+		}
+		documentDraft.Reference = documentSaved.Data.Reference
+		documentDraft.Revision = 1
+		documentDraft.Slug = "ci-document-" + nonce[:16]
+		documentDraft.Title = "Document title"
+		documentDraft.Status = "published"
+		documentDraft.Document = &sitecontent.DocumentNode{Type: "doc", Content: []sitecontent.DocumentNode{
+			{Type: "heading", Attrs: sitecontent.DocumentAttrs{Level: 2, TextAlign: "center"}, Content: []sitecontent.DocumentNode{{Type: "text", Text: "Formatted heading", Marks: []sitecontent.DocumentMark{{Type: "textStyle", Attrs: sitecontent.DocumentAttrs{Color: "rgb(128, 64, 32)", FontFamily: "Georgia", FontSize: "24px"}}, {Type: "bold"}}}}},
+			{Type: "orderedList", Attrs: sitecontent.DocumentAttrs{Start: 1, ListType: "1"}, Content: []sitecontent.DocumentNode{{Type: "listItem", Content: []sitecontent.DocumentNode{{Type: "paragraph", Content: []sitecontent.DocumentNode{{Type: "text", Text: "Numbered item"}}}}}}},
+			{Type: "table", Content: []sitecontent.DocumentNode{{Type: "tableRow", Content: []sitecontent.DocumentNode{{Type: "tableCell", Attrs: sitecontent.DocumentAttrs{Colspan: 1, Rowspan: 1, Align: "center"}, Content: []sitecontent.DocumentNode{{Type: "paragraph", Content: []sitecontent.DocumentNode{{Type: "text", Text: "A cell"}}}}}}}}},
+			{Type: "paragraph", Content: []sitecontent.DocumentNode{{Type: "text", Text: "A published document with actual content."}}},
+			{Type: "image", Attrs: sitecontent.DocumentAttrs{Src: "https://media.example.invalid/real-doc.png", Alt: "Document image"}},
+		}}
+		documentBytes, _ := json.Marshal(documentDraft)
+		documentRec := send("/utilities/notices", documentBytes, "doc-publish-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie)
+		if documentRec.Code != 200 || json.Unmarshal(documentRec.Body.Bytes(), &documentSaved) != nil || !documentSaved.Data.HasPublished || !strings.Contains(documentSaved.Data.Summary, "Formatted heading") {
+			t.Fatalf("document publishing %d %s", documentRec.Code, documentRec.Body.String())
+		}
+		publicDocument := read("/notices/" + documentDraft.Slug)
+		var rendered struct {
+			Data struct {
+				Document   json.RawMessage `json:"document"`
+				BodyFormat string          `json:"body_format"`
+				Body       string          `json:"body"`
+			}
+		}
+		if publicDocument.Code != 200 || json.Unmarshal(publicDocument.Body.Bytes(), &rendered) != nil || len(rendered.Data.Document) == 0 || rendered.Data.Document[0] != '{' || rendered.Data.BodyFormat != "richtext" || !strings.Contains(string(rendered.Data.Document), "#804020") || !strings.Contains(rendered.Data.Body, "real-doc.png") {
+			t.Fatalf("structured public document %d %s", publicDocument.Code, publicDocument.Body.String())
+		}
+		detailDocument := get("/utilities/notices/" + fmt.Sprint(documentDraft.Reference))
+		if detailDocument.Code != 200 || !strings.Contains(detailDocument.Body.String(), `"document":{"type":"doc"`) {
+			t.Fatal("admin document must be a JSON object")
+		}
+		documentDraft.Revision = 2
+		documentDraft.Slug += "-renamed"
+		documentBytes, _ = json.Marshal(documentDraft)
+		if rec := send("/utilities/notices", documentBytes, "doc-rename-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 409 {
+			t.Fatalf("published address changed %d", rec.Code)
+		}
+		documentDraft.Slug = strings.TrimSuffix(documentDraft.Slug, "-renamed")
+		documentDraft.Document.Content[0].Content[0].Marks = []sitecontent.DocumentMark{{Type: "link", Attrs: sitecontent.DocumentAttrs{Href: "javascript:alert(1)"}}}
+		documentBytes, _ = json.Marshal(documentDraft)
+		if rec := send("/utilities/notices", documentBytes, "doc-unsafe-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 422 {
+			t.Fatalf("unsafe document link accepted %d", rec.Code)
+		}
+		unknown := []byte(`{"status":"draft","document":{"type":"doc","attrs":{"onload":"bad"}}}`)
+		if rec := send("/utilities/notices", unknown, "doc-unknown-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 422 {
+			t.Fatalf("unknown document attribute accepted %d", rec.Code)
+		}
 		notice := noticeBody{Slug: fmt.Sprintf("ci-notice-%x", actor.ID.Bytes[:8]), Title: "CI notice", Summary: "Isolated publication coverage", Body: "## Heading\n\n**Content** and [link](https://hackways.in).", Status: "draft"}
 		raw, _ := json.Marshal(notice)
 		key := "notice-create-" + nonce[:20]

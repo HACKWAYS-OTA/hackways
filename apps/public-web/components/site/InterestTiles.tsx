@@ -78,7 +78,7 @@ export function InterestTiles() {
       <div className="interest-composition">
         <div className="interest-copy">
           <h2 id="interests-heading">Find your people.<br />Follow your curiosity.</h2>
-          <p>Code, design, new ideas, and the conversations in between. Find a gathering around what interests you.</p>
+          <p>Explore AI, software, data, cloud, cybersecurity, startups and design. Find a gathering around the ideas you want to learn and build.</p>
           <a className="button button-outline" href={`${site.app}/discover`}>
             Explore events <HugeiconsIcon data-draw-icon icon={ArrowRight01Icon} size={18} aria-hidden="true" />
           </a>
