@@ -12,23 +12,25 @@
 .city-card:hover .city-card-image img { transform: scale(1.025); }
 .city-card:focus-visible { outline: 3px solid var(--violet); outline-offset: 4px; }
 .city-profile-page { padding-bottom: 80px; }
-body:has(.city-profile-page) .app-header { position: fixed; top: 0; left: 0; right: 0; color: #fff; background: #1c253bcc; backdrop-filter: blur(12px); }
+body:has(.city-profile-page) .app-header { position: fixed; top: 0; left: 0; right: 0; color: #fff; background: transparent; }
+body:has(.city-profile-page) .app-header::before { content: ""; position: absolute; z-index: -1; inset: 0 0 -64px; pointer-events: none; backdrop-filter: blur(14px) brightness(.38); mask-image: linear-gradient(#000 calc(100% - 64px), transparent); }
 body:has(.city-profile-page) .app-header-inner { width: min(1280px, calc(100% - 80px)); }
 body:has(.city-profile-page) .app-nav > a,body:has(.city-profile-page) .header-create { color: #eee8f4; }
 body:has(.city-profile-page) .app-nav > a[aria-current],body:has(.city-profile-page) .app-nav > a:hover,body:has(.city-profile-page) .header-create:hover { color: #fff; }
 body:has(.city-profile-page) .app-header :focus-visible { outline-color: #fff; }
 body:has(.city-profile-page) .app-header-city-solid { background: var(--paper); color: var(--ink); backdrop-filter: none; }
+body:has(.city-profile-page) .app-header-city-solid::before { display: none; }
 body:has(.city-profile-page) .app-header-city-solid .app-nav > a, body:has(.city-profile-page) .app-header-city-solid .header-create { color: var(--muted); }
 body:has(.city-profile-page) .app-header-city-solid .app-nav > a[aria-current], body:has(.city-profile-page) .app-header-city-solid .app-nav > a:hover, body:has(.city-profile-page) .app-header-city-solid .header-create:hover { color: var(--ink); }
 body:has(.city-profile-page) .app-header-city-solid :focus-visible { outline-color: var(--violet); }
-.city-profile-hero { position: relative; isolation: isolate; display: grid; align-items: center; min-height: 100svh; padding: 160px 0 96px; background: #231d2d; color: #fff; }
+.city-profile-hero { position: relative; isolation: isolate; overflow: clip; display: grid; align-items: center; min-height: 100svh; padding: 160px 0 96px; background: #231d2d; color: #fff; }
 .city-profile-photo { z-index: -2; object-fit: cover; object-position: center; }
 .city-profile-title { width: min(1280px, calc(100% - 80px)); margin-inline: auto; }
 .city-profile-copy { position: relative; isolation: isolate; max-width: 620px; }
-.city-profile-hero-image .city-profile-copy::before { content: ""; position: absolute; z-index: -1; inset: -80px -100px; pointer-events: none; backdrop-filter: blur(24px) brightness(.42) saturate(.85); background: #1c253b33; mask-image: linear-gradient(90deg, #000 65%, transparent), linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent); mask-composite: intersect; }
-.city-profile-title h1 { max-width: 16ch; font-size: clamp(48px, 6vw, 76px); line-height: 1.08; letter-spacing: -.03em; overflow-wrap: anywhere; }
-.city-profile-copy > p { max-width: 48ch; margin-top: 24px; color: #f4eff8; font-size: 17px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-.city-hero-action { margin-top: 32px; background: #fff; color: #231d2d; border-color: #fff; }
+.city-profile-hero-image .city-profile-copy::before { content: ""; position: absolute; z-index: -1; inset: -200px -320px -180px -30vw; pointer-events: none; backdrop-filter: blur(24px) brightness(.42); mask-image: linear-gradient(90deg, #000 82%, transparent), linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent); mask-composite: intersect; }
+.city-profile-title h1 { max-width: 16ch; font-size: clamp(48px, 5.6vw, 72px); line-height: 1.08; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.city-profile-copy > p { max-width: 46ch; margin-top: 20px; color: #f4eff8; font-size: 17px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.city-hero-action { margin-top: 28px; background: #fff; color: #231d2d; border-color: #fff; }
 .city-hero-action:hover { background: #eee8f5; border-color: #eee8f5; }
 .city-hero-action > svg { transform: rotate(90deg); }
 .city-profile-body { width: min(1120px, calc(100% - 80px)); margin: 0 auto; padding-top: 72px; }
@@ -43,7 +45,7 @@ body:has(.city-profile-page) .app-header-city-solid :focus-visible { outline-col
 .city-about h2 { font-size: 22px; margin-bottom: 16px; }
 .city-about p { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.8; }
 @media(max-width: 960px) { .city-directory { grid-template-columns: repeat(2, minmax(0, 1fr)); } .city-card-image { aspect-ratio: 6 / 5; } .city-event-list .catalog-event { grid-template-columns: 140px minmax(0, 1fr); } .city-event-list .catalog-event-open { grid-column: 2; justify-self: start; padding-left: 0; } }
-@media(max-width: 640px) { .cities-page { width: calc(100% - 40px); padding-block: 32px 56px; } .city-directory { grid-template-columns: minmax(0, 1fr); gap: 18px; } .city-directory-heading { gap: 14px; } .city-directory-heading > a { white-space: nowrap; } .city-card-image { aspect-ratio: 5 / 4; } .city-card-copy { padding: 22px; } .city-card h2 { font-size: 28px; } body:has(.city-profile-page) .app-header-inner { width: calc(100% - 32px); } .city-profile-hero { min-height: 100svh; padding: 196px 0 72px; } .city-profile-hero-image .city-profile-copy::before { inset: -60px -20px; mask-image: linear-gradient(180deg, transparent, #000 15%, #000 85%, transparent); mask-composite: add; } .city-profile-photo { object-position: 60% center; } .city-profile-title { width: calc(100% - 40px); } .city-profile-title h1 { font-size: clamp(42px, 10vw, 60px); } .city-profile-copy > p { font-size: 15px; line-height: 1.7; margin-top: 20px; } .city-hero-action { margin-top: 24px; } .city-profile-body { width: calc(100% - 40px); padding-top: 32px; } .city-event-list .catalog-event { grid-template-columns: 100px minmax(0, 1fr); gap: 16px; } .city-profile-page { padding-bottom: 48px; } }
+@media(max-width: 640px) { .cities-page { width: calc(100% - 40px); padding-block: 32px 56px; } .city-directory { grid-template-columns: minmax(0, 1fr); gap: 18px; } .city-directory-heading { gap: 14px; } .city-directory-heading > a { white-space: nowrap; } .city-card-image { aspect-ratio: 5 / 4; } .city-card-copy { padding: 22px; } .city-card h2 { font-size: 28px; } body:has(.city-profile-page) .app-header-inner { width: calc(100% - 32px); } .city-profile-hero { min-height: 100svh; padding: 196px 0 72px; } .city-profile-hero-image .city-profile-copy::before { inset: -140px -40px; mask-image: linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent); mask-composite: add; } .city-profile-photo { object-position: 60% center; } .city-profile-title { width: calc(100% - 40px); } .city-profile-title h1 { font-size: clamp(42px, 10vw, 60px); } .city-profile-copy > p { font-size: 15px; line-height: 1.7; margin-top: 20px; } .city-hero-action { margin-top: 24px; } .city-profile-body { width: calc(100% - 40px); padding-top: 32px; } .city-event-list .catalog-event { grid-template-columns: 100px minmax(0, 1fr); gap: 16px; } .city-profile-page { padding-bottom: 48px; } }
 @media(prefers-reduced-motion: reduce) { .city-card-image img { transition: none; } .city-card:hover .city-card-image img { transform: none; } }
 
-@supports not (backdrop-filter: blur(1px)) { .city-profile-hero-image .city-profile-copy::before { background: #182030e6; } }
+@supports not (backdrop-filter: blur(1px)) { body:has(.city-profile-page) .app-header::before { background: #182030f2; } .city-profile-hero-image .city-profile-copy::before { background: #182030e6; } }

@@ -6,6 +6,13 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - City photo composition refinement (candidate)
+
+- Responded to the supplied live screenshot: removed the navbar background strip and solid tint behind the hero title. Wider feathered blur reaches the viewport edge, with text contrast treatment retained. Slightly reduced display size and tightened copy/action spacing. Fixed navigation, viewport-height hero, image, content, events and section jump remain.
+- Core/admin Bin release7a6cf1b passed hosted run40500732330 and activated after fresh verified encrypted backups. Schema29 clean, environment retained, all six services ready; only core-backend/admin-web replaced. Public authentication and live applications retained. External /bin redirects to sign-in and anonymous /api/v1/admin/core/bin returns401.
+- Core type/lint, source-only review, detector and whitespace checks passed. The review caught variable-height mobile navbar feathering; its stop now follows the actual header height. No browser check per user instruction. Account/device restriction schema30 and SQL remain uncommitted planning/implementation, excluded from this UI candidate and production.
+
+
 ## 2026-10-27 - Recoverable administrator event Bin (candidate)
 
 - Added core Go/SQLc Bin listing and revisioned event deletion/restore under event row locks and the existing timeout. Preserved registrations, tickets, access, images, curation and audit. Active events require existing cancellation before Bin; restoring published records makes them unpublished without reactivating bookings. No purge or schema change.
