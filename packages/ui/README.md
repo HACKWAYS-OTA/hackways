@@ -75,6 +75,11 @@ and bounded first-party collector used by public/core web. Collection starts onl
 after visitor consent. It accepts named registration events without form answers
 or account identity; see [the service contract](../../docs/backend/ANALYTICS.md).
 
+The cookie-choice heading inherits the consuming app's body font at 18px/500,
+with normal letter/word spacing and zero text stroke. Keep these overrides so
+global display-heading styles do not add synthetic bolding, tracking or stroke
+to the consent panel. This is presentation only; consent behavior is unchanged.
+
 ### MCP connection views
 
 `@hackways/ui/mcp` and `@hackways/ui/mcp.css` provide the account/admin consent,

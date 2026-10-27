@@ -6,6 +6,19 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Reference-led City composition and consent typography (candidate)
+
+- Responded to the next supplied City screenshot: removed the independent dark navbar layer and replaced the copy-sized dark blur with a hero-wide progressive photo effect at a lighter brightness. Set a narrower1000px composition,520px text measure and56px title; retained photo colors and clear right side, fixed/solid scroll navbar and existing content/actions. Saved1000x563 image is unchanged; no invented resolution/detail claim.
+- Fixed cramped Your cookie choices typography in shared UI: inherited body face,500 weight, normal letter/word spacing and zero display text stroke. Consent behavior and preference persistence are unchanged. All four frontends must publish this shared CSS.
+- Source-only finish review found no P1/P2; scoped design docs updated. User excludes browser checks. Checks/publication/activation for this visual follow-up remain pending.
+
+## 2026-10-27 - Account/browser restriction production verification
+
+- Candidate be1bace passed hosted run40513571083: both PostgreSQL16 race/integration suites, SQLc, all frontend checks and source/deployment guards; five immutable images published. Verified encrypted database/config backups and restore catalog before activation.
+- Migration30 clean with no initial restriction decisions. Started enforcing core Go before global Go, then the three changed frontends and scoped denial route. All six services ready; environment and public-web container retained. No production accounts/browsers were blocked for verification.
+- Public denial page, ambassador program, managed sign-in and Hyderabad returned200. Anonymous restrictions account/browser and Bin APIs returned401. No authenticated production moderation or browser/render verification claimed. Browser recognition limits and forward-only recovery once decisions exist are documented in the backend contract.
+
+
 ## 2026-10-27 - Account and browser restrictions (candidate)
 
 - Added additive schema 30 and SQLc moderation, review association and session retirement contracts. Preserved legacy permissions by default. Both Go engines enforce account/browser restrictions; valid password or Google proof on a blocked browser commits account review and retirement before denial. Wrong credentials cannot suspend an email. Signup checks known browser hashes before record creation; OAuth carries source/callback recognition across origins.

@@ -67,7 +67,7 @@
 .hw-cookie-preferences { appearance:none; padding:0; border:0; background:transparent; color:inherit; font:inherit; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
 .hw-cookie-preferences:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
 .hw-analytics-consent { position:fixed; z-index:100; inset:auto 16px 16px; max-width:680px; max-height:calc(100dvh - 32px); overflow:auto; margin-inline:auto; display:flex; align-items:center; gap:24px; padding:22px; border:1px solid #dcd3e2; border-radius:12px; background:#fff; color:#27212e; font-family:inherit; font-size:14px; font-weight:400; line-height:1.55; }
-.hw-analytics-consent h2 { margin:0 0 8px; font-size:18px; font-weight:600; color:#27212e; }
+.hw-analytics-consent h2 { margin:0 0 10px; font-family:inherit; font-size:18px; font-weight:500; line-height:1.35; letter-spacing:normal; word-spacing:normal; -webkit-text-stroke:0; color:#27212e; }
 .hw-analytics-consent p { margin:0 0 8px; font-size:14px; line-height:1.55; color:#574e60; }
 .hw-analytics-consent a { color:#574174; text-decoration:underline; text-underline-offset:3px; }
 .hw-analytics-choices { display:grid; gap:10px; flex:0 0 152px; }
