@@ -22,7 +22,7 @@ export default async function CityPage({ params, searchParams }: { params: { slu
   return <div className="city-profile-page">
     <header className={`city-profile-hero${city.banner_url ? ' city-profile-hero-image' : ''}`}>
       {city.banner_url && <Image className="city-profile-photo" unoptimized src={city.banner_url} alt="" fill sizes="100vw" priority />}
-      <div className="city-profile-title"><h1>{city.name}</h1>{intro && <p>{intro}</p>}<SectionJumpButton className="app-button city-hero-action" targetId="city-events">Explore events<Icon name="arrow" size={18} /></SectionJumpButton></div>
+      <div className="city-profile-title"><div className="city-profile-copy"><h1>{city.name}</h1>{intro && <p>{intro}</p>}<SectionJumpButton className="app-button city-hero-action" targetId="city-events">Explore events<Icon name="arrow" size={18} /></SectionJumpButton></div></div>
     </header>
     <div className="city-profile-body"><section className="city-events" id="city-events" aria-labelledby="city-events-title">
       <div className="city-events-heading"><h2 id="city-events-title">Events</h2><Link className="quiet-link" href="/create">Create event<Icon name="add" size={16} /></Link></div>

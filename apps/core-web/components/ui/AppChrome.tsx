@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SkipToContent } from '@/components/ui/SkipToContent';
 import { AppNavigation } from '@/components/ui/AppNavigation';
@@ -16,6 +16,22 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
   const pathname = usePathname();
   const previousPath = useRef(pathname);
   const historyPath = useRef<string | null>(null);
+  const [solidCityHeader, setSolidCityHeader] = useState(false);
+  useEffect(() => {
+    if (!/^\/cities\/[^/]+\/?$/.test(pathname)) { setSolidCityHeader(false); return; }
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const hero = document.querySelector('.city-profile-hero');
+      const header = document.querySelector('.app-header');
+      setSolidCityHeader(Boolean(hero && header && hero.getBoundingClientRect().bottom <= header.getBoundingClientRect().height));
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule); };
+  }, [pathname]);
   useEffect(() => {
     const rememberHistoryNavigation = () => { historyPath.current = window.location.pathname; };
     window.addEventListener('popstate', rememberHistoryNavigation);
@@ -43,7 +59,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
   if (pathname === '/programs' || pathname.startsWith('/programs/')) return <><SkipToContent /><AnalyticsTracker path={pathname} endpoint={`${(process.env.NEXT_PUBLIC_GLOBAL_API_URL || '/api/v1').replace(/\/$/, '')}/analytics/events`} />{children}</>;
   return <>
     <SkipToContent />
-    {!isAuthPage && <header className="app-header"><div className="app-header-inner">
+    {!isAuthPage && <header className={`app-header${solidCityHeader ? ' app-header-city-solid' : ''}`}><div className="app-header-inner">
       <Link className="wordmark" href="/discover" aria-label="Hackways events">hackways.</Link>
       <AppNavigation />
       <div className="header-actions"><Link className="header-create" href="/create"><Icon name="add" size={17} />Create event</Link><Link className="header-account" href="/account" aria-label={user ? `Your profile, ${user.display_name}` : 'Sign in to your account'} title={user ? 'Your profile' : 'Sign in'} aria-current={pathname === '/account' ? 'page' : undefined}><ProfileAvatar name={user?.display_name} image={user?.avatar_url} /></Link></div>

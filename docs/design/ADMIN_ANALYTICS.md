@@ -24,9 +24,13 @@ admin sidebar remains the source of truth for this separate console surface.
 ## Structure and controls
 
 `/analytics` opens live analytics, defaulting to the last five minutes. The heading
-contains the shared `@hackways/ui/select` control with the accessible name
-"Interval", displaying `5 min`, `1 hr` or `24 hr`, followed by Refresh and History.
-Selecting an interval replaces the `window` query parameter without a page reload.
+contains one shared `@hackways/ui/select` control with the accessible name
+"Time range": `5 min`, `1 hr`, `24 hr`, `Last 7 days`, `Last 30 days`,
+`Last 90 days` and `Custom dates`. Refresh follows the control in live mode.
+Selecting a live interval replaces the `window` query parameter without a page
+reload; selecting a day preset navigates to its inclusive UTC `from`/`to` range.
+Custom dates reveals the date inputs and Apply while preserving the current
+report until the range is submitted. There are no separate History/Live links.
 The interface does not render `captured_at`, `generated_at`, an update timestamp or
 clock labels on the live chart.
 
@@ -44,9 +48,10 @@ contract specifies exact sliding windows with 20 buckets for five minutes/one ho
 and 24 buckets for twenty-four hours. Each engine captures its own independent
 snapshot; the interface does not imply one shared capture instant.
 
-History opens at `/analytics?view=history`; URLs with `from` or `to` also select it.
-The historical view retains UTC date inputs, shared date-range presets, Apply,
-Live analytics and separate event/traffic-and-account CSV exports. Date selection
+URLs with `from` or `to` select historical reporting; the legacy
+`/analytics?view=history` URL remains accepted. The historical view uses the same
+Time range control, keeps UTC date inputs and Apply visible, and retains separate
+event/traffic-and-account CSV exports. Date selection
 supports up to ninety inclusive days within the latest ninety days, defaulting to
 thirty. Export actions appear only for the engine whose report loaded. Calendar
 dates remain meaningful historical chart/table labels; they are not live freshness
@@ -71,8 +76,9 @@ and teal (`#4b8581`) with text legends and value tables.
 Main analytic groups use two equal columns; historical breakdowns use three.
 Both collapse to one column at widths up to 1150px. Summary values use an
 auto-fitting grid with a 150px minimum; up to 540px they use two equal columns.
-Headers and their controls wrap. Historical filters become two columns up to
-1150px; up to 540px the preset and Apply span the row, with Apply full width.
+Headers and their controls wrap. Date filters become two columns up to
+1150px; up to 540px the range control fills the available width and its date
+filters stack in one column, with Apply full width.
 Panel padding decreases from 26px to 18px at that breakpoint. Table containers
 allow overflow and cap their height at 420px. Long breakdown labels can wrap.
 The incumbent shell adapts separately at 1000px and 700px.
@@ -82,7 +88,9 @@ The incumbent shell adapts separately at 1000px and 700px.
 The server requests core and global reports concurrently before handing live
 results to the client. Successful initial results render immediately. The visible
 live page refreshes fifteen seconds after the previous request completes. Hidden
-tabs stop polling; returning clears old figures and requests fresh reports.
+tabs stop polling; returning requests fresh reports in the background while
+preserving the last confirmed figures until the requests settle. Manual and
+scheduled refreshes use the same retained-report behavior.
 Interval changes clear previous figures, abort superseded requests and accept
 only responses matching the selected interval. Refresh is disabled and reads
 Refreshing... during a request; a manual refresh retries both engines.
@@ -90,7 +98,11 @@ Refreshing... during a request; a manual refresh retries both engines.
 Each engine can fail independently. Failed engine figures are removed and a
 specific error explains how to retry; successful engine panels remain available.
 Unavailable data is not represented as a zero count. Loading without reports has
-a status message, and the report region declares `aria-busy`. Genuine empty
+a centered Hackways wordmark and shimmer line, used for the initial route loading
+state and live requests with neither report available. The loader has a status
+role and an accessible Loading analytics name; its decorative elements are hidden
+from assistive technology. Reduced motion disables the breathing/shimmer
+animations. The report region declares `aria-busy`. Genuine empty
 activity has explicit interval-specific copy. A visitor collection-budget status
 warns that visitor counts are partial. History reports invalid ranges and partial
 engine failures with recovery through Apply.

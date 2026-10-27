@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { Select } from '@hackways/ui/select';
+import { AnalyticsRangeControl } from './AnalyticsRangeControl';
 import { adminRequest } from '@/lib/admin-request';
 import { analyticsNumber as number, type LiveCoreAnalytics, type LiveGlobalAnalytics, type AnalyticsWindow } from '@/lib/analytics';
 
 type Reports = { core: LiveCoreAnalytics | null; global: LiveGlobalAnalytics | null };
-const intervals = [{ value: '5m', label: '5 min' }, { value: '1h', label: '1 hr' }, { value: '24h', label: '24 hr' }];
 
 function Activity({ rows }: { rows: LiveCoreAnalytics['activity'] }) {
   const max = Math.max(1, ...rows.flatMap(row => [row.registrations, row.check_ins]));
@@ -32,7 +31,7 @@ function Breakdown({ title, rows }: { title: string; rows: { label: string; valu
   return <section className="analytics-panel"><h2>{title}</h2>{rows.length ? <dl className="analytics-breakdown">{rows.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{number(row.value)}</dd></div>)}</dl> : <p className="analytics-empty">No activity in this interval.</p>}</section>;
 }
 
-export function LiveAnalytics({ initial, initialWindow }: { initial: Reports; initialWindow: AnalyticsWindow }) {
+export function LiveAnalytics({ initial, initialWindow, today, from }: { initial: Reports; initialWindow: AnalyticsWindow; today: string; from: string }) {
   const [window, setWindow] = useState(initialWindow);
   const [reports, setReports] = useState(initial);
   const [loading, setLoading] = useState(false);
@@ -61,7 +60,7 @@ export function LiveAnalytics({ initial, initialWindow }: { initial: Reports; in
       clearTimeout(timer);
       request?.abort();
       request = undefined;
-      if (!document.hidden) { setReports({ core: null, global: null }); void refresh(); }
+      if (!document.hidden) void refresh();
       else setLoading(false);
     };
     document.addEventListener('visibilitychange', visibility);
@@ -73,18 +72,16 @@ export function LiveAnalytics({ initial, initialWindow }: { initial: Reports; in
   const { core, global } = reports;
   return <>
     <header className="analytics-heading analytics-live-heading"><h1>Analytics</h1><div className="analytics-live-controls">
-      <Select label="Interval" value={window} options={intervals} onValueChange={value => {
-        if (value !== '5m' && value !== '1h' && value !== '24h') return;
+      <AnalyticsRangeControl value={window} from={from} to={today} today={today} onIntervalChange={value => {
         if (value === window) return;
         setReports({ core: null, global: null }); setLoading(true); setWindow(value);
         const url = new URL(location.href); url.search = new URLSearchParams({ window: value }).toString(); history.replaceState(history.state, '', url);
       }} />
       <button type="button" className="app-button app-button-outline app-button-sm" disabled={loading} onClick={() => setRetry(value => value + 1)}>{loading ? 'Refreshing...' : 'Refresh'}</button>
-      <Link className="analytics-history-link" href="/analytics?view=history">History</Link>
     </div></header>
     {!loading && !core && <p className="journey-error" role="alert">Event analytics could not be loaded. Refresh to retry.</p>}
     {!loading && !global && <p className="journey-error" role="alert">Visitor and account analytics could not be loaded. Refresh to retry.</p>}
-    {loading && !core && !global && <p className="analytics-empty" role="status">Loading analytics...</p>}
+    {loading && !core && !global && <div className="admin-result-state admin-loading" role="status" aria-label="Loading analytics"><span className="wordmark admin-loading-wordmark" aria-hidden="true">hackways.</span><span className="admin-loading-line" aria-hidden="true" /></div>}
     {global?.limited && <p className="journey-error" role="status">Visitor collection reached its limit. Visitor counts are partial.</p>}
     <div aria-busy={loading}>
       <dl className="analytics-summary">

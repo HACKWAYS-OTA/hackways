@@ -6,6 +6,20 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Analytics range and City hero follow-up (candidate)
+
+- Added one shared time-range selector for sliding 5 min/1 hr/24 hr and existing 7/30/90-day/custom date reports. Date inputs retain backend validation and confirmed CSV exports. Changing the saved period resets draft dates; editing dates selects Custom dates.
+- Returning to live analytics keeps confirmed charts visible during background refresh. Interval changes still clear incompatible figures, cancelled responses remain ignored and failed engines retain explicit errors. Initial loading uses the established Hackways wordmark/shimmer classes, including the route loading boundary.
+- City profiles fill at least the viewport and keep Events below the hero. Localized text-backdrop blur replaces the full-image dark gradient. The fixed navbar switches to the standard light surface when the hero leaves it. No extra breadcrumb/time-zone labels or subscription flow added.
+- No backend, schema, API, dependency or application-flow change. Local core/admin type/lint passed; hosted publication and activation remain pending. User excludes browser checks; no rendered verification claimed.
+
+## 2026-10-27 - Managed workspace production activation
+
+- Candidate 8d8f48c passed hosted run 40474027336, including PostgreSQL 16/race integration for both engines, SQLc, all frontend type/lint and source/deployment guards. Four immutable core/global backend, core-web and organizer-web images were activated after verified encrypted database/config backups.
+- Schema 29 verified clean; all six services ready. Public/admin containers retained identity/start time and runtime environment remained unchanged. Existing sessions and live application/mail workflows were retained.
+- External checks returned 200 for managed sign-in, City and ambassador pages; anonymous workspace Space/event API calls returned 401. No authenticated production role mutation or browser interaction claimed. Bin and account/device restrictions remain pending separately.
+
+
 ## 2026-10-27 - Managed Space and event collaboration (candidate)
 
 - Added additive migration 29 and SQLc-owned Space/event assignments with manager/editor/check-in roles, revisions and revocation. Owners retain immutable ownership and alone assign verified accounts by exact email. Explicit event roles override Space inheritance; removing an override restores any Space role.

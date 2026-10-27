@@ -4,9 +4,10 @@
 .analytics-heading > div { display:flex; flex-wrap:wrap; gap:10px; }
 .analytics-live-heading { align-items:flex-end; }
 .analytics-heading .analytics-live-controls { align-items:flex-end; gap:14px; }
-.analytics-live-controls > :first-child { width:150px; }
+.analytics-range-control { min-width:180px; max-width:100%; }
+.analytics-range-control > .analytics-filters { margin:20px 0 0; padding-bottom:0; border:0; max-width:620px; }
 .analytics-history-link { align-self:center; font-size:14px; text-decoration:underline; text-underline-offset:4px; }
-.analytics-filters { display:grid; grid-template-columns:minmax(160px,1.1fr) minmax(150px,1fr) minmax(150px,1fr) auto; align-items:end; gap:16px; padding-bottom:28px; margin-bottom:30px; border-bottom:1px solid var(--line); }
+.analytics-filters { display:grid; grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) auto; align-items:end; gap:16px; padding-bottom:28px; margin-bottom:30px; border-bottom:1px solid var(--line); }
 .analytics-filters .field { margin:0; }
 .analytics-filters label { font-size:13px; color:var(--muted); }
 .analytics-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:24px; margin:0 0 36px; }
@@ -47,4 +48,4 @@
 .analytics-collection p { grid-column:1/-1; max-width:80ch; font-size:13px; color:var(--muted); }
 .analytics-footnote { max-width:85ch; font-size:12px; color:var(--muted); margin-block:10px 28px; }
 @media(max-width:1150px) { .analytics-filters { grid-template-columns:1fr 1fr; } .analytics-main-grid,.analytics-detail-grid { grid-template-columns:minmax(0,1fr); } }
-@media(max-width:540px) { .analytics-filters { gap:12px; } .analytics-filters > :first-child { grid-column:1/-1; } .analytics-filters > button { grid-column:1/-1; width:100%; } .analytics-panel { padding:18px; } .analytics-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .analytics-collection { display:block; padding:18px; } .analytics-collection dl { margin-block:18px; } }
+@media(max-width:540px) { .analytics-filters { gap:12px; } .analytics-range-control { width:100%; } .analytics-range-control .analytics-filters { grid-template-columns:minmax(0,1fr); } .analytics-filters > button { grid-column:1/-1; width:100%; } .analytics-panel { padding:18px; } .analytics-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .analytics-collection { display:block; padding:18px; } .analytics-collection dl { margin-block:18px; } }
