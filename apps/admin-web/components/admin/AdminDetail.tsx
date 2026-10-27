@@ -103,7 +103,7 @@ export function AdminDetail({ resource, detail }: { resource: AdminModule; detai
   const kind = typeof record.kind === 'string' ? record.kind : '';
   const description = typeof record.description === 'string' ? record.description : '';
   const hasPrimaryActions = ['people', 'spaces', 'storage'].includes(resource)
-    || (['events', 'moderation'].includes(resource) && (record.editable === true || record.status !== 'cancelled'));
+    || ['events', 'moderation'].includes(resource);
   const recordFields: Field[] = [{ key: 'reference', label: 'Reference' }, { key: 'created_at', label: 'Created', date: true }, { key: 'updated_at', label: 'Last changed', date: true }];
   return <>
     <a className="app-button app-button-outline app-button-sm admin-detail-back" href={`/${resource}`}><Icon name="back" size={17} />Back</a>

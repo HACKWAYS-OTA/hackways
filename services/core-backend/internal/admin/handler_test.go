@@ -52,7 +52,7 @@ func TestAdminCatalogueAccess(t *testing.T) {
 		router.ServeHTTP(rec, req)
 		return rec
 	}
-	routes := []string{"events", "spaces", "registrations", "tickets", "moderation", "audit"}
+	routes := []string{"events", "spaces", "registrations", "tickets", "moderation", "audit", "bin"}
 	for _, route := range routes {
 		for _, cookie := range []string{"", auth.DefaultSessionCookie} {
 			if got := request("/"+route, cookie).Code; got != 401 {

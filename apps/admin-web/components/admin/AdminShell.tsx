@@ -6,10 +6,10 @@ import { getAdminAccess } from '@/lib/admin-access';
 import { SectionJumpButton } from '@hackways/ui/section-jump';
 import { AdminSessionRefresh } from './AdminSessionRefresh';
 
-export async function AdminShell({ active, query = '', status = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/programs' | '/discover-promotions' | '/rollouts' | '/analytics' | '/cities'; query?: string; status?: string; children: ReactNode }) {
+export async function AdminShell({ active, query = '', status = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/programs' | '/discover-promotions' | '/rollouts' | '/analytics' | '/cities' | '/bin'; query?: string; status?: string; children: ReactNode }) {
   if (await getAdminAccess() !== 'allowed') return null;
-  const currentModule = active === '/campaigns' ? 'messaging' : active === '/cities' || active === '/programs' || active === '/discover-promotions' || active === '/rollouts' || active === '/analytics' || active === '/' ? 'events' : active.slice(1) as AdminModule;
-  const searchLabel = active === '/cities' ? 'Search cities' : active === '/programs' ? 'Search programs' : active === '/campaigns' ? 'Search campaigns' : `Search ${adminModules[currentModule].label.toLowerCase()}`;
+  const currentModule = active === '/campaigns' ? 'messaging' : active === '/bin' || active === '/cities' || active === '/programs' || active === '/discover-promotions' || active === '/rollouts' || active === '/analytics' || active === '/' ? 'events' : active.slice(1) as AdminModule;
+  const searchLabel = active === '/bin' ? 'Search deleted events' : active === '/cities' ? 'Search cities' : active === '/programs' ? 'Search programs' : active === '/campaigns' ? 'Search campaigns' : `Search ${adminModules[currentModule].label.toLowerCase()}`;
   const snapshotAt = process.env.ADMIN_PREVIEW_SNAPSHOT_AT;
   return <div className="admin-frame">
     <AdminSessionRefresh />
@@ -19,6 +19,7 @@ export async function AdminShell({ active, query = '', status = '', children }: 
       <nav className="admin-navigation" aria-label="Admin navigation">
         <a href="/" aria-current={active === '/' ? 'page' : undefined}><Icon name="home" />Home</a>
         {adminModuleOrder.map((name) => <a key={name} href={`/${name}`} aria-current={active === `/${name}` ? 'page' : undefined}><Icon name={name} />{adminModules[name].label}</a>)}
+        <a href="/bin" aria-current={active === '/bin' ? 'page' : undefined}><Icon name="bin" />Bin</a>
         <a href="/analytics" aria-current={active === '/analytics' ? 'page' : undefined}><Icon name="analytics" />Analytics</a>
         <a href="/campaigns" aria-current={active === '/campaigns' ? 'page' : undefined}><Icon name="messaging" />Campaigns</a>
         <a href="/programs" aria-current={active === '/programs' ? 'page' : undefined}><Icon name="people" />Programs</a>
@@ -30,7 +31,7 @@ export async function AdminShell({ active, query = '', status = '', children }: 
     </aside>
     <div className="admin-workspace" tabIndex={0} role="region" aria-label="Dashboard content">
       <header className="admin-topbar">
-        <form action={active === '/cities' ? '/cities' : active === '/programs' ? '/programs' : active === '/campaigns' ? '/campaigns' : `/${currentModule}`} method="get" role="search" className="admin-search">
+        <form action={active === '/bin' ? '/bin' : active === '/cities' ? '/cities' : active === '/programs' ? '/programs' : active === '/campaigns' ? '/campaigns' : `/${currentModule}`} method="get" role="search" className="admin-search">
           <Icon name="search" size={22} />
           <label className="sr-only" htmlFor="admin-search">{searchLabel}</label>
           <input id="admin-search" name="q" type="search" maxLength={200} defaultValue={query} placeholder={searchLabel} />

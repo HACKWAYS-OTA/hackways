@@ -25,8 +25,9 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
     event.preventDefault();
     if (busy) return;
     const values = new FormData(event.currentTarget);
+    const reason = String(values.get('admin_reason') || '').trim();
     const body = JSON.stringify({ ...payload, ...fields?.(values) });
-    const signature = `${path}\n${body}`;
+    const signature = `${path}\n${reason}\n${body}`;
     if (receipt.current?.signature !== signature) receipt.current = { signature, key: crypto.randomUUID() };
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15000);
@@ -35,7 +36,7 @@ function ActionForm({ title, description, path, method = 'POST', payload, fields
       const base = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
       const response = await fetch(`${base}/admin/${path}`, {
         method, credentials: 'include', cache: 'no-store', signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': receipt.current.key },
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': receipt.current.key, ...(reason ? { 'X-Admin-Reason': encodeURIComponent(reason) } : {}) },
         body,
       });
       if (response.status === 401) { window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
@@ -88,6 +89,17 @@ export function SessionRevoke({ person, sessionID }: { person: AdminRecord; sess
   return <details className="admin-session-action"><summary className="app-button app-button-outline app-button-sm">Revoke session</summary><ActionForm title="Revoke this session" path={`global/people/${person.reference}/sessions/${sessionID}/revoke`} payload={{ updated_at: text(person, 'updated_at') }} submitLabel="Revoke session" success="Session revoked." /></details>;
 }
 
+export function EventBinAction({ record, restore = false }: { record: AdminRecord; restore?: boolean }) {
+  return <ActionForm title={restore ? 'Restore event' : 'Move to Bin'}
+    description={restore ? 'Published events return as unpublished. Cancelled registrations stay cancelled.' : 'Cancel active events first. Bookings, tickets and history are retained for recovery.'}
+    path={restore ? `core/bin/events/${record.reference}/restore` : `core/events/${record.reference}/bin`}
+    payload={{ revision: number(record, 'revision') }} submitLabel={restore ? 'Restore event' : 'Move to Bin'}
+    destination={restore ? `/events/details/${record.reference}` : '/bin'}>
+    <Input label="Reason" name="admin_reason" required minLength={3} maxLength={1000} />
+    <Confirmation name="confirm_bin">{restore ? 'Restore this event without changing its bookings.' : 'Move this event out of the active catalogue.'}</Confirmation>
+  </ActionForm>;
+}
+
 export function AdminActions({ resource, record }: { resource: AdminModule; record: AdminRecord }) {
   const version = text(record, 'updated_at');
   const revision = number(record, 'revision');
@@ -120,6 +132,7 @@ export function AdminActions({ resource, record }: { resource: AdminModule; reco
         <Choice name="event_status" label="Event action" value={transitions[0].value} options={transitions} />
         <Confirmation name="acknowledge_attendees">I understand this changes event availability and may affect registered guests.</Confirmation>
       </ActionForm>}
+      <EventBinAction record={record} />
     </div>;
   }
   if (resource === 'spaces') return <div className="admin-actions" key={String(revision)}>

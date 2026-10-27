@@ -6,6 +6,13 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Recoverable administrator event Bin (candidate)
+
+- Added core Go/SQLc Bin listing and revisioned event deletion/restore under event row locks and the existing timeout. Preserved registrations, tickets, access, images, curation and audit. Active events require existing cancellation before Bin; restoring published records makes them unpublished without reactivating bookings. No purge or schema change.
+- Added console Bin navigation/search/pagination/recovery and event-detail Move to Bin. Reused action forms, shared confirmation, real reason audit and stable retry receipts. Confirmed success alone navigates; initial pending state uses the existing Hackways loader.
+- Extended mandatory isolated PostgreSQL admin integration cases for unauthenticated/cross-origin access, active/stale rejection, persisted deletion and recovery, exact retry/audit behavior and historical publication protection. Full core Go tests/vet and admin type/lint passed locally; SQLc generation, source audit, diff check and Impeccable detector passed. Source-only finish review found no P1/P2; no browser verification by user instruction. Hosted race checks, image publication and activation pending.
+
+
 ## 2026-10-27 - Analytics ranges and adaptive City hero activated
 
 - Hosted release2771e7b passed run40497145397: PostgreSQL16/race integration for both engines, SQLc, all frontend type/lint and source/deployment guards. Two immutable frontend images were published.

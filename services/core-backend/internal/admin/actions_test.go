@@ -399,12 +399,77 @@ func TestAdminDetailActions(t *testing.T) {
 	archive := fmt.Sprintf(`{"status":"archived","revision":%d}`, space.Revision)
 	check(call("POST", spacePath+"/status", archive, "admin-space-archive-key"), 200)
 	current, _ = q.GetEventByID(ctx, event.ID)
+	binPath := eventPath + "/bin"
+	binBody := fmt.Sprintf(`{"revision":%d}`, current.Revision)
+	check(request("POST", binPath, binBody, "admin-bin-unauth-key", "http://localhost:3003", "", ""), 401)
+	check(request("POST", binPath, binBody, "admin-bin-origin-key", "https://untrusted.invalid", "", auth.AdminSessionCookie), 403)
+	check(call("POST", binPath, binBody, "admin-bin-active-key"), 409)
 	cancelEvent := fmt.Sprintf(`{"status":"cancelled","revision":%d,"acknowledge_attendees":true}`, current.Revision)
 	check(call("POST", eventPath+"/status", cancelEvent, "admin-event-cancel-key"), 200)
 	check(call("POST", eventPath+"/status", cancelEvent, "admin-event-cancel-key"), 200)
 	current, _ = q.GetEventByID(ctx, event.ID)
 	if current.Status != db.EventStatusCancelled || current.CurrentRsvpCount != 0 || !current.ManagementClosed {
 		t.Fatal("event cancellation invariant failed")
+	}
+	// Extend mandatory admin regression with persisted recovery, revisions,
+	// cancellation prerequisites and exact-once audited retries.
+	binBody = fmt.Sprintf(`{"revision":%d}`, current.Revision)
+	check(call("POST", binPath, `{ "revision":1 }`, "admin-bin-stale-key"), 409)
+	binResult := call("POST", binPath, binBody, "admin-event-bin-key")
+	check(binResult, 200)
+	binReplay := call("POST", binPath, binBody, "admin-event-bin-key")
+	check(binReplay, 200)
+	if binReplay.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("bin retry not replayed after deletion")
+	}
+	check(call("POST", binPath, `{ "revision":1 }`, "admin-event-bin-key"), 409)
+	check(call("GET", eventPath, "", ""), 404)
+	binned, e := q.LockAdminBinEvent(ctx, event.ID)
+	if e != nil || !binned.DeletedAt.Valid {
+		t.Fatalf("deleted event not retained: %v", e)
+	}
+	binList := call("GET", "/bin?q=Reviewed%20event", "", "")
+	check(binList, 200)
+	if !strings.Contains(binList.Body.String(), fmt.Sprintf(`"reference":%d`, event.AdminReference)) {
+		t.Fatal("deleted fixture missing from Bin")
+	}
+	restorePath := "/bin" + eventPath + "/restore"
+	restoreBody := fmt.Sprintf(`{"revision":%d}`, binned.Revision)
+	check(call("POST", restorePath, restoreBody, "admin-event-restore-key"), 200)
+	restoreReplay := call("POST", restorePath, restoreBody, "admin-event-restore-key")
+	check(restoreReplay, 200)
+	if restoreReplay.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("restore retry not replayed")
+	}
+	check(call("GET", eventPath, "", ""), 200)
+	restored, e := q.GetEventByID(ctx, event.ID)
+	if e != nil || restored.Status != db.EventStatusCancelled || restored.CurrentRsvpCount != 0 {
+		t.Fatal("restore republished or changed cancelled reservations")
+	}
+	if ticketAfter, e := q.GetWorkflowTicket(ctx, ticket.ID); e != nil || ticketAfter.ID != ticket.ID {
+		t.Fatal("Bin discarded ticket history")
+	}
+	if regAfter, e := q.GetWorkflowRSVP(ctx, reg.Data.ID); e != nil || regAfter.Status != db.RegistrationStatusCancelled {
+		t.Fatal("Bin discarded or reactivated booking")
+	}
+	var binAudits int
+	if e = pool.QueryRow(ctx, "SELECT count(*) FROM audit_log WHERE event_id=$1 AND action IN ('admin.event.deleted','admin.event.restored') AND actor_user_id=$2", event.ID, actor.ID).Scan(&binAudits); e != nil || binAudits != 2 {
+		t.Fatal("Bin audits missing or repeated")
+	}
+	// Historical published records can be hidden without cancelling history;
+	// recovery must deliberately leave them unpublished.
+	if _, e = pool.Exec(ctx, "UPDATE events SET status='published',starts_at=now()-interval '2 hours',ends_at=now()-interval '1 hour' WHERE id=$1", event.ID); e != nil {
+		t.Fatal(e)
+	}
+	check(call("POST", binPath, fmt.Sprintf(`{"revision":%d}`, restored.Revision), "admin-past-bin-key"), 200)
+	binned, e = q.LockAdminBinEvent(ctx, event.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	check(call("POST", restorePath, fmt.Sprintf(`{"revision":%d}`, binned.Revision), "admin-past-restore-key"), 200)
+	restored, e = q.GetEventByID(ctx, event.ID)
+	if e != nil || restored.Status != db.EventStatusUnpublished {
+		t.Fatal("historical restore silently republished event")
 	}
 	if _, err = pool.Exec(ctx, "UPDATE platform_administrators SET revoked_at=clock_timestamp() WHERE user_id=$1", actor.ID); err != nil {
 		t.Fatal(err)

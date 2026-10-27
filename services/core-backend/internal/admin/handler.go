@@ -30,6 +30,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/analytics", h.Analytics)
 	r.Get("/analytics/live", h.LiveAnalytics)
 	r.Get("/events", h.AdminListEvents)
+	r.Get("/bin", h.EventBin)
 	r.Get("/spaces", h.AdminListSpaces)
 	r.Get("/registrations", h.AdminListRegistrations)
 	r.Get("/tickets", h.AdminListTickets)

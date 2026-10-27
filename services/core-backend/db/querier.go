@@ -27,6 +27,7 @@ type Querier interface {
 	AdminEventTickets(ctx context.Context, arg AdminEventTicketsParams) ([]AdminEventTicketsRow, error)
 	AdminListAudit(ctx context.Context, arg AdminListAuditParams) ([]AdminListAuditRow, error)
 	AdminListCities(ctx context.Context, arg AdminListCitiesParams) ([]AdminListCitiesRow, error)
+	AdminListEventBin(ctx context.Context, arg AdminListEventBinParams) ([]AdminListEventBinRow, error)
 	AdminListEvents(ctx context.Context, arg AdminListEventsParams) ([]AdminListEventsRow, error)
 	AdminListModeration(ctx context.Context, arg AdminListModerationParams) ([]AdminListModerationRow, error)
 	AdminListRegistrations(ctx context.Context, arg AdminListRegistrationsParams) ([]AdminListRegistrationsRow, error)
@@ -138,6 +139,7 @@ type Querier interface {
 	ListWorkspaceSpaces(ctx context.Context, arg ListWorkspaceSpacesParams) ([]ListWorkspaceSpacesRow, error)
 	LiveAnalyticsWindow(ctx context.Context, windowSeconds float64) (LiveAnalyticsWindowRow, error)
 	LiveRegistrationActivity(ctx context.Context, arg LiveRegistrationActivityParams) ([]LiveRegistrationActivityRow, error)
+	LockAdminBinEvent(ctx context.Context, id pgtype.UUID) (LockAdminBinEventRow, error)
 	LockCity(ctx context.Context, reference int64) (CityHubs, error)
 	LockDiscoverPromotionSettings(ctx context.Context) (LockDiscoverPromotionSettingsRow, error)
 	LockEventAccessForActor(ctx context.Context, arg LockEventAccessForActorParams) ([]pgtype.UUID, error)
@@ -154,6 +156,7 @@ type Querier interface {
 	ManagedGuestDetail(ctx context.Context, arg ManagedGuestDetailParams) (ManagedGuestDetailRow, error)
 	MarkOutboxFailed(ctx context.Context, arg MarkOutboxFailedParams) error
 	MarkOutboxSent(ctx context.Context, id pgtype.UUID) error
+	MoveAdminEventToBin(ctx context.Context, id pgtype.UUID) (MoveAdminEventToBinRow, error)
 	NextDiscoverPromotionChange(ctx context.Context, at pgtype.Timestamptz) (pgtype.Timestamptz, error)
 	PromotionEventChoices(ctx context.Context, arg PromotionEventChoicesParams) ([]PromotionEventChoicesRow, error)
 	ReadCheckInAttendee(ctx context.Context, arg ReadCheckInAttendeeParams) (ReadCheckInAttendeeRow, error)
@@ -177,6 +180,7 @@ type Querier interface {
 	RegistrationWaitlistPosition(ctx context.Context, id pgtype.UUID) (int64, error)
 	RemoveCityEvent(ctx context.Context, arg RemoveCityEventParams) error
 	ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPParams) (Rsvps, error)
+	RestoreAdminBinEvent(ctx context.Context, id pgtype.UUID) (RestoreAdminBinEventRow, error)
 	RevokeEventAccess(ctx context.Context, arg RevokeEventAccessParams) (EventAccess, error)
 	RevokeEventTickets(ctx context.Context, eventID pgtype.UUID) error
 	RevokeSpaceAccess(ctx context.Context, arg RevokeSpaceAccessParams) (SpaceAccess, error)

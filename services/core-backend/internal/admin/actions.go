@@ -26,6 +26,8 @@ func (h *Handler) mountActions(r chi.Router) {
 	r.Group(func(writes chi.Router) {
 		writes.Use(auth.RequireAdminMutation)
 		writes.Put("/events/{id}", h.EditEvent)
+		writes.Post("/events/{id}/bin", h.BinEvent)
+		writes.Post("/bin/events/{id}/restore", h.RestoreEvent)
 		writes.Post("/events/{id}/status", h.forEvent(eventsHandler.TransitionEvent))
 		writes.Put("/spaces/{id}", h.forSpace(spacesHandler.Update))
 		writes.Post("/spaces/{id}/status", h.forSpace(spacesHandler.Status))
