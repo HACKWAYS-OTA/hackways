@@ -46,8 +46,13 @@ comparison period, historical backfill or inferred conversion rate.
 vhost. It accepts only the production website origin (localhost in development),
 JSON up to 8 KiB, affirmative consent, random browser/visit UUIDs and one to ten
 events. Allowed events are `page_view`, `registration_step` and
-`registration_complete`. Public routes are allowlisted; private/auth routes, query
-strings, fragments, unknown fields, answers and account IDs are rejected.
+`registration_complete`. All current non-admin pages are covered: public marketing,
+programs (including ambassadors), cities, discovery, account/authentication,
+registration and managed Space/event workflows. Redirect-only pages do not emit a
+view before the destination renders. The collector accepts only the reviewed route
+catalog, not arbitrary URL paths. Query strings, fragments, unknown fields,
+answers and account identifiers are rejected. Admin-console origins and routes
+remain excluded.
 
 Events contain a random idempotency UUID, approved path, viewport category,
 referring hostname and optional registration step. The service stores purpose-
@@ -56,7 +61,24 @@ It does not store raw browser identifiers, account identity, IP addresses or ful
 referrers in analytics tables. Existing infrastructure logs remain separate.
 Public ingestion is untrusted and best effort; figures do not prove human visits.
 
-The shared `@hackways/ui/analytics` component is mounted by public/core web.
+The shared `@hackways/ui/analytics` component is mounted by public/core/organizer
+web, never admin-web. Organizer paths are prefixed with `/manage`. Private dynamic
+routes are normalized before collection: `/my-events/:registration`,
+`/spaces/:space/settings`, `/programs/:program/application`,
+`/programs/:program/apply/:step`, `/manage/events/:event` and its approved workflow
+suffixes, and `/manage/spaces/:space` (including `/team`). Public entity slugs
+remain available for public page comparisons. Private IDs, ticket codes,
+application steps/answers and authentication tokens never enter stored routes.
+Go independently validates this catalog and rejects raw private identifiers.
+When adding a new page, update the shared normalization and Go route catalog
+together. Navigation between different resources counts a new page view even
+when both normalize to the same private template; window focus does not.
+
+Before this coverage change, the allowlist excluded programs, cities and private
+workflows. Those missing historical views cannot be reconstructed as exact
+consented analytics and are not backfilled. Reports continue to represent only
+recorded consented visits; blockers, declined consent and collection limits can
+make them lower than actual traffic.
 Collection and browser identifiers start only after Allow analytics. Footer Cookie
 preferences can switch to Essential only, stop queued collection and clear the
 analytics identifiers without touching sign-in. Choices last one year, browser

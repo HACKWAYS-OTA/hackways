@@ -7,7 +7,23 @@ const visitorCookie = 'hackways_analytics_visitor';
 const sessionCookie = 'hackways_analytics_session';
 const productEvent = 'hackways-analytics-event';
 const preferencesEvent = 'hackways-cookie-preferences';
-const publicPath = /^\/(?:discover|about|privacy|help|terms|spaces(?:\/[a-zA-Z0-9-]{1,180})?|events\/[a-zA-Z0-9-]{1,180}(?:\/register)?)?\/?$/;
+const staticPaths = new Set(['/', '/discover', '/events', '/spaces', '/spaces/new', '/cities', '/programs', '/create', '/my-events', '/account', '/login', '/not-allowed', '/about', '/contact', '/acceptable-use', '/cookies', '/terms', '/privacy', '/help', '/organizers', '/ambassadors', '/mcp', '/mcp/setup', '/connect/action', '/connect/authorize', '/connect/connections', '/manage', '/manage/spaces', '/manage/onboarding', '/manage/create', '/manage/login']);
+const authPath = /^\/(?:manage\/)?auth\/(?:forgot-password|reset-password|verify-email|google\/callback|unsubscribe)$/;
+const publicEntityPath = /^\/(?:events\/[a-zA-Z0-9-]{1,180}(?:\/register)?|(?:spaces|cities|programs|help)\/[a-zA-Z0-9-]{1,180})$/;
+
+/** Canonical page names only. Private identifiers and query strings never enter a visit. */
+function analyticsRoute(path: string): string | null {
+  if (!path.startsWith('/') || /[?#%\\]/.test(path)) return null;
+  const route = path.length > 1 ? path.replace(/\/$/, '') : path;
+  if (staticPaths.has(route) || authPath.test(route)) return route;
+  if (/^\/my-events\/[^/]+$/.test(route)) return '/my-events/:registration';
+  if (/^\/spaces\/[^/]+\/settings$/.test(route)) return '/spaces/:space/settings';
+  if (/^\/programs\/[^/]+\/application$/.test(route)) return '/programs/:program/application';
+  if (/^\/programs\/[^/]+\/apply\/[^/]+$/.test(route)) return '/programs/:program/apply/:step';
+  const workspace = route.match(/^\/manage\/(events|spaces)\/[^/]+(?:\/(team|settings|registration(?:\/questions)?|check-in|invitations|appearance|edit|guests|activity))?$/);
+  if (workspace && (workspace[1] === 'events' || !workspace[2] || workspace[2] === 'team')) return `/manage/${workspace[1]}/:${workspace[1] === 'events' ? 'event' : 'space'}${workspace[2] ? `/${workspace[2]}` : ''}`;
+  return publicEntityPath.test(route) ? route : null;
+}
 type ProductEvent = 'registration_step' | 'registration_complete';
 type Visit = { id: string; event_name: 'page_view' | ProductEvent; route: string; device: 'mobile' | 'tablet' | 'desktop'; referrer_host: string; step?: number };
 
@@ -41,14 +57,16 @@ export function CookiePreferencesButton({ label = 'Cookie preferences' }: { labe
 
 export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }: { path: string; endpoint?: string }) {
   const [choice, setChoice] = useState<string | null>(null), [open, setOpen] = useState(false), [error, setError] = useState('');
-  const currentPath = useRef(path), lastPage = useRef('');
+  const route = analyticsRoute(path);
+  const currentPath = useRef(route), currentPage = useRef(path), lastPage = useRef('');
   const queueVisit = useRef<(name: Visit['event_name'], step?: number) => void>(() => undefined);
   const stopTracking = useRef<() => void>(() => undefined), heading = useRef<HTMLHeadingElement>(null);
-  currentPath.current = path;
+  currentPath.current = route;
+  currentPage.current = path;
 
   useEffect(() => {
     const stored = cookie(consentCookie); setChoice(stored);
-    if (!stored && publicPath.test(currentPath.current)) setOpen(true);
+    if (!stored && currentPath.current) setOpen(true);
     const show = () => { setOpen(true); requestAnimationFrame(() => heading.current?.focus({ preventScroll: true })); };
     window.addEventListener(preferencesEvent, show);
     return () => window.removeEventListener(preferencesEvent, show);
@@ -82,7 +100,7 @@ export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }
     }
     const schedule = (name: Visit['event_name'], step?: number) => {
       const route = currentPath.current;
-      if (cookie(consentCookie) !== 'yes' || !publicPath.test(route) || !window.crypto.randomUUID || Date.now() < pausedUntil) return;
+      if (cookie(consentCookie) !== 'yes' || !route || !window.crypto.randomUUID || Date.now() < pausedUntil) return;
       if (name !== 'page_view' && !route.endsWith('/register')) return;
       const device = window.matchMedia('(max-width:640px)').matches ? 'mobile' : window.matchMedia('(max-width:1024px)').matches ? 'tablet' : 'desktop';
       queue.push({ id: window.crypto.randomUUID(), event_name: name, route, device, referrer_host: referrer, ...(name === 'registration_step' && step !== undefined ? { step } : {}) });
@@ -101,7 +119,7 @@ export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }
     queueVisit.current = schedule;
     stopTracking.current = () => { queue = []; request?.abort(); if (timer) clearTimeout(timer); };
     window.addEventListener(productEvent, custom); document.addEventListener('visibilitychange', hide);
-    if (publicPath.test(currentPath.current) && lastPage.current !== currentPath.current) { lastPage.current = currentPath.current; schedule('page_view'); }
+    if (currentPath.current && lastPage.current !== currentPage.current) { lastPage.current = currentPage.current; schedule('page_view'); }
     return () => {
       window.removeEventListener(productEvent, custom); document.removeEventListener('visibilitychange', hide);
       if (timer) clearTimeout(timer); timer = undefined; void flush(); queueVisit.current = () => undefined;
@@ -109,9 +127,9 @@ export function AnalyticsTracker({ path, endpoint = '/api/v1/analytics/events' }
   }, [choice, endpoint]);
 
   useEffect(() => {
-    if (choice === 'yes' && publicPath.test(path) && lastPage.current !== path) { lastPage.current = path; queueVisit.current('page_view'); }
-    if (choice === '' && publicPath.test(path)) setOpen(true);
-  }, [path, choice]);
+    if (choice === 'yes' && route && lastPage.current !== path) { lastPage.current = path; queueVisit.current('page_view'); }
+    if (choice === '' && route) setOpen(true);
+  }, [path, route, choice]);
 
   function choose(analytics: boolean) {
     const next = analytics ? 'yes' : 'no'; saveCookie(consentCookie, next, 365 * 86400);

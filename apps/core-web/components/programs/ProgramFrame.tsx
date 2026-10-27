@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { site } from '@/lib/site';
+import { CookiePreferencesButton } from '@hackways/ui/analytics';
 export function ProgramFrame({ children, title, section, slug, directory = false }: { children: ReactNode; title: string; section: string; slug?: string; directory?: boolean }) {
   const ambassador = slug === 'ambassadors';
   return <div id="program-surface" data-program={slug} data-view={directory ? 'directory' : undefined}>
@@ -22,6 +23,6 @@ export function ProgramFrame({ children, title, section, slug, directory = false
       </div>
       {children}
     </main>
-    <footer className="program-footer"><span>Hackways</span><div><a href={`${site.public}/privacy`}>Privacy</a><a href={`${site.public}/terms`}>Terms</a><a href={`${site.public}/ambassadors`}>About the program</a></div></footer>
+    <footer className="program-footer"><span>Hackways</span><div><CookiePreferencesButton /><a href={`${site.public}/privacy`}>Privacy</a><a href={`${site.public}/terms`}>Terms</a><a href={`${site.public}/ambassadors`}>About the program</a></div></footer>
   </div>;
 }

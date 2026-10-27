@@ -72,13 +72,15 @@ export function LiveAnalytics({ initial, initialWindow, today, from }: { initial
   const { core, global } = reports;
   return <>
     <header className="analytics-heading analytics-live-heading"><h1>Analytics</h1><div className="analytics-live-controls">
+      <button type="button" className="app-button app-button-outline app-button-sm" disabled={loading} onClick={() => setRetry(value => value + 1)}>{loading ? 'Refreshing...' : 'Refresh'}</button>
+    </div></header>
+    <div className="analytics-toolbar">
       <AnalyticsRangeControl value={window} from={from} to={today} today={today} onIntervalChange={value => {
         if (value === window) return;
         setReports({ core: null, global: null }); setLoading(true); setWindow(value);
         const url = new URL(location.href); url.search = new URLSearchParams({ window: value }).toString(); history.replaceState(history.state, '', url);
       }} />
-      <button type="button" className="app-button app-button-outline app-button-sm" disabled={loading} onClick={() => setRetry(value => value + 1)}>{loading ? 'Refreshing...' : 'Refresh'}</button>
-    </div></header>
+    </div>
     {!loading && !core && <p className="journey-error" role="alert">Event analytics could not be loaded. Refresh to retry.</p>}
     {!loading && !global && <p className="journey-error" role="alert">Visitor and account analytics could not be loaded. Refresh to retry.</p>}
     {loading && !core && !global && <div className="admin-result-state admin-loading" role="status" aria-label="Loading analytics"><span className="wordmark admin-loading-wordmark" aria-hidden="true">hackways.</span><span className="admin-loading-line" aria-hidden="true" /></div>}

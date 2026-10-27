@@ -71,9 +71,11 @@ Run affected app checks as well when shared behavior changes. Type and lint chec
 ## Optional analytics
 
 `@hackways/ui/analytics` exports the shared consent panel, footer preferences button
-and bounded first-party collector used by public/core web. Collection starts only
+and bounded first-party collector used by public/core/organizer web, never admin. Collection starts only
 after visitor consent. It accepts named registration events without form answers
-or account identity; see [the service contract](../../docs/backend/ANALYTICS.md).
+or account identity. All current non-admin pages are covered; private resource
+paths become route templates before collection, independently validated by Go.
+Update both catalogs when adding pages; see [the service contract](../../docs/backend/ANALYTICS.md).
 
 The cookie-choice heading inherits the consuming app's body font at 18px/500,
 with normal letter/word spacing and zero text stroke. Keep these overrides so

@@ -23,7 +23,7 @@ export default function CookiesPage() {
     </Section>
     <Section id="analytics" title="Optional first-party analytics cookies">
       <dl className="info-definitions"><div><dt>Choice</dt><dd><code>hackways_analytics_consent</code> remembers your yes or no choice for up to one year.</dd></div><div><dt>Visitor</dt><dd><code>hackways_analytics_visitor</code> is a random browser identifier, refreshed for up to ninety days while analytics is allowed.</dd></div><div><dt>Visit</dt><dd><code>hackways_analytics_session</code> groups activity for up to thirty minutes of inactivity.</dd></div></dl>
-      <p>Collection covers approved public page paths, viewport category, referring hostname and registration progress. It excludes form answers, account identifiers, query strings and full referring URLs. Browser identifiers are hashed by the service before storage. Raw analytics events are removed after ninety days by a bounded cleanup job.</p>
+      <p>Collection covers approved public and managed-workflow page names (with private resource identifiers removed), viewport category, referring hostname and registration progress. It excludes form answers, account identifiers, query strings and full referring URLs. Browser identifiers are hashed by the service before storage. Raw analytics events are removed after ninety days by a bounded cleanup job.</p>
       <p>Changing this choice affects this browser. Previously collected events are not automatically deleted when you decline future collection. Browser restrictions or blocked requests may prevent collection, so analytics is not a complete visitor count.</p>
     </Section>
     <Section id="controls" title="Manage cookies in your browser">

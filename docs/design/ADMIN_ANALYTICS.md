@@ -24,9 +24,11 @@ admin sidebar remains the source of truth for this separate console surface.
 ## Structure and controls
 
 `/analytics` opens live analytics, defaulting to the last five minutes. The heading
-contains one shared `@hackways/ui/select` control with the accessible name
+row pairs Analytics with Refresh in live mode or the available CSV exports in
+historical mode. A separate toolbar below contains one shared
+`@hackways/ui/select` control with the accessible name
 "Time range": `5 min`, `1 hr`, `24 hr`, `Last 7 days`, `Last 30 days`,
-`Last 90 days` and `Custom dates`. Refresh follows the control in live mode.
+`Last 90 days` and `Custom dates`.
 Selecting a live interval replaces the `window` query parameter without a page
 reload; selecting a day preset navigates to its inclusive UTC `from`/`to` range.
 Custom dates reveals the date inputs and Apply while preserving the current
@@ -76,10 +78,13 @@ and teal (`#4b8581`) with text legends and value tables.
 Main analytic groups use two equal columns; historical breakdowns use three.
 Both collapse to one column at widths up to 1150px. Summary values use an
 auto-fitting grid with a 150px minimum; up to 540px they use two equal columns.
-Headers and their controls wrap. Date filters become two columns up to
-1150px; up to 540px the range control fills the available width and its date
-filters stack in one column, with Apply full width.
-Panel padding decreases from 26px to 18px at that breakpoint. Table containers
+The heading/action row and the separate range toolbar wrap independently. The
+toolbar has 32px of space below it; its range select is 200px wide and aligns
+with the date inputs and Apply along their lower edge. These controls use 44px
+heights, with date columns 170px wide on larger screens. Up to 720px, the select
+fills the row and dates/Apply occupy the next full-width row. Up to 540px, dates
+remain side by side while Apply spans the row; up to 380px, dates also stack.
+Panel padding decreases from 26px to 18px at 540px. Table containers
 allow overflow and cap their height at 420px. Long breakdown labels can wrap.
 The incumbent shell adapts separately at 1000px and 700px.
 

@@ -158,6 +158,29 @@ func TestAdminRecordActions(t *testing.T) {
 		if got := record(payload, "https://untrusted.example").Code; got != 403 {
 			t.Fatalf("foreign collection origin %d", got)
 		}
+		if got := record(payload, "https://admin.hackways.in").Code; got != 403 {
+			t.Fatalf("admin console collection origin %d", got)
+		}
+		for _, route := range []string{"/admin", "/analytics", "/manage/events/private-event-id/guests", "/my-events/private-ticket-code", "/programs/ambassadors/application?email=private", "/api/v1/auth/me", "/account#private"} {
+			if got := record(strings.Replace(payload, "/discover", route, 1), "https://hackways.in").Code; got != 400 {
+				t.Fatalf("private/admin analytics route accepted: %s %d", route, got)
+			}
+		}
+		for _, route := range []string{"/programs/ambassadors", "/cities/hyderabad", "/contact", "/auth/reset-password", "/my-events/:registration", "/spaces/:space/settings", "/programs/:program/apply/:step", "/manage/events/:event/guests", "/manage/spaces/:space/team"} {
+			var eventID pgtype.UUID
+			if e := pool.QueryRow(ctx, "SELECT gen_random_uuid()").Scan(&eventID); e != nil {
+				t.Fatal(e)
+			}
+			defer func() { _, _ = pool.Exec(ctx, "DELETE FROM analytics_events WHERE id=$1", eventID) }()
+			page := strings.Replace(strings.Replace(payload, `"id":`+fmt.Sprintf("%q", uuidText(actor.ID)), `"id":`+fmt.Sprintf("%q", uuidText(eventID)), 1), "/discover", route, 1)
+			if rec := record(page, "https://hackways.in"); rec.Code != 204 {
+				t.Fatalf("page collection %s: %d %s", route, rec.Code, rec.Body.String())
+			}
+			var stored string
+			if e := pool.QueryRow(ctx, "SELECT route FROM analytics_events WHERE id=$1", eventID).Scan(&stored); e != nil || stored != route {
+				t.Fatalf("page was not persisted canonically: %s %v", stored, e)
+			}
+		}
 		for i := 0; i < 2; i++ {
 			if rec := record(payload, "http://localhost:3101"); rec.Code != 204 {
 				t.Fatalf("collection %d %s", rec.Code, rec.Body.String())

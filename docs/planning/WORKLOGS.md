@@ -6,11 +6,18 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
-## 2026-10-27 - Reference-led City composition and consent typography (candidate)
+## 2026-10-27 - Non-admin page analytics coverage and filter layout (candidate)
+
+- Traced missing ambassador views to both frontend and Go route allowlists. Expanded collection to every current non-admin public/core/organizer page; added the tracker to managed workflow chrome. Kept consent, bounded ingestion, deduplication and real PostgreSQL reporting. Private resource paths normalize to templates before transmission; Go rejects raw private identifiers, query strings and admin routes/origins. Historical missing visits cannot be recovered and are not fabricated.
+- Separated analytics heading/export actions from the range toolbar. Presets, UTC dates and Apply align with44px controls and responsive wrapping. Live refresh retains its previous report behavior and global wordmark loading.
+- Extended the existing mandatory PostgreSQL collection regression with real program/city/auth/private-template persistence and admin/private-path rejection. Local global Go full isolated PostgreSQL suite and vet passed; all frontend/shared type/lint, source audit,65-page catalog parity and source-only detector passed. Finish review identified missing preference reopening and notice scope, both fixed using the shared control and accurate notice copy. Hosted race checks/image publication and activation pending; no production analytics fixture events or browser checks.
+
+
+## 2026-10-27 - Reference-led City composition and consent typography (verified release)
 
 - Responded to the next supplied City screenshot: removed the independent dark navbar layer and replaced the copy-sized dark blur with a hero-wide progressive photo effect at a lighter brightness. Set a narrower1000px composition,520px text measure and56px title; retained photo colors and clear right side, fixed/solid scroll navbar and existing content/actions. Saved1000x563 image is unchanged; no invented resolution/detail claim.
 - Fixed cramped Your cookie choices typography in shared UI: inherited body face,500 weight, normal letter/word spacing and zero display text stroke. Consent behavior and preference persistence are unchanged. All four frontends must publish this shared CSS.
-- Source-only finish review found no P1/P2; scoped design docs updated. User excludes browser checks. Checks/publication/activation for this visual follow-up remain pending.
+- Source-only finish review found no P1/P2; scoped design docs updated. User excludes browser checks. Hosted run40518225496 passed all mandatory checks and published four immutable frontend images for cbcd36d. Verified fresh encrypted database/config backups and restore catalog; activated all four frontends with schema30 clean, unchanged Go containers/environment and all six services ready. HTTP200 verified for Hyderabad, Cookies and managed sign-in; served City photo and shared consent CSS confirmed. No rendered claim.
 
 ## 2026-10-27 - Account/browser restriction production verification
 

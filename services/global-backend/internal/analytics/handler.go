@@ -47,7 +47,9 @@ type event struct {
 	Step         *int16 `json:"step,omitempty"`
 }
 
-var publicRoute = regexp.MustCompile(`^/(?:discover|about|privacy|help|terms|spaces(?:/[a-zA-Z0-9-]{1,180})?|events/[a-zA-Z0-9-]{1,180}(?:/register)?)?/?$`)
+// Only published entity slugs and canonical private route templates are accepted.
+// Never accept arbitrary paths, account IDs, registration codes or query strings.
+var pageRoute = regexp.MustCompile(`^/(?:discover|events|spaces(?:/new)?|cities|programs|create|my-events|account|login|not-allowed|about|contact|acceptable-use|cookies|terms|privacy|help|organizers|ambassadors|mcp(?:/setup)?|connect/(?:action|authorize|connections)|(?:manage/)?auth/(?:forgot-password|reset-password|verify-email|google/callback|unsubscribe)|events/[a-zA-Z0-9-]{1,180}(?:/register)?|(?:spaces|cities|programs|help)/[a-zA-Z0-9-]{1,180}|my-events/:registration|spaces/:space/settings|programs/:program/(?:application|apply/:step)|manage(?:/(?:spaces|onboarding|create|login|spaces/:space(?:/team)?|events/:event(?:/(?:team|settings|registration(?:/questions)?|check-in|invitations|appearance|edit|guests|activity))?))?)?$`)
 var domain = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$`)
 
 func validID(raw string) bool {
@@ -56,7 +58,7 @@ func validID(raw string) bool {
 }
 
 func validEvent(value *event) bool {
-	if !validID(value.ID) || len(value.Route) > 240 || !publicRoute.MatchString(value.Route) {
+	if !validID(value.ID) || len(value.Route) > 240 || !pageRoute.MatchString(value.Route) {
 		return false
 	}
 	switch value.Name {
