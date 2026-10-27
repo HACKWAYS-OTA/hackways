@@ -12,7 +12,7 @@
 .hw-notice-markdown a,.hw-notice-markdown button { text-decoration:underline; text-underline-offset:4px; color:inherit; }
 .hw-notice-markdown button { border:0; background:transparent; font:inherit; padding:0; cursor:pointer; }
 .hw-notice-markdown a:focus-visible,.hw-notice-markdown button:focus-visible,.hw-notice-table:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
-.hw-notice-markdown img { display:block; width:auto; max-width:100%; height:auto; border-radius:12px; margin-block:1.5em; }
+.hw-notice-markdown img { display:block; max-width:100%; height:auto; border-radius:12px; margin-block:1.5em; }
 .hw-notice-markdown blockquote { padding:16px 22px; background:var(--soft,#f7f4fa); border-radius:12px; }
 .hw-notice-markdown blockquote > :last-child { margin-bottom:0; }
 .hw-notice-markdown pre { overflow-x:auto; padding:20px; border-radius:12px; background:var(--soft,#f7f4fa); font-size:.875em; }

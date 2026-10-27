@@ -1693,3 +1693,8 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   Source review recovery/compatibility findings were fixed and confirmed resolved;
   source audit and Impeccable detector passed. No browser/visual validation claimed.
   Hosted PostgreSQL16/race checks, images and candidate activation pending.
+
+- Pre-release source follow-up restores shared document typography/list styles in
+  the admin canvas and preserves authored image widths in public/editor rendering;
+  removed unused textarea-composer CSS. Dependency lockfile is committed with the
+  editor packages; earlier publication attempts were superseded before activation.

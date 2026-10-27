@@ -14,6 +14,7 @@ import type { NoticeDocumentNode, NoticeImage } from '@hackways/ui/document';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { TextBoldIcon, TextItalicIcon, TextUnderlineIcon, TextStrikethroughIcon, LeftToRightListBulletIcon, LeftToRightListNumberIcon, Link01Icon, QuoteUpIcon, SourceCodeIcon, Table01Icon, ImageAdd01Icon, Undo02Icon, Redo02Icon, Delete02Icon } from '@hugeicons/core-free-icons';
 import { AdminPending } from './AdminPending';
+import '@hackways/ui/markdown.css';
 const fonts=['Google Sans Flex','Arial','Georgia','Times New Roman','Courier New','Verdana'].map(value=>({value,label:value==='Google Sans Flex'?'Hackways Sans':value}));
 const sizes=[10,12,14,16,18,20,24,28,32,40,48,64,72].map(value=>({value:`${value}px`,label:String(value)}));
 const blocks=[{value:'paragraph',label:'Normal text'},{value:'1',label:'Heading 1'},{value:'2',label:'Heading 2'},{value:'3',label:'Heading 3'}];

@@ -22,24 +22,6 @@
 .utility-editor-fields { display:contents; border:0; padding:0; margin:0; min-width:0; }
 .utility-body { line-height:1.7; resize:vertical; }
 .utility-keyword-note { max-width:75ch; margin-bottom:24px; color:var(--muted); font-size:14px; }
-.notice-composer { border:1px solid var(--line); border-radius:12px; overflow:hidden; }
-.notice-composer-heading { display:flex; align-items:center; flex-wrap:wrap; gap:16px; justify-content:space-between; padding:18px 20px; }
-.notice-composer-heading h2 { font-size:18px; }
-.notice-composer-heading .hw-radio-group { gap:12px; font-size:12px; }
-.notice-format-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding:8px 12px; background:var(--soft); }
-.notice-format-toolbar button { min-height:40px; padding:8px 10px; border:0; border-radius:6px; background:transparent; font:inherit; font-size:12px; cursor:pointer; }
-.notice-format-toolbar button:hover { background:var(--paper,#fff); }
-.notice-format-toolbar button:disabled { opacity:.45; cursor:default; }
-.notice-writing-surface { display:grid; grid-template-columns:minmax(0,1fr); min-height:480px; }
-.notice-writing-split { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.notice-markdown-source { width:100%; min-width:0; min-height:480px; resize:vertical; border:0; padding:24px; background:transparent; color:var(--ink); font:14px/1.8 ui-monospace,monospace; }
-.notice-markdown-source:focus-visible { outline:2px solid var(--ink); outline-offset:-3px; }
-.notice-markdown-preview { padding:24px; min-width:0; font-size:15px; }
-.notice-writing-split .notice-markdown-preview { border-left:1px solid var(--line); }
-.notice-editor-help { padding:14px 20px; font-size:12px; color:var(--muted); }
-.notice-image-insert { display:grid; gap:14px; padding:20px; background:var(--soft); }
-.notice-image-insert > div { display:flex; flex-wrap:wrap; gap:12px; }
-@media(max-width:720px){.notice-writing-split{grid-template-columns:minmax(0,1fr)}.notice-writing-split .notice-markdown-preview{border-left:0;border-top:1px solid var(--line)}.notice-markdown-source,.notice-markdown-preview{padding:18px}}
 @media(max-width:1050px){.utility-editor{grid-template-columns:minmax(0,1fr);gap:32px}.utility-editor-settings{position:static;max-width:600px}}
 @media(max-width:540px){.utility-heading h1{font-size:30px}.utility-table th,.utility-table td{padding:14px 10px}}
 
@@ -110,3 +92,5 @@
 .notice-editor-loading { min-height:800px; }.notice-editor-dialog { width:min(540px,calc(100% - 32px)); max-height:calc(100dvh - 48px); overflow:auto; padding:30px; border:1px solid var(--line,#e5dfec); border-radius:16px; background:#fff; color:#222124; }.notice-editor-dialog::backdrop { background:#22172e66; }.notice-editor-dialog h2 { margin:0 0 18px; font-size:25px; font-weight:500; letter-spacing:-.025em; }.notice-editor-dialog>p { color:var(--muted,#6e637b); margin:0 0 24px; line-height:1.65; }.notice-editor-dialog .field { display:flex; flex-direction:column; gap:8px; margin-top:22px; }.notice-editor-dialog .app-input { width:100%; }.notice-dialog-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:12px; margin-top:28px; }.notice-markdown-dialog { width:min(720px,calc(100% - 32px)); }.notice-markdown-dialog textarea { width:100%; padding:16px; background:#faf7fc; border:1px solid #ddd3e6; border-radius:10px; font-family:ui-monospace,monospace; font-size:14px; line-height:1.7; resize:vertical; }.notice-published-links { display:flex; gap:20px; flex-wrap:wrap; margin-top:22px; }.notice-archive-button { background:transparent; border:0; font:inherit; color:#8d2844; margin-right:auto; min-height:44px; cursor:pointer; }
 .notice-studio button:focus-visible,.notice-studio summary:focus-visible,.notice-studio a:focus-visible,.notice-studio input:focus-visible,.notice-studio textarea:focus-visible { outline:2px solid #754b91; outline-offset:3px; }
 @media(max-width:760px) { .notice-studio-header { flex-wrap:wrap; gap:10px; }.notice-document-identity { flex-basis:calc(100% - 64px); }.notice-studio-actions { width:100%; justify-content:flex-end; }.notice-document-canvas { padding:16px 0; }.notice-document-page { min-height:720px; padding:32px 22px; box-shadow:none; }.notice-editor-toolbar { gap:2px; padding:6px; }.notice-editor-dialog { padding:24px; }.notice-font-select { width:130px; } }
+
+@media(min-width:1051px) { .notice-editor-toolbar { position:sticky; top:0; } }
