@@ -591,6 +591,17 @@ type McpRefreshTokens struct {
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 }
 
+type NoticeImages struct {
+	ID        pgtype.UUID        `json:"id"`
+	NoticeID  pgtype.UUID        `json:"notice_id"`
+	BlobKey   string             `json:"blob_key"`
+	Url       string             `json:"url"`
+	Width     int32              `json:"width"`
+	Height    int32              `json:"height"`
+	CreatedBy pgtype.UUID        `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type OauthExchangeTokens struct {
 	TokenHash               string             `json:"token_hash"`
 	UserID                  pgtype.UUID        `json:"user_id"`
@@ -730,7 +741,7 @@ type PromotionContacts struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
-// Browser recognition for notification deduplication only; never an authentication factor.
+// Browser recognition for notification deduplication and moderation association; never an authentication factor or hardware identity.
 type RecognizedDevices struct {
 	UserID         pgtype.UUID        `json:"user_id"`
 	TokenHash      string             `json:"token_hash"`
@@ -805,6 +816,37 @@ type Sessions struct {
 	AdminReference  int64              `json:"admin_reference"`
 	DeviceTokenHash pgtype.Text        `json:"device_token_hash"`
 	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type SiteNotices struct {
+	ID          pgtype.UUID        `json:"id"`
+	Reference   int64              `json:"reference"`
+	Slug        string             `json:"slug"`
+	Title       string             `json:"title"`
+	Summary     string             `json:"summary"`
+	Body        string             `json:"body"`
+	Status      string             `json:"status"`
+	Revision    int64              `json:"revision"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	UpdatedBy   pgtype.UUID        `json:"updated_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SiteSeoPages struct {
+	ID               pgtype.UUID        `json:"id"`
+	Reference        int64              `json:"reference"`
+	Path             string             `json:"path"`
+	Title            string             `json:"title"`
+	Description      string             `json:"description"`
+	CanonicalPath    string             `json:"canonical_path"`
+	Noindex          bool               `json:"noindex"`
+	PlanningKeywords []string           `json:"planning_keywords"`
+	Notes            string             `json:"notes"`
+	Revision         int64              `json:"revision"`
+	UpdatedBy        pgtype.UUID        `json:"updated_by"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
 type SpaceAccess struct {

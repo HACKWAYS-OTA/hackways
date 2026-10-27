@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import Image from 'next/image';
 import Link from 'next/link';
 import { readSpace } from '@/lib/spaces';
@@ -12,6 +13,7 @@ import '@/components/spaces/spaces.css';
 import { entitySocialMetadata } from '@/lib/social-metadata';
 export async function generateMetadata({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
   const space = await readSpace(params.slug);
+  if (space.status !== 'active') return { title:space.name,robots:{index:false,follow:false} };
   const description = space.description.slice(0, 160);
   const path = `/spaces/${encodeURIComponent(space.slug)}`;
   const query = new URLSearchParams();
@@ -19,7 +21,7 @@ export async function generateMetadata({ params, searchParams }: { params: { slu
   const offset = pageOffset(searchParams.offset);
   if (offset) query.set('offset', String(offset));
   const canonical = query.size ? `${path}?${query}` : path;
-  return { ...entitySocialMetadata(path, space.name, description), title: space.name, description, alternates: { canonical } };
+  return managedMetadata(path, { ...entitySocialMetadata(path, space.name, description), title: space.name, description, alternates: { canonical } });
 }
 export default async function SpacePage({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
   const [space, user] = await Promise.all([readSpace(params.slug), currentUser()]);

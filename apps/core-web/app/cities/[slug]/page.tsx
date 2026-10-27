@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import Image from 'next/image';
 import { SectionJumpButton } from '@hackways/ui/section-jump';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import '@/components/cities/cities.css';
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const city = await readCity(params.slug), title = `Events in ${city.name}`, description = city.description.slice(0, 160), path = `/cities/${city.slug}`;
-  return { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path, ...(city.banner_url ? { images: [{ url: city.banner_url, alt: city.name }] } : {}) }, twitter: { card: 'summary_large_image' as const, title, description, ...(city.banner_url ? { images: [city.banner_url] } : {}) } };
+  return managedMetadata(path, { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path, ...(city.banner_url ? { images: [{ url: city.banner_url, alt: city.name }] } : {}) }, twitter: { card: 'summary_large_image' as const, title, description, ...(city.banner_url ? { images: [city.banner_url] } : {}) } });
 }
 export default async function CityPage({ params, searchParams }: { params: { slug: string }; searchParams: { period?: string; offset?: string } }) {
   const city = await readCity(params.slug), past = searchParams.period === 'past', offset = pageOffset(searchParams.offset), path = `/cities/${city.slug}`;

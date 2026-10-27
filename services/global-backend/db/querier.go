@@ -35,6 +35,9 @@ type Querier interface {
 	AdminMessageDetail(ctx context.Context, id pgtype.UUID) (AdminMessageDetailRow, error)
 	AdminMessageQueuedCount(ctx context.Context, messageID pgtype.UUID) (int64, error)
 	AdminMessageRecipientActive(ctx context.Context, outboxID pgtype.UUID) (bool, error)
+	AdminNotice(ctx context.Context, reference int64) (SiteNotices, error)
+	AdminNoticeBySlug(ctx context.Context, slug string) (SiteNotices, error)
+	AdminNotices(ctx context.Context, arg AdminNoticesParams) ([]AdminNoticesRow, error)
 	AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminPersonDetailRow, error)
 	AdminPersonDevices(ctx context.Context, arg AdminPersonDevicesParams) ([]AdminPersonDevicesRow, error)
 	AdminPersonEvents(ctx context.Context, arg AdminPersonEventsParams) ([]AdminPersonEventsRow, error)
@@ -51,6 +54,9 @@ type Querier interface {
 	AdminRevokeAccess(ctx context.Context, userID pgtype.UUID) (int64, error)
 	AdminRevokeAdminSessions(ctx context.Context, userID pgtype.UUID) error
 	AdminRevokePersonSession(ctx context.Context, arg AdminRevokePersonSessionParams) (int64, error)
+	AdminSeoPage(ctx context.Context, path string) (SiteSeoPages, error)
+	AdminSeoPages(ctx context.Context, arg AdminSeoPagesParams) ([]AdminSeoPagesRow, error)
+	AdminSeoSuggestions(ctx context.Context) ([]AdminSeoSuggestionsRow, error)
 	AdminSerializeAction(ctx context.Context, scope string) error
 	AdminSessionCodeActive(ctx context.Context, codeHash string) (bool, error)
 	AdminSessionVerificationDeadline(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error)
@@ -107,11 +113,13 @@ type Querier interface {
 	CountAuthAttempt(ctx context.Context, scopeHash string) (int32, error)
 	CreateAdminSessionChallenge(ctx context.Context, arg CreateAdminSessionChallengeParams) error
 	CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) error
+	CreateNotice(ctx context.Context, arg CreateNoticeParams) (SiteNotices, error)
 	CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error
 	CreateOAuthState(ctx context.Context, arg CreateOAuthStateParams) error
 	CreatePasswordResetChallenge(ctx context.Context, arg CreatePasswordResetChallengeParams) error
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
 	CreateRuntimeRolloutVersion(ctx context.Context, arg CreateRuntimeRolloutVersionParams) (int64, error)
+	CreateSeoPage(ctx context.Context, arg CreateSeoPageParams) (SiteSeoPages, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
 	CreateUnverifiedAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
@@ -161,6 +169,7 @@ type Querier interface {
 	LockMediaSpaceGrant(ctx context.Context, arg LockMediaSpaceGrantParams) ([]pgtype.UUID, error)
 	LockRestrictionDevice(ctx context.Context, tokenHash string) error
 	LockRuntimeRollout(ctx context.Context) (RuntimeRolloutControl, error)
+	LockSiteUtility(ctx context.Context, lockKey string) error
 	LockSpaceMediaResource(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
 	MCPAppendAudit(ctx context.Context, arg MCPAppendAuditParams) error
@@ -240,12 +249,19 @@ type Querier interface {
 	ProgramUpdate(ctx context.Context, arg ProgramUpdateParams) (Programs, error)
 	PromotionContactsList(ctx context.Context, pageOffset int32) ([]PromotionContactsListRow, error)
 	PromotionTestContact(ctx context.Context, arg PromotionTestContactParams) (pgtype.UUID, error)
+	PublicNotice(ctx context.Context, slug string) (PublicNoticeRow, error)
+	PublicNoticeImages(ctx context.Context, slug string) ([]PublicNoticeImagesRow, error)
+	PublicNotices(ctx context.Context, arg PublicNoticesParams) ([]PublicNoticesRow, error)
+	PublicSeoPage(ctx context.Context, path string) (PublicSeoPageRow, error)
+	PublicSeoRules(ctx context.Context, arg PublicSeoRulesParams) ([]PublicSeoRulesRow, error)
 	QueueAdminCustomMessages(ctx context.Context, arg QueueAdminCustomMessagesParams) ([]int64, error)
 	QueueCampaignMessages(ctx context.Context, arg QueueCampaignMessagesParams) (int64, error)
 	ReadAdminSessionChallenge(ctx context.Context, sessionID pgtype.UUID) (AdminSessionChallenges, error)
 	ReadCityUpload(ctx context.Context, id pgtype.UUID) (ReadCityUploadRow, error)
 	ReadConfirmationPass(ctx context.Context, id pgtype.UUID) (ReadConfirmationPassRow, error)
 	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
+	ReadNoticeImage(ctx context.Context, arg ReadNoticeImageParams) (string, error)
+	ReadNoticeUpload(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	ReadOAuthExchangeDevice(ctx context.Context, arg ReadOAuthExchangeDeviceParams) (ReadOAuthExchangeDeviceRow, error)
 	ReadOAuthExchangeUser(ctx context.Context, arg ReadOAuthExchangeUserParams) (pgtype.UUID, error)
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
@@ -257,6 +273,7 @@ type Querier interface {
 	ReadSpaceImageState(ctx context.Context, arg ReadSpaceImageStateParams) (ReadSpaceImageStateRow, error)
 	RecordAnalyticsBatch(ctx context.Context, arg RecordAnalyticsBatchParams) (RecordAnalyticsBatchRow, error)
 	RecordDeviceReviewAssociation(ctx context.Context, arg RecordDeviceReviewAssociationParams) error
+	RecordNoticeImage(ctx context.Context, arg RecordNoticeImageParams) (string, error)
 	// Trusted, already verified server-side issuance; password sign-in uses the
 	// separate unverified-session query before the email challenge.
 	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
@@ -275,7 +292,9 @@ type Querier interface {
 	SetStorageWriteTimeout(ctx context.Context) error
 	UnsubscribePromotion(ctx context.Context, unsubscribeHash string) (int64, error)
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
+	UpdateNotice(ctx context.Context, arg UpdateNoticeParams) (SiteNotices, error)
 	UpdateOwnDisplayName(ctx context.Context, arg UpdateOwnDisplayNameParams) (UpdateOwnDisplayNameRow, error)
+	UpdateSeoPage(ctx context.Context, arg UpdateSeoPageParams) (SiteSeoPages, error)
 	UpdateSessionActivityBatch(ctx context.Context, ids []pgtype.UUID) error
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
 	VerificationCodeActive(ctx context.Context, tokenHash string) (bool, error)

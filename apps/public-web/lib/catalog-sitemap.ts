@@ -1,6 +1,7 @@
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { site } from './site';
+import { seoSitemapRules } from '@hackways/ui/seo';
 
 type Entry = { url: string; lastModified?: string };
 const PAGE_SIZE = 50;
@@ -35,7 +36,7 @@ async function readPage(response: Response): Promise<{ data: unknown[]; has_next
   return { data: parsed.data as unknown[], has_next: more };
 }
 
-async function readFeed(base: string, path: string, signal: AbortSignal): Promise<Entry[]> {
+async function readFeed(base: string, path: string, signal: AbortSignal, publicPath = path): Promise<Entry[]> {
   const entries: Entry[] = [];
   for (let page = 0; page < MAX_PAGES; page++) {
     const url = `${base}/${path}?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`;
@@ -44,7 +45,7 @@ async function readFeed(base: string, path: string, signal: AbortSignal): Promis
     for (const row of result.data) {
       if (!row || typeof row !== 'object' || !('slug' in row) || typeof row.slug !== 'string' || !row.slug) throw new Error('Invalid public catalog slug');
       const modified = 'updated_at' in row && typeof row.updated_at === 'string' && Number.isFinite(Date.parse(row.updated_at)) ? new Date(row.updated_at).toISOString() : undefined;
-      entries.push({ url: `${site.url}/${path}/${encodeURIComponent(row.slug)}`, ...(modified ? { lastModified: modified } : {}) });
+      entries.push({ url: `${site.url}/${publicPath}/${encodeURIComponent(row.slug)}`, ...(modified ? { lastModified: modified } : {}) });
     }
     if (result.has_next === false || (result.has_next === undefined && result.data.length < PAGE_SIZE)) return entries;
   }
@@ -56,9 +57,10 @@ async function readFeed(base: string, path: string, signal: AbortSignal): Promis
 // are cached, so sitemap reads do not put database queries on every request.
 const cachedCatalog = unstable_cache(async (core: string, global: string) => {
   const signal = AbortSignal.timeout(8000);
-  const feeds = await Promise.all([readFeed(core, 'events', signal), readFeed(core, 'spaces', signal), readFeed(core, 'cities', signal), readFeed(global, 'programs', signal)]);
-  return Array.from(new Map(feeds.flat().map(entry => [entry.url, entry])).values());
-}, ['public-catalog-sitemap-v2'], { revalidate: 300 });
+  const [feeds, rules] = await Promise.all([Promise.all([readFeed(core, 'events', signal), readFeed(core, 'spaces', signal), readFeed(core, 'cities', signal), readFeed(global, 'programs', signal), readFeed(global, 'site/notices', signal, 'notice')]), seoSitemapRules()]);
+  const excluded = new Set(rules.filter(rule => rule.noindex || rule.canonical_path && rule.canonical_path !== rule.path).map(rule => rule.path));
+  return Array.from(new Map(feeds.flat().filter(entry => !excluded.has(new URL(entry.url).pathname)).map(entry => [entry.url, entry])).values());
+}, ['public-catalog-sitemap-v3'], { revalidate: 300 });
 
 let pending: Promise<Entry[]> | undefined;
 export async function catalogSitemap(): Promise<Entry[]> {

@@ -87,6 +87,16 @@ func TestAzureBlobSASSigner_CreateUploadIntent(t *testing.T) {
 	}
 
 	// 4. Failure case: Empty filename
+	noticeRequest := req
+	noticeRequest.Category = "notice-images/00000000-0000-4000-8000-000000000001"
+	noticeIntent, noticeError := signer.CreateUploadIntent(noticeRequest)
+	if noticeError != nil {
+		t.Fatal(noticeError)
+	}
+	noticeURL, noticeError := url.Parse(noticeIntent.UploadURL)
+	if noticeError != nil || noticeURL.Query().Get("sp") != "c" || strings.Contains(noticeIntent.PublicURL, "sig=") || !strings.HasPrefix(noticeIntent.BlobKey, noticeRequest.Category+"/") {
+		t.Fatal("notice upload must be scoped, create-only and have a separate unsigned public URL")
+	}
 	_, err = signer.CreateUploadIntent(UploadIntentRequest{
 		Filename: "",
 		MIMEType: "image/webp",

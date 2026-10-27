@@ -20,6 +20,11 @@ The production topology has four independently deployed Next.js applications and
 
 Global Go owns account/browser moderation and sign-in quarantine; both engines enforce database restrictions and retired access. See [the restriction contract](backend/ACCOUNT_DEVICE_RESTRICTIONS.md). Administrator event deletion/recovery retains existing records; see [Bin](backend/ADMIN_BIN.md).
 
+Global Go also owns published notices and reviewed public SEO settings. The
+Utilities console edits real PostgreSQL records; private keyword plans stay out
+of public metadata. Notice Markdown/media is presentation over the existing
+direct Azure flow. See [the notices and SEO contract](backend/NOTICES_SEO.md).
+
 Managed Space/event operation uses persisted role assignments enforced by core Go; global Go independently checks delegated media rights. Ownership remains unchanged and public membership is separate. See [the workspace contract](backend/WORKSPACE.md).
 
 `packages/api-client` and `packages/shared-types` are intended shared contracts. They do not own business logic. TypeScript applications call Go APIs; authorization, persistence, validation, and RSVP invariants remain in Go and PostgreSQL.

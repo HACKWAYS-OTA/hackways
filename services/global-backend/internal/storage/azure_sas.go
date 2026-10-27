@@ -99,7 +99,7 @@ func (s *AzureBlobSASSigner) CreateUploadIntent(req UploadIntentRequest) (*Uploa
 	expiry := now.Add(SASExpiryDuration)
 
 	permissions := "w"
-	if strings.HasPrefix(category, "event-banners/") || strings.HasPrefix(category, "space-logos/") || strings.HasPrefix(category, "space-banners/") || strings.HasPrefix(category, "city-banners/") {
+	if strings.HasPrefix(category, "event-banners/") || strings.HasPrefix(category, "space-logos/") || strings.HasPrefix(category, "space-banners/") || strings.HasPrefix(category, "city-banners/") || strings.HasPrefix(category, "notice-images/") {
 		permissions = "c"
 	}
 	sasToken, err := s.generateBlobSAS(blobKey, start, expiry, permissions)

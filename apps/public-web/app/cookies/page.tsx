@@ -1,10 +1,12 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CookiePreferencesButton } from '@hackways/ui/analytics';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
-export const metadata: Metadata = { ...pageSocialMetadata('cookies'), title: 'Cookies', description: 'The essential session cookies used by Hackways, how long sessions last, and how to manage cookies and sign-in in your browser.', alternates: { canonical: '/cookies' } };
+const pageDefaults: Metadata = { ...pageSocialMetadata('cookies'), title: 'Cookies', description: 'The essential session cookies used by Hackways, how long sessions last, and how to manage cookies and sign-in in your browser.', alternates: { canonical: '/cookies' } };
+export function generateMetadata() { return managedMetadata("/cookies", pageDefaults); }
 export default function CookiesPage() {
   return <Article title="Cookies" intro="What your browser stores when you use Hackways, why account sessions need cookies, and how you can control them." updated="23 October 2026">
     <Section id="preferences" title="Manage cookies"><p>Choose whether this browser allows optional analytics. Essential cookies keep sign-in working.</p><CookiePreferencesButton label="Manage cookies" /></Section>
@@ -40,3 +42,5 @@ export default function CookiesPage() {
     </Section>
   </Article>;
 }
+
+export const revalidate = 30;

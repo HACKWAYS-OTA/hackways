@@ -41,6 +41,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/messaging", h.AdminListMessages)
 	r.Get("/storage", h.AdminListAssets)
 	h.mountCampaigns(r)
+	h.mountUtilities(r)
 	r.Get("/rollouts", h.GetRollouts)
 	r.Post("/rollouts", h.SaveRollouts)
 	r.Get("/{resource}/{id}", h.Detail)

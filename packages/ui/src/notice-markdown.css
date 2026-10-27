@@ -1,0 +1,25 @@
+.hw-notice-markdown { color:inherit; line-height:1.8; overflow-wrap:anywhere; }
+.hw-notice-markdown > :first-child { margin-top:0; }
+.hw-notice-markdown p,.hw-notice-markdown ul,.hw-notice-markdown ol,.hw-notice-markdown blockquote,.hw-notice-markdown pre,.hw-notice-markdown .hw-notice-table { margin:0 0 1.5em; }
+.hw-notice-markdown h2,.hw-notice-markdown h3,.hw-notice-markdown h4 { margin:2em 0 .7em; line-height:1.3; scroll-margin-top:100px; }
+.hw-notice-markdown h2 { font-size:1.65em; }
+.hw-notice-markdown h3 { font-size:1.3em; }
+.hw-notice-markdown h4 { font-size:1.1em; }
+.hw-notice-markdown ul,.hw-notice-markdown ol { padding-inline-start:1.7em; }
+.hw-notice-markdown ul { list-style:disc; }
+.hw-notice-markdown ol { list-style:decimal; }
+.hw-notice-markdown li { margin-block:.35em; }
+.hw-notice-markdown a,.hw-notice-markdown button { text-decoration:underline; text-underline-offset:4px; color:inherit; }
+.hw-notice-markdown button { border:0; background:transparent; font:inherit; padding:0; cursor:pointer; }
+.hw-notice-markdown a:focus-visible,.hw-notice-markdown button:focus-visible,.hw-notice-table:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
+.hw-notice-markdown img { display:block; width:auto; max-width:100%; height:auto; border-radius:12px; margin-block:1.5em; }
+.hw-notice-markdown blockquote { padding:16px 22px; background:var(--soft,#f7f4fa); border-radius:12px; }
+.hw-notice-markdown blockquote > :last-child { margin-bottom:0; }
+.hw-notice-markdown pre { overflow-x:auto; padding:20px; border-radius:12px; background:var(--soft,#f7f4fa); font-size:.875em; }
+.hw-notice-markdown code { font-family:ui-monospace,monospace; font-size:.9em; }
+.hw-notice-table { max-width:100%; overflow-x:auto; }
+.hw-notice-markdown table { width:100%; border-collapse:collapse; font-size:.9em; }
+.hw-notice-markdown th,.hw-notice-markdown td { padding:12px 14px; border-bottom:1px solid var(--line,#ddd); text-align:left; }
+.hw-notice-markdown hr { border:0; height:1px; background:var(--line,#ddd); margin:2em 0; }
+.hw-notice-markdown .contains-task-list { list-style:none; padding-inline-start:0; }
+.hw-notice-markdown .hw-checkbox { vertical-align:middle; margin-inline-end:8px; }

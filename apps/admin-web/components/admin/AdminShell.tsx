@@ -6,10 +6,11 @@ import { getAdminAccess } from '@/lib/admin-access';
 import { SectionJumpButton } from '@hackways/ui/section-jump';
 import { AdminSessionRefresh } from './AdminSessionRefresh';
 
-export async function AdminShell({ active, query = '', status = '', searchKind = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/programs' | '/discover-promotions' | '/rollouts' | '/analytics' | '/cities' | '/bin' | '/restrictions'; searchKind?: string; query?: string; status?: string; children: ReactNode }) {
+export async function AdminShell({ active, query = '', status = '', searchKind = '', children }: { active: '/' | `/${AdminModule}` | '/campaigns' | '/programs' | '/discover-promotions' | '/rollouts' | '/analytics' | '/cities' | '/bin' | '/restrictions' | '/utilities/notice' | '/utilities/seo-manager'; searchKind?: string; query?: string; status?: string; children: ReactNode }) {
   if (await getAdminAccess() !== 'allowed') return null;
-  const currentModule = active === '/campaigns' ? 'messaging' : active === '/restrictions' || active === '/bin' || active === '/cities' || active === '/programs' || active === '/discover-promotions' || active === '/rollouts' || active === '/analytics' || active === '/' ? 'events' : active.slice(1) as AdminModule;
-  const searchLabel = active === '/restrictions' ? 'Search restrictions' : active === '/bin' ? 'Search deleted events' : active === '/cities' ? 'Search cities' : active === '/programs' ? 'Search programs' : active === '/campaigns' ? 'Search campaigns' : `Search ${adminModules[currentModule].label.toLowerCase()}`;
+  const utility = active.startsWith('/utilities/');
+  const currentModule = utility ? 'events' : active === '/campaigns' ? 'messaging' : active === '/restrictions' || active === '/bin' || active === '/cities' || active === '/programs' || active === '/discover-promotions' || active === '/rollouts' || active === '/analytics' || active === '/' ? 'events' : active.slice(1) as AdminModule;
+  const searchLabel = utility ? active === '/utilities/notice' ? 'Search notices' : 'Search SEO pages' : active === '/restrictions' ? 'Search restrictions' : active === '/bin' ? 'Search deleted events' : active === '/cities' ? 'Search cities' : active === '/programs' ? 'Search programs' : active === '/campaigns' ? 'Search campaigns' : `Search ${adminModules[currentModule].label.toLowerCase()}`;
   const snapshotAt = process.env.ADMIN_PREVIEW_SNAPSHOT_AT;
   return <div className="admin-frame">
     <AdminSessionRefresh />
@@ -26,13 +27,14 @@ export async function AdminShell({ active, query = '', status = '', searchKind =
         <a href="/programs" aria-current={active === '/programs' ? 'page' : undefined}><Icon name="people" />Programs</a>
         <a href="/cities" aria-current={active === '/cities' ? 'page' : undefined}><Icon name="spaces" />City Hubs</a>
         <a href="/discover-promotions" aria-current={active === '/discover-promotions' ? 'page' : undefined}><Icon name="events" />Discover promotions</a>
+        <a href="/utilities/notice" aria-current={utility ? 'page' : undefined}><Icon name="storage" />Utilities</a>
         <a href="/rollouts" aria-current={active === '/rollouts' ? 'page' : undefined}><Icon name="audit" />Feature rollouts & versions</a>
       </nav>
       <a href="https://hackways.in" className="admin-public-link">Public site<Icon name="external" size={17} /></a>
     </aside>
     <div className="admin-workspace" tabIndex={0} role="region" aria-label="Dashboard content">
       <header className="admin-topbar">
-        <form action={active === '/restrictions' ? '/restrictions' : active === '/bin' ? '/bin' : active === '/cities' ? '/cities' : active === '/programs' ? '/programs' : active === '/campaigns' ? '/campaigns' : `/${currentModule}`} method="get" role="search" className="admin-search">
+        <form action={utility ? active : active === '/restrictions' ? '/restrictions' : active === '/bin' ? '/bin' : active === '/cities' ? '/cities' : active === '/programs' ? '/programs' : active === '/campaigns' ? '/campaigns' : `/${currentModule}`} method="get" role="search" className="admin-search">
           <Icon name="search" size={22} />
           <label className="sr-only" htmlFor="admin-search">{searchLabel}</label>
           <input id="admin-search" name="q" type="search" maxLength={200} defaultValue={query} placeholder={searchLabel} />

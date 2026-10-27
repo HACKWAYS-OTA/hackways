@@ -19,6 +19,8 @@ import (
 	"github.com/hackways/global-backend/internal/auth"
 	"github.com/hackways/global-backend/internal/notifications"
 	"github.com/hackways/global-backend/internal/platform"
+	"github.com/hackways/global-backend/internal/sitecontent"
+	"github.com/hackways/global-backend/internal/storage"
 	"github.com/hackways/global-backend/internal/testsupport"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -203,6 +205,186 @@ func TestAdminRecordActions(t *testing.T) {
 		}()
 		if got := record(payload, "http://localhost:3101").Code; got != 429 {
 			t.Fatalf("collection quota bypass %d", got)
+		}
+	})
+	t.Run("notice publishing and private SEO plans", func(t *testing.T) {
+		public := sitecontent.NewHandler(pool).Routes()
+		read := func(path string) *httptest.ResponseRecorder {
+			rec := httptest.NewRecorder()
+			public.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+			return rec
+		}
+		send := func(path string, raw []byte, key, origin, cookie string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest("POST", path, strings.NewReader(string(raw)))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Idempotency-Key", key)
+			req.Header.Set("X-Admin-Reason", "CI%20utility%20edit")
+			if cookie != "" {
+				req.AddCookie(&http.Cookie{Name: cookie, Value: token})
+			}
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			return rec
+		}
+		defer func() {
+			_, _ = pool.Exec(ctx, "DELETE FROM idempotency_records WHERE response_json->'data'->>'id' IN(SELECT id::text FROM site_notices WHERE created_by=$1 UNION ALL SELECT id::text FROM site_seo_pages WHERE updated_by=$1)", actor.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM notice_images WHERE notice_id IN(SELECT id FROM site_notices WHERE created_by=$1)", actor.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM site_notices WHERE created_by=$1", actor.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM site_seo_pages WHERE updated_by=$1", actor.ID)
+		}()
+		notice := noticeBody{Slug: fmt.Sprintf("ci-notice-%x", actor.ID.Bytes[:8]), Title: "CI notice", Summary: "Isolated publication coverage", Body: "## Heading\n\n**Content** and [link](https://hackways.in).", Status: "draft"}
+		raw, _ := json.Marshal(notice)
+		key := "notice-create-" + nonce[:20]
+		for _, cookie := range []string{"", auth.DefaultSessionCookie} {
+			if got := send("/utilities/notices", raw, key, "http://localhost:3003", cookie).Code; got != 401 {
+				t.Fatalf("notice admin bypass %d", got)
+			}
+		}
+		if got := send("/utilities/notices", raw, key, "https://foreign.example", auth.AdminSessionCookie).Code; got != 403 {
+			t.Fatalf("notice origin bypass %d", got)
+		}
+		var saved struct {
+			Data utilitySaved `json:"data"`
+		}
+		for i := 0; i < 2; i++ {
+			rec := send("/utilities/notices", raw, key, "http://localhost:3003", auth.AdminSessionCookie)
+			if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &saved) != nil || saved.Data.Revision != 1 {
+				t.Fatalf("notice creation/replay %d %s", rec.Code, rec.Body.String())
+			}
+		}
+		if got := read("/notices/" + notice.Slug).Code; got != 404 {
+			t.Fatalf("draft notice leaked %d", got)
+		}
+		draftSeo := seoBody{Path: "/notice/" + notice.Slug, Title: "Unpublished editorial title", Noindex: true}
+		draftRaw, _ := json.Marshal(draftSeo)
+		if rec := send("/utilities/seo", draftRaw, "seo-draft-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 200 {
+			t.Fatalf("draft SEO preparation %d %s", rec.Code, rec.Body.String())
+		}
+		if rec := read("/seo?path=" + url.QueryEscape(draftSeo.Path)); rec.Code != 200 || strings.Contains(rec.Body.String(), draftSeo.Title) {
+			t.Fatal("draft SEO metadata leaked")
+		}
+		if rec := read("/seo-rules"); strings.Contains(rec.Body.String(), draftSeo.Path) {
+			t.Fatal("draft route leaked in public sitemap rules")
+		}
+		changed := notice
+		changed.Title = "Changed"
+		changedRaw, _ := json.Marshal(changed)
+		if got := send("/utilities/notices", changedRaw, key, "http://localhost:3003", auth.AdminSessionCookie).Code; got != 409 {
+			t.Fatalf("notice receipt mismatch %d", got)
+		}
+		notice.Reference = saved.Data.Reference
+		notice.Revision = 1
+		notice.Status = "published"
+		raw, _ = json.Marshal(notice)
+		if rec := send("/utilities/notices", raw, "notice-publish-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 200 {
+			t.Fatalf("notice publication %d %s", rec.Code, rec.Body.String())
+		}
+		published := read("/notices/" + notice.Slug)
+		if published.Code != 200 || !strings.Contains(published.Body.String(), "**Content**") || strings.Contains(published.Body.String(), "created_by") {
+			t.Fatalf("public notice contract %d %s", published.Code, published.Body.String())
+		}
+		imageURL := "https://media.example.invalid/notice-fixture.png"
+		if _, e := q.RecordNoticeImage(ctx, db.RecordNoticeImageParams{NoticeID: saved.Data.ID, BlobKey: "isolated-ci/" + notice.Slug + ".png", Url: imageURL, CreatedBy: actor.ID, Width: 800, Height: 450}); e != nil {
+			t.Fatal(e)
+		}
+		var beforeImages struct {
+			Images []db.PublicNoticeImagesRow `json:"images"`
+		}
+		if rec := read("/notices/" + notice.Slug); json.Unmarshal(rec.Body.Bytes(), &beforeImages) != nil || len(beforeImages.Images) != 0 {
+			t.Fatal("unpublished image attachment leaked before content save")
+		}
+		if got := send("/utilities/notices", raw, "notice-stale-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie).Code; got != 409 {
+			t.Fatalf("stale notice edit %d", got)
+		}
+		notice.Revision = 2
+		notice.Body += "\n\n![Fixture image](" + imageURL + ")"
+		notice.Status = "archived"
+		raw, _ = json.Marshal(notice)
+		if rec := send("/utilities/notices", raw, "notice-archive-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 200 {
+			t.Fatalf("notice archival %d %s", rec.Code, rec.Body.String())
+		}
+		if read("/notices/"+notice.Slug).Code != 404 {
+			t.Fatal("archived notice leaked")
+		}
+		notice.Revision = 3
+		notice.Status = "published"
+		raw, _ = json.Marshal(notice)
+		if send("/utilities/notices", raw, "notice-restore-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie).Code != 200 {
+			t.Fatal("notice restore failed")
+		}
+		var afterImages struct {
+			Images []db.PublicNoticeImagesRow `json:"images"`
+		}
+		if rec := read("/notices/" + notice.Slug); json.Unmarshal(rec.Body.Bytes(), &afterImages) != nil || len(afterImages.Images) != 1 || afterImages.Images[0].Width != 800 {
+			t.Fatal("published image dimensions missing")
+		}
+		keywords := make([]string, 1100)
+		for i := range keywords {
+			keywords[i] = fmt.Sprintf("isolated CI keyword %d", i)
+		}
+		seo := seoBody{Revision: 1, Path: "/notice/" + notice.Slug, Title: "CI notice search title", Description: "A real isolated database SEO override", Keywords: keywords, Notes: "Private editorial notes", Noindex: true}
+		raw, _ = json.Marshal(seo)
+		rec := send("/utilities/seo", raw, "seo-create-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie)
+		if rec.Code != 200 {
+			t.Fatalf("SEO plan save %d %s", rec.Code, rec.Body.String())
+		}
+		metadata := read("/seo?path=" + url.QueryEscape(seo.Path))
+		if metadata.Code != 200 || !strings.Contains(metadata.Body.String(), seo.Title) || strings.Contains(metadata.Body.String(), "planning_keywords") || strings.Contains(metadata.Body.String(), "editorial") || strings.Contains(metadata.Body.String(), "isolated CI keyword") {
+			t.Fatalf("public SEO leak %d %s", metadata.Code, metadata.Body.String())
+		}
+		if rules := read("/seo-rules"); rules.Code != 200 || !strings.Contains(rules.Body.String(), seo.Path) {
+			t.Fatal("noindex sitemap rule missing")
+		}
+		for _, private := range []string{"/account", "/manage/events/secret", "/events/secret/register", "/programs/ambassadors/application", "/admin", "/utilities/notice", "/?email=private"} {
+			invalid := seo
+			invalid.Path = private
+			bad, _ := json.Marshal(invalid)
+			if got := send("/utilities/seo", bad, "seo-private-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie).Code; got != 422 {
+				t.Fatalf("private SEO indexing accepted %s %d", private, got)
+			}
+		}
+		if got := read("/seo?path=" + url.QueryEscape("/account")).Code; got != 400 {
+			t.Fatalf("private public SEO lookup %d", got)
+		}
+		draftTarget := noticeBody{Slug: notice.Slug + "-target", Title: "Unpublished target", Status: "draft"}
+		targetRaw, _ := json.Marshal(draftTarget)
+		if rec := send("/utilities/notices", targetRaw, "canonical-target-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 200 {
+			t.Fatal("canonical target setup failed")
+		}
+		canonicalPlan := seoBody{Path: "/about", Canonical: "/notice/" + draftTarget.Slug}
+		canonicalRaw, _ := json.Marshal(canonicalPlan)
+		if rec := send("/utilities/seo", canonicalRaw, "canonical-plan-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie); rec.Code != 200 {
+			t.Fatalf("canonical plan %d %s", rec.Code, rec.Body.String())
+		}
+		if rec := read("/seo?path=%2Fabout"); rec.Code != 200 || strings.Contains(rec.Body.String(), draftTarget.Slug) {
+			t.Fatal("unpublished canonical target leaked in metadata")
+		}
+		if rec := read("/seo-rules"); strings.Contains(rec.Body.String(), draftTarget.Slug) {
+			t.Fatal("unpublished canonical target leaked in sitemap rules")
+		}
+		media := storage.NewHandler(storage.NewAzureBlobSASSigner(storage.AzureSASConfig{}), pool).AdminRoutes()
+		intent := fmt.Sprintf(`{"resource_id":%q,"filename":"notice.png","mime_type":"image/png","size":100,"category":"notice-images"}`, uuidText(saved.Data.ID))
+		requestMedia := func(path, body, cookie string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest("POST", path, strings.NewReader(body))
+			req.Header.Set("Origin", "http://localhost:3003")
+			req.Header.Set("Content-Type", "application/json")
+			if cookie != "" {
+				req.AddCookie(&http.Cookie{Name: cookie, Value: token})
+			}
+			rec := httptest.NewRecorder()
+			media.ServeHTTP(rec, req)
+			return rec
+		}
+		if got := requestMedia("/notice-image/intent", intent, auth.DefaultSessionCookie).Code; got != 401 {
+			t.Fatalf("notice image admin bypass %d", got)
+		}
+		if got := requestMedia("/notice-image/intent", intent, auth.AdminSessionCookie).Code; got != 503 {
+			t.Fatalf("missing notice image storage simulated success %d", got)
+		}
+		wrong := fmt.Sprintf(`{"resource_id":%q,"blob_key":"notice-images/other/asset.png","width":100,"height":100}`, uuidText(saved.Data.ID))
+		if got := requestMedia("/notice-image/complete", wrong, auth.AdminSessionCookie).Code; got != 400 {
+			t.Fatalf("cross-notice attachment accepted %d", got)
 		}
 	})
 	version := func(id pgtype.UUID) time.Time {

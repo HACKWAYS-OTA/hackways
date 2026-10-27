@@ -11,7 +11,7 @@
 .workspace-topbar-actions { display: flex; align-items: center; gap: 20px; }
 .workspace-mobile-brand,.workspace-mobile-nav { display: none; }
 .workspace-content { min-width: 0; }
-.workspace-preferences { padding: 20px 32px 32px; color: var(--muted); font-size: 12px; }
+.workspace-preferences { display:flex; align-items:center; flex-wrap:wrap; gap:24px; padding: 20px 32px 32px; color: var(--muted); font-size: 12px; }
 .workspace-preferences .hw-cookie-preferences { min-height: 44px; }
 .workspace-content:focus { outline: none; }
 .workspace-content .host-home,.workspace-content .host-workspace { width: min(1280px, calc(100% - 64px)); padding-top: 24px; }

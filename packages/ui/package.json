@@ -22,6 +22,9 @@
     "./styles.css": "./src/controls.css",
     "./event-fonts": "./src/EventFonts.ts",
     "./analytics": "./src/Analytics.tsx",
+    "./seo": "./src/Seo.ts",
+    "./markdown": "./src/NoticeMarkdown.tsx",
+    "./markdown.css": "./src/notice-markdown.css",
     "./mcp": "./src/MCPConnection.tsx",
     "./mcp.css": "./src/mcp.css"
   },
@@ -36,7 +39,9 @@
     "@base-ui/react": "1.8.0",
     "@hugeicons/core-free-icons": "4.3.5",
     "@hugeicons/react": "1.1.10",
-    "motion": "14.3.0"
+    "motion": "14.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
   },
   "peerDependencies": {
     "react": "^18.3.1",

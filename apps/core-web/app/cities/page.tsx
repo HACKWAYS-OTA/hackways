@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -6,7 +7,8 @@ import { fetchApi } from '@/lib/api';
 import { pageOffset } from '@/lib/account';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/cities/cities.css';
-export const metadata: Metadata = { title: 'Cities', description: 'Explore local events and communities in cities on Hackways.', alternates: { canonical: '/cities' } };
+const pageDefaults: Metadata = { title: 'Cities', description: 'Explore local events and communities in cities on Hackways.', alternates: { canonical: '/cities' } };
+export function generateMetadata() { return managedMetadata("/cities", pageDefaults); }
 export default async function Cities({ searchParams }: { searchParams: { offset?: string } }) {
   const offset = pageOffset(searchParams.offset);
   let cities: CityHub[] = [], error = '';

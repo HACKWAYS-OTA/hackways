@@ -97,3 +97,16 @@ Select portal containers use the enclosing native dialog when present; otherwise
 `null` as the no-dialog fallback: Base UI waits rather than mounting options.
 An empty-string option (for example All decisions) is a real selectable value when
 included in `options`; only absent values show the placeholder.
+
+## Notice Markdown and server metadata
+
+`@hackways/ui/markdown` and `/markdown.css` share safe CommonMark/GFM presentation
+between public notices and the editor preview. Raw HTML stays disabled; task
+controls use the shared checkbox and in-page actions use section-jump. The
+Markdown parser is loaded on demand in the editor, while public rendering stays
+on the server. Image size props preserve known upload dimensions.
+
+`@hackways/ui/seo` is server-only presentation over Go's reviewed public settings.
+It preserves existing metadata on transport failure; private keyword plans are
+never returned by the public API. Keep Go publication checks authoritative and
+private pages noindex. See the [contract](../../docs/backend/NOTICES_SEO.md).

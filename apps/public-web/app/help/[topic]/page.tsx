@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { staticSocialMetadata } from '@hackways/ui/social-image';
 import { site } from '@/lib/site';
 import type { Metadata } from 'next';
@@ -8,10 +9,10 @@ import { FAQ } from '@/components/site/FAQ';
 import { faqTopics } from '@/lib/help-topics';
 import { supportEmail } from '@/lib/site';
 export function generateStaticParams() { return faqTopics.map(topic => ({ topic: topic.id })); }
-export function generateMetadata({ params }: { params: { topic: string } }): Metadata {
+export async function generateMetadata({ params }: { params: { topic: string } }): Promise<Metadata> {
   const topic = faqTopics.find(item => item.id === params.topic);
   if (!topic) notFound();
-  return { ...staticSocialMetadata(site.url, `help-${topic.id}`, topic.label, topic.intro), title: topic.label, description: topic.intro, alternates: { canonical: `/help/${topic.id}` } };
+  return managedMetadata(`/help/${topic.id}`, { ...staticSocialMetadata(site.url, `help-${topic.id}`, topic.label, topic.intro), title: topic.label, description: topic.intro, alternates: { canonical: `/help/${topic.id}` } });
 }
 export default function HelpTopic({ params }: { params: { topic: string } }) {
   const topic = faqTopics.find(item => item.id === params.topic);
@@ -21,3 +22,5 @@ export default function HelpTopic({ params }: { params: { topic: string } }) {
     <Section id="support" title="Get more help"><p>Email <a href={`mailto:${supportEmail}`}>{supportEmail}</a> with the relevant event link and a description of the problem. Avoid including passwords, verification codes or private guest information.</p><p><Link href="/contact">Contact guidance</Link> explains what to send. You can also <Link href="/help">browse all help topics</Link>.</p></Section>
   </Article>;
 }
+
+export const revalidate = 30;

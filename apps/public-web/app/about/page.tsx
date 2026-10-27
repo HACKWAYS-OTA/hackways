@@ -1,9 +1,11 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { site } from '@/lib/site';
-export const metadata: Metadata = { ...pageSocialMetadata('about'), title: 'About Hackways', description: 'Find technology events, understand how registration works, and meet the communities hosting on Hackways.', alternates: { canonical: '/about' } };
+const pageDefaults: Metadata = { ...pageSocialMetadata('about'), title: 'About Hackways', description: 'Find technology events, understand how registration works, and meet the communities hosting on Hackways.', alternates: { canonical: '/about' } };
+export function generateMetadata() { return managedMetadata("/about", pageDefaults); }
 export default function AboutPage() {
   return <Article variant="about" title="About Hackways" intro="Hackways is an event and community platform for discovering technology gatherings, hosting events and managing registrations.">
     <Section id="what-we-do" title="Events give people a reason to meet">
@@ -38,3 +40,5 @@ export default function AboutPage() {
     </Section>
   </Article>;
 }
+
+export const revalidate = 30;

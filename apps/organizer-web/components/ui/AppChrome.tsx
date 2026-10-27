@@ -13,7 +13,7 @@ export function AppChrome({ children, user }: { children: ReactNode; user: User 
   const pathname = usePathname(), isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
   const analytics = <AnalyticsTracker path={`/manage${pathname === '/' ? '' : pathname}`} endpoint={`${(process.env.NEXT_PUBLIC_GLOBAL_API_URL || '/api/v1').replace(/\/$/, '')}/analytics/events`} />;
   const navigation = <><Link href="/" aria-current={!pathname.startsWith('/spaces') ? 'page' : undefined}><Icon name="calendar" size={20} />Events</Link><Link href="/spaces" aria-current={pathname.startsWith('/spaces') ? 'page' : undefined}><Icon name="people" size={20} />Spaces</Link></>;
-  const preferences = <footer className="workspace-preferences"><CookiePreferencesButton /></footer>;
+  const preferences = <footer className="workspace-preferences"><CookiePreferencesButton /><a href={`${site.app}/notices`}>Notices</a></footer>;
   if (isAuthPage) return <>{analytics}<SkipToContent /><main className="app-main" id="main-content" tabIndex={-1}>{children}</main>{preferences}</>;
   return <div className="workspace-frame">{analytics}<SkipToContent />
     <aside className="workspace-sidebar"><Link className="wordmark" href="/">hackways.</Link><nav aria-label="Managed workspace">{navigation}</nav><a className="workspace-public" href={`${site.app}/discover`}>Back to Hackways<Icon name="external" size={16} /></a></aside>

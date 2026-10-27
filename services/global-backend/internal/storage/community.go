@@ -44,6 +44,8 @@ func (h *Handler) AdminRoutes() chi.Router {
 	})
 	r.Post("/upload-intent", h.CityUploadIntent)
 	r.Post("/city-banner/complete", h.CompleteCityBanner)
+	r.Post("/notice-image/intent", h.NoticeImageIntent)
+	r.Post("/notice-image/complete", h.CompleteNoticeImage)
 	return r
 }
 func (h *Handler) CityUploadIntent(w http.ResponseWriter, r *http.Request) {

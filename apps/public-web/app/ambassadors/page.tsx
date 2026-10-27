@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -9,11 +10,12 @@ import { site } from '@/lib/site';
 import { AmbassadorsHeroArt } from '@/components/ambassadors/AmbassadorsHeroArt';
 import './ambassadors.css';
 
-export const metadata: Metadata = { ...pageSocialMetadata('ambassadors'),
+const pageDefaults: Metadata = { ...pageSocialMetadata('ambassadors'),
   title: 'Ambassadors',
   description: 'Bring your community together as a Hackways ambassador. Host your events on Hackways and receive recognition for your contributions.',
   alternates: { canonical: '/ambassadors' },
 };
+export function generateMetadata() { return managedMetadata("/ambassadors", pageDefaults); }
 
 const joinURL = `${site.app}/programs/ambassadors/apply/profile`;
 
@@ -70,3 +72,5 @@ export default function AmbassadorsPage() {
     </section>
   </div>;
 }
+
+export const revalidate = 30;

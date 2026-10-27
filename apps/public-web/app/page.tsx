@@ -1,3 +1,5 @@
+import { managedMetadata } from '@hackways/ui/seo';
+import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FAQ } from "@/components/site/FAQ";
@@ -11,7 +13,8 @@ import { LandingNavigation } from "@/components/site/LandingNavigation";
 import { site } from "@/lib/site";
 import { siteIdentity } from '@/lib/structured-data';
 
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+const pageDefaults: Metadata = { ...pageSocialMetadata('platform'), title: { absolute: "Hackways | Find your next tech event" }, description: "Discover hackathons, meetups, and conferences. Find your next tech event, or bring your own community together with Hackways.", alternates: { canonical: "/" } };
+export function generateMetadata() { return managedMetadata("/", pageDefaults); }
 
 export default function HomePage() {
   return (
@@ -218,3 +221,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+export const revalidate = 30;

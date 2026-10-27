@@ -24,6 +24,7 @@ import (
 	"github.com/hackways/global-backend/internal/platform"
 	"github.com/hackways/global-backend/internal/programs"
 	"github.com/hackways/global-backend/internal/rollouts"
+	"github.com/hackways/global-backend/internal/sitecontent"
 	"github.com/hackways/global-backend/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -182,6 +183,7 @@ func main() {
 		} else {
 			v1.Mount("/auth", authHandler.Routes())
 			v1.Mount("/analytics", analytics.NewHandler(pool, cfg.SessionSecret, cfg.AppEnv == "development").Routes())
+			v1.Mount("/site", sitecontent.NewHandler(pool).Routes())
 			v1.Mount("/programs", programHandler.Routes())
 			v1.With(auth.RequireAuth(authHandler.SessionManager())).Mount("/storage", storageHandler.Routes())
 			v1.Mount("/admin/global/media", storageHandler.AdminRoutes())

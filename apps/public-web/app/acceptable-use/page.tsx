@@ -1,9 +1,11 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
-export const metadata: Metadata = { ...pageSocialMetadata('acceptable'), title: 'Acceptable use', description: 'Guidelines for honest event listings, respectful participation, guest privacy, responsible registration and reporting misuse on Hackways.', alternates: { canonical: '/acceptable-use' } };
+const pageDefaults: Metadata = { ...pageSocialMetadata('acceptable'), title: 'Acceptable use', description: 'Guidelines for honest event listings, respectful participation, guest privacy, responsible registration and reporting misuse on Hackways.', alternates: { canonical: '/acceptable-use' } };
+export function generateMetadata() { return managedMetadata("/acceptable-use", pageDefaults); }
 export default function AcceptableUsePage() {
   return <Article title="Acceptable use" intro="Keep event information truthful, participation respectful and private information protected. These expectations apply to listings, profiles, registration answers, notes and the ways people use Hackways." updated="20 October 2026">
     <Section id="honesty" title="Publish real events and represent yourself accurately">
@@ -42,3 +44,5 @@ export default function AcceptableUsePage() {
     </Section>
   </Article>;
 }
+
+export const revalidate = 30;

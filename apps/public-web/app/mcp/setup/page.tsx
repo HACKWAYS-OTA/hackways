@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -5,11 +6,12 @@ import { CopyEndpoint } from '../CopyEndpoint';
 import '../mcp.css';
 import './setup.css';
 
-export const metadata: Metadata = { ...pageSocialMetadata('mcp-setup'),
+const pageDefaults: Metadata = { ...pageSocialMetadata('mcp-setup'),
   title: 'MCP setup | Hackways',
   description: 'Connect Hackways to ChatGPT with the exact MCP URL, OAuth endpoints, client registration options, scopes and PKCE settings.',
   alternates: { canonical: '/mcp/setup' },
 };
+export function generateMetadata() { return managedMetadata("/mcp/setup", pageDefaults); }
 
 const issuer = 'https://mcp.hackways.in';
 const endpoints = [
@@ -103,3 +105,5 @@ export default function MCPSetupPage() {
     </section>
   </div>;
 }
+
+export const revalidate = 30;

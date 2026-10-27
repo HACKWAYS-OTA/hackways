@@ -1,0 +1,52 @@
+.utility-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px; margin:24px 0 32px; }
+.utility-heading h1 { font-size:36px; margin-bottom:8px; }
+.utility-heading p { max-width:65ch; }
+.utility-navigation { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:32px; }
+.utility-navigation a[aria-current] { color:var(--ink); text-decoration:underline; text-underline-offset:7px; }
+.utility-table { width:100%; border-collapse:collapse; text-align:left; }
+.utility-table th,.utility-table td { padding:18px 16px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
+.utility-table th { color:var(--muted); font-weight:400; }
+.utility-table td:first-child { min-width:200px; }
+.utility-table strong { display:block; font-weight:500; }
+.utility-table small { display:block; margin-top:6px; color:var(--muted); overflow-wrap:anywhere; }
+.utility-table-scroll { overflow-x:auto; }
+.utility-empty { text-align:center; padding:72px 24px; color:var(--muted); }
+.utility-editor { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:48px; align-items:start; }
+.utility-editor-main { min-width:0; display:grid; gap:26px; }
+.utility-editor .field { display:grid; gap:9px; margin:0; }
+.utility-editor .field small,.utility-path-prefix { color:var(--muted); font-size:13px; line-height:1.5; }
+.utility-editor-settings { position:sticky; top:24px; display:grid; gap:24px; min-width:0; }
+.utility-editor-settings h2 { font-size:21px; }
+.utility-editor-settings .app-button { width:100%; }
+.utility-editor .app-input { width:100%; min-width:0; }
+.utility-editor-fields { display:contents; border:0; padding:0; margin:0; min-width:0; }
+.utility-body { line-height:1.7; resize:vertical; }
+.utility-keyword-note { max-width:75ch; margin-bottom:24px; color:var(--muted); font-size:14px; }
+.notice-composer { border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.notice-composer-heading { display:flex; align-items:center; flex-wrap:wrap; gap:16px; justify-content:space-between; padding:18px 20px; }
+.notice-composer-heading h2 { font-size:18px; }
+.notice-composer-heading .hw-radio-group { gap:12px; font-size:12px; }
+.notice-format-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding:8px 12px; background:var(--soft); }
+.notice-format-toolbar button { min-height:40px; padding:8px 10px; border:0; border-radius:6px; background:transparent; font:inherit; font-size:12px; cursor:pointer; }
+.notice-format-toolbar button:hover { background:var(--paper,#fff); }
+.notice-format-toolbar button:disabled { opacity:.45; cursor:default; }
+.notice-writing-surface { display:grid; grid-template-columns:minmax(0,1fr); min-height:480px; }
+.notice-writing-split { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.notice-markdown-source { width:100%; min-width:0; min-height:480px; resize:vertical; border:0; padding:24px; background:transparent; color:var(--ink); font:14px/1.8 ui-monospace,monospace; }
+.notice-markdown-source:focus-visible { outline:2px solid var(--ink); outline-offset:-3px; }
+.notice-markdown-preview { padding:24px; min-width:0; font-size:15px; }
+.notice-writing-split .notice-markdown-preview { border-left:1px solid var(--line); }
+.notice-editor-help { padding:14px 20px; font-size:12px; color:var(--muted); }
+.notice-image-insert { display:grid; gap:14px; padding:20px; background:var(--soft); }
+.notice-image-insert > div { display:flex; flex-wrap:wrap; gap:12px; }
+@media(max-width:720px){.notice-writing-split{grid-template-columns:minmax(0,1fr)}.notice-writing-split .notice-markdown-preview{border-left:0;border-top:1px solid var(--line)}.notice-markdown-source,.notice-markdown-preview{padding:18px}}
+@media(max-width:1050px){.utility-editor{grid-template-columns:minmax(0,1fr);gap:32px}.utility-editor-settings{position:static;max-width:600px}}
+@media(max-width:540px){.utility-heading h1{font-size:30px}.utility-table th,.utility-table td{padding:14px 10px}}
+
+.seo-suggestions { margin-bottom:36px; }
+.seo-suggestions h2 { font-size:21px; margin-bottom:8px; }
+.seo-suggestions > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 32px; margin-top:16px; }
+.seo-suggestions a { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; font-size:13px; }
+.seo-suggestions a span { overflow-wrap:anywhere; min-width:0; }
+.seo-suggestions strong { font-variant-numeric:tabular-nums; font-weight:400; }
+@media(max-width:720px){.seo-suggestions > div{grid-template-columns:minmax(0,1fr)}}

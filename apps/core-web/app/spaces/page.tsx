@@ -1,3 +1,4 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import Image from 'next/image';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
@@ -7,18 +8,18 @@ import { fetchApi } from '@/lib/api';
 import { requireUser, privateApi, pageOffset } from '@/lib/account';
 import { Icon } from '@/components/ui/Icon';
 import '@/components/spaces/spaces.css';
-export function generateMetadata({ searchParams }: { searchParams: { view?: string; q?: string; offset?: string } }): Metadata {
+export async function generateMetadata({ searchParams }: { searchParams: { view?: string; q?: string; offset?: string } }): Promise<Metadata> {
   const privateView = ['owned', 'joined'].includes(searchParams.view || '');
   const filtered = Boolean((searchParams.q || '').slice(0, 200));
   const offset = pageOffset(searchParams.offset);
-  return {
+  return managedMetadata('/spaces', {
     ...pageSocialMetadata('spaces'),
     title: 'Spaces',
     description: 'Find a community around what you care about. Join a Space and discover its events.',
     ...(privateView || filtered
       ? { robots: { index: false, follow: !privateView } }
       : { alternates: { canonical: offset ? `/spaces?offset=${offset}` : '/spaces' } }),
-  };
+  });
 }
 export default async function Spaces({ searchParams }: { searchParams: { view?: string; q?: string; offset?: string } }) {
   const view = ['owned', 'joined'].includes(searchParams.view || '') ? searchParams.view! : 'all';

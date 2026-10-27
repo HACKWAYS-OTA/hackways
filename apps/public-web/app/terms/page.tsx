@@ -1,9 +1,11 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Article, ArticleSection as Section } from '@/components/site/Article';
 import { supportEmail } from '@/lib/site';
-export const metadata: Metadata = { ...pageSocialMetadata('terms'), title: 'Terms of use', description: 'Responsibilities for accounts, event content, registration, guest information and participation when using Hackways.', alternates: { canonical: '/terms' } };
+const pageDefaults: Metadata = { ...pageSocialMetadata('terms'), title: 'Terms of use', description: 'Responsibilities for accounts, event content, registration, guest information and participation when using Hackways.', alternates: { canonical: '/terms' } };
+export function generateMetadata() { return managedMetadata("/terms", pageDefaults); }
 export default function TermsPage() {
   return <Article title="Terms of use" intro="The responsibilities that come with discovering, publishing and registering for events on Hackways. Read the event-specific details as well as these platform terms." updated="20 October 2026">
     <Section id="service" title="Understand the service you are using">
@@ -51,3 +53,5 @@ export default function TermsPage() {
     </Section>
   </Article>;
 }
+
+export const revalidate = 30;

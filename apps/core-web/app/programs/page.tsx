@@ -1,15 +1,17 @@
+import { managedMetadata } from '@hackways/ui/seo';
 import { pageSocialMetadata } from '@/lib/social-metadata';
 import Link from 'next/link';
 import type { Program } from '@hackways/api-client';
 import { fetchApi } from '@/lib/api';
 import { ProgramFrame } from '@/components/programs/ProgramFrame';
 import { ProgramBanner } from '@/components/programs/ProgramBanner';
-export const metadata = {
+const pageDefaults = {
   ...pageSocialMetadata('programs'),
   title: 'Programs',
   description: 'Explore Hackways programs and open roles. Find opportunities to contribute to your community, host events and bring people together.',
   alternates: { canonical: '/programs' },
 };
+export function generateMetadata() { return managedMetadata("/programs", pageDefaults); }
 export default async function Programs() {
   const result = await fetchApi<{ data: Program[]; has_next: boolean }>('/programs', { next: { revalidate: 30 } });
   const now = Date.now();

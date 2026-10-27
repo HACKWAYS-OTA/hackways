@@ -13,7 +13,7 @@ import './globals.css';
 import './dashboard.css';
 import '@hackways/ui/auth.css';
 
-export const metadata: Metadata = { ...pageSocialMetadata('platform'), icons: brandIcons(), metadataBase: new URL(site.app), title: { default: 'Discover events | Hackways', template: '%s | Hackways' }, description: 'Explore published tech events and reserve your place with Hackways.' };
+export const metadata: Metadata = { ...pageSocialMetadata('platform'), icons: brandIcons(), metadataBase: new URL(site.app), title: { default: 'Discover events | Hackways', template: '%s | Hackways' }, description: 'Explore published tech events and reserve your place with Hackways.', robots: { index: false, follow: false } };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#ffffff' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

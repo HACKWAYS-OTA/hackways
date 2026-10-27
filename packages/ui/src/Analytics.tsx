@@ -7,9 +7,9 @@ const visitorCookie = 'hackways_analytics_visitor';
 const sessionCookie = 'hackways_analytics_session';
 const productEvent = 'hackways-analytics-event';
 const preferencesEvent = 'hackways-cookie-preferences';
-const staticPaths = new Set(['/', '/discover', '/events', '/spaces', '/spaces/new', '/cities', '/programs', '/create', '/my-events', '/account', '/login', '/not-allowed', '/about', '/contact', '/acceptable-use', '/cookies', '/terms', '/privacy', '/help', '/organizers', '/ambassadors', '/mcp', '/mcp/setup', '/connect/action', '/connect/authorize', '/connect/connections', '/manage', '/manage/spaces', '/manage/onboarding', '/manage/create', '/manage/login']);
+const staticPaths = new Set(['/', '/discover', '/events', '/spaces', '/spaces/new', '/cities', '/programs', '/notices', '/create', '/my-events', '/account', '/login', '/not-allowed', '/about', '/contact', '/acceptable-use', '/cookies', '/terms', '/privacy', '/help', '/organizers', '/ambassadors', '/mcp', '/mcp/setup', '/connect/action', '/connect/authorize', '/connect/connections', '/manage', '/manage/spaces', '/manage/onboarding', '/manage/create', '/manage/login']);
 const authPath = /^\/(?:manage\/)?auth\/(?:forgot-password|reset-password|verify-email|google\/callback|unsubscribe)$/;
-const publicEntityPath = /^\/(?:events\/[a-zA-Z0-9-]{1,180}(?:\/register)?|(?:spaces|cities|programs|help)\/[a-zA-Z0-9-]{1,180})$/;
+const publicEntityPath = /^\/(?:events\/[a-zA-Z0-9-]{1,180}(?:\/register)?|(?:spaces|cities|programs|notice|help)\/[a-zA-Z0-9-]{1,180})$/;
 
 /** Canonical page names only. Private identifiers and query strings never enter a visit. */
 function analyticsRoute(path: string): string | null {
