@@ -34,6 +34,9 @@ func OrganizerFromContext(ctx context.Context) (*db.Organizers, bool) {
 func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !allowRequestDevice(w, r, sm.queries) {
+				return
+			}
 			if r.Header.Get("Authorization") != "" {
 				user, ok := mcpRequestUser(w, r, sm)
 				if !ok {
@@ -51,6 +54,10 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 
 			user, err := sm.GetSession(r.Context(), token)
 			if err != nil {
+				if errors.Is(err, ErrNotAllowed) {
+					respondNotAllowed(w)
+					return
+				}
 				if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
 					platform.RespondDatabaseError(w, err)
 					return
@@ -70,6 +77,9 @@ func RequireAuth(sm *SessionManager) func(http.Handler) http.Handler {
 func OptionalAuth(sm *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !allowRequestDevice(w, r, sm.queries) {
+				return
+			}
 			if r.Header.Get("Authorization") != "" {
 				user, ok := mcpRequestUser(w, r, sm)
 				if !ok {
@@ -85,6 +95,10 @@ func OptionalAuth(sm *SessionManager) func(http.Handler) http.Handler {
 			}
 			user, err := sm.GetSession(r.Context(), token)
 			if err != nil {
+				if errors.Is(err, ErrNotAllowed) {
+					respondNotAllowed(w)
+					return
+				}
 				if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
 					platform.RespondDatabaseError(w, err)
 					return

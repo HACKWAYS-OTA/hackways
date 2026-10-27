@@ -116,6 +116,8 @@ type Querier interface {
 	IsPlatformAdminIdentitySession(ctx context.Context, arg IsPlatformAdminIdentitySessionParams) (bool, error)
 	IsPlatformAdminSession(ctx context.Context, arg IsPlatformAdminSessionParams) (bool, error)
 	IsPlatformAdministrator(ctx context.Context, userID pgtype.UUID) (bool, error)
+	IsRestrictedDevice(ctx context.Context, tokenHash string) (bool, error)
+	IsRestrictedRegistrationIdentity(ctx context.Context, arg IsRestrictedRegistrationIdentityParams) (bool, error)
 	JoinSpace(ctx context.Context, arg JoinSpaceParams) error
 	LatestRegistrationAnswers(ctx context.Context, rsvpID pgtype.UUID) (LatestRegistrationAnswersRow, error)
 	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error

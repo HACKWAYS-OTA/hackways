@@ -100,6 +100,7 @@ func main() {
 	rsvpsHandler := rsvps.NewHandler(pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
+		v1.Use(auth.RestrictionGuard(db.New(pool)))
 		v1.Mount("/admin/core/cities", cities.NewHandler(pool).AdminRoutes())
 		v1.Mount("/admin/core", admin.NewHandler(pool).Routes())
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {

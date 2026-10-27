@@ -57,7 +57,7 @@ FROM rsvps r WHERE o.rsvp_id=r.id AND r.user_id=$2 AND o.id=$1 AND o.status='fai
 AND o.updated_at<clock_timestamp()-INTERVAL '5 minutes' RETURNING o.id;
 
 -- name: ListAccountSessions :many
-SELECT id,user_agent,created_at,expires_at,last_seen FROM sessions WHERE user_id=$1 AND expires_at>NOW() ORDER BY last_seen DESC LIMIT 100;
+SELECT id,user_agent,created_at,expires_at,last_seen FROM sessions WHERE user_id=$1 AND expires_at>NOW() AND revoked_at IS NULL ORDER BY last_seen DESC LIMIT 100;
 
 -- name: RevokeOwnedSession :execrows
 DELETE FROM sessions WHERE id=$1 AND user_id=$2;

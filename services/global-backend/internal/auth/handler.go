@@ -121,6 +121,9 @@ type UserResponse struct {
 
 // Register creates a new user account and starts a session.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	if !allowRequestDevice(w, r, h.queries) {
+		return
+	}
 	var req RegisterRequest
 	if err := platform.DecodeJSON(r, &req); err != nil {
 		platform.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Malformed JSON body", nil)
@@ -167,6 +170,19 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	q := h.queries.WithTx(tx)
+	if err = q.SetStorageWriteTimeout(r.Context()); err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	if hash := requestDeviceHash(r); hash != "" {
+		if err = q.LockRestrictionDevice(r.Context(), hash); err != nil {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
+		if !allowRequestDevice(w, r, q) {
+			return
+		}
+	}
 	user, err := q.CreateUser(r.Context(), db.CreateUserParams{
 		Email:        req.Email,
 		PasswordHash: hash,
@@ -191,7 +207,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	token, _, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, UserSessionLifetime)
+	token, session, err := NewSessionManager(q).CreateSession(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr, UserSessionLifetime)
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -203,6 +219,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	device, err := rememberDevice(r.Context(), q, locked, r, false, h.locationProxies)
 	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
+	if err = q.BindSessionDevice(r.Context(), db.BindSessionDeviceParams{ID: session.ID, DeviceTokenHash: pgtype.Text{String: HashToken(device), Valid: true}}); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
@@ -279,7 +299,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = h.establishSession(w, r, user.ID, user.PasswordHash, false); err != nil {
-		if errors.Is(err, errCredentialsChanged) {
+		if errors.Is(err, ErrNotAllowed) {
+			respondNotAllowed(w)
+		} else if errors.Is(err, errCredentialsChanged) {
 			platform.RespondError(w, 401, "INVALID_CREDENTIALS", "Sign in again with your current password", nil)
 		} else {
 			platform.RespondDatabaseError(w, err)
@@ -353,6 +375,9 @@ type VerifyRequest struct {
 
 // Verify validates a session token (via cookie or request body) and returns the authenticated user.
 func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
+	if !allowRequestDevice(w, r, h.queries) {
+		return
+	}
 	token := GetSessionToken(r, DefaultSessionCookie)
 	if token == "" {
 		token = GetSessionToken(r, AdminSessionCookie)
@@ -372,6 +397,10 @@ func (h *Handler) Verify(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.sm.GetSession(r.Context(), token)
 	if err != nil {
+		if errors.Is(err, ErrNotAllowed) {
+			respondNotAllowed(w)
+			return
+		}
 		if !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
 			platform.RespondDatabaseError(w, err)
 			return

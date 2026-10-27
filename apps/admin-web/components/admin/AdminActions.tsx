@@ -100,6 +100,35 @@ export function EventBinAction({ record, restore = false }: { record: AdminRecor
   </ActionForm>;
 }
 
+export function AccountRestrictionAction({ record }: { record: AdminRecord }) {
+  const blocked = record.blocked === true;
+  return <ActionForm title={blocked ? 'Unblock account' : 'Suspend account'}
+    description={blocked ? 'Blocked browsers stay blocked. The person must sign in again after review.' : 'End existing access and prevent registrations and other account actions until review.'}
+    path={`global/people/${record.reference}/restriction`} payload={{ updated_at: text(record, 'updated_at'), blocked: !blocked }}
+    submitLabel={blocked ? 'Unblock account' : 'Suspend account'} destination={`/people/details/${record.reference}`}>
+    <Input label="Reason" name="admin_reason" required minLength={3} maxLength={1000} />
+    <Confirmation name="confirm_restriction">{blocked ? 'I have reviewed this account.' : 'Suspend this account and end its existing access.'}</Confirmation>
+  </ActionForm>;
+}
+
+export function BrowserBlockAction({ person, reference }: { person: AdminRecord; reference: string }) {
+  return <ActionForm title="Block browser" description="Associated accounts will be suspended for review. Clearing cookies or using another browser can change recognition."
+    path={`global/people/${person.reference}/devices/block`} payload={{ updated_at: text(person, 'updated_at'), device_reference: Number(reference) }}
+    submitLabel="Block browser" destination="/restrictions?kind=devices">
+    <Input label="Reason" name="admin_reason" required minLength={3} maxLength={1000} />
+    <Confirmation name="confirm_browser">Block this browser and suspend its associated accounts for review.</Confirmation>
+  </ActionForm>;
+}
+
+export function BrowserUnblockAction({ record }: { record: AdminRecord }) {
+  return <ActionForm title="Unblock browser" description="Associated accounts stay suspended until reviewed and unblocked separately."
+    path={`global/devices/${record.reference}/restriction`} payload={{ updated_at: text(record, 'updated_at'), blocked: false }}
+    submitLabel="Unblock browser" destination="/restrictions?kind=devices">
+    <Input label="Reason" name="admin_reason" required minLength={3} maxLength={1000} />
+    <Confirmation name="confirm_browser_review">I have reviewed this browser restriction.</Confirmation>
+  </ActionForm>;
+}
+
 export function AdminActions({ resource, record }: { resource: AdminModule; record: AdminRecord }) {
   const version = text(record, 'updated_at');
   const revision = number(record, 'revision');
@@ -107,6 +136,7 @@ export function AdminActions({ resource, record }: { resource: AdminModule; reco
   const id = record.reference;
   if (resource === 'audit') return null;
   if (resource === 'people') return <div className="admin-actions" key={version}>
+    {record.access !== 'admin' && <AccountRestrictionAction record={record} />}
     <ActionForm title="Edit profile" path={`global/people/${id}/edit`} payload={{ updated_at: version }} fields={data => ({ display_name: String(data.get('display_name') || '') })} submitLabel="Save profile">
       <Input label="Display name" name="display_name" defaultValue={text(record, 'display_name')} required maxLength={100} />
     </ActionForm>

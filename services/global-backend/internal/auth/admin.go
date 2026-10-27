@@ -50,7 +50,9 @@ func requireAdminSession(sm *SessionManager, queries *db.Queries, allowVerificat
 				user, err = sm.GetSession(ctx, token)
 			}
 			if err != nil {
-				if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrInvalidToken) {
+				if errors.Is(err, ErrNotAllowed) {
+					respondNotAllowed(w)
+				} else if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrInvalidToken) {
 					platform.RespondError(w, 401, "ADMIN_AUTH_REQUIRED", "Admin sign in required", nil)
 				} else {
 					platform.RespondDatabaseError(w, err)

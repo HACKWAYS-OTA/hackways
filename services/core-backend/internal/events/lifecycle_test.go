@@ -282,6 +282,17 @@ func TestOwnerLifecycle_SpacesAndPublicInformation(t *testing.T) {
 	if w = requestJSON(t, eventAPI, "GET", "/by-slug/"+f.event.Slug, nil, nil); w.Code != 200 {
 		t.Fatalf("archive hid existing published event: %d", w.Code)
 	}
+	restrictionCtx := context.Background()
+	if _, e := f.pool.Exec(restrictionCtx, "INSERT INTO account_restrictions(user_id,reason,updated_by) VALUES($1,'Isolated guest registration protection',$1)", other.owner.ID); e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		_, _ = f.pool.Exec(restrictionCtx, "DELETE FROM account_restrictions WHERE user_id=$1", other.owner.ID)
+	}()
+	_, _, guestErr := workflows.New(f.pool).Register(restrictionCtx, workflows.Request{EventID: f.event.ID, Email: other.owner.Email, Name: "Signed out restricted guest", Key: "restricted-guest-ci-key"})
+	if failure, ok := guestErr.(*workflows.Failure); !ok || failure.Status != 403 || failure.Code != "ACCOUNT_RESTRICTED" {
+		t.Fatalf("logout guest email bypass: %v", guestErr)
+	}
 }
 func requestJSON(t *testing.T, handler http.Handler, method, path string, body []byte, cookie *http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()

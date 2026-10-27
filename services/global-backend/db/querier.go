@@ -16,25 +16,37 @@ type Querier interface {
 	AdminActionReplay(ctx context.Context, arg AdminActionReplayParams) (AdminActionReplayRow, error)
 	AdminActiveCount(ctx context.Context) (int64, error)
 	AdminAssetDetail(ctx context.Context, arg AdminAssetDetailParams) (AdminAssetDetailRow, error)
+	AdminBlockDevice(ctx context.Context, arg AdminBlockDeviceParams) (AdminBlockDeviceRow, error)
 	AdminDetachAvatar(ctx context.Context, arg AdminDetachAvatarParams) (pgtype.UUID, error)
 	AdminDetachEventBanner(ctx context.Context, arg AdminDetachEventBannerParams) (pgtype.UUID, error)
+	AdminDeviceHasAdministrator(ctx context.Context, tokenHash string) (bool, error)
 	AdminGlobalEntityHistory(ctx context.Context, arg AdminGlobalEntityHistoryParams) ([]AdminGlobalEntityHistoryRow, error)
 	AdminGlobalOverview(ctx context.Context) (AdminGlobalOverviewRow, error)
 	AdminGrantAccess(ctx context.Context, arg AdminGrantAccessParams) error
 	AdminListAssets(ctx context.Context, arg AdminListAssetsParams) ([]AdminListAssetsRow, error)
 	AdminListMessages(ctx context.Context, arg AdminListMessagesParams) ([]AdminListMessagesRow, error)
 	AdminListPeople(ctx context.Context, arg AdminListPeopleParams) ([]AdminListPeopleRow, error)
+	AdminListRestrictedAccounts(ctx context.Context, arg AdminListRestrictedAccountsParams) ([]AdminListRestrictedAccountsRow, error)
+	AdminListRestrictedDevices(ctx context.Context, arg AdminListRestrictedDevicesParams) ([]AdminListRestrictedDevicesRow, error)
+	AdminLockDeviceAccounts(ctx context.Context, arg AdminLockDeviceAccountsParams) ([]pgtype.UUID, error)
+	AdminLockRestrictedDevice(ctx context.Context, id pgtype.UUID) (AdminLockRestrictedDeviceRow, error)
 	AdminLockRoleChanges(ctx context.Context) error
 	AdminMessageCreate(ctx context.Context, arg AdminMessageCreateParams) (AdminCustomMessages, error)
 	AdminMessageDetail(ctx context.Context, id pgtype.UUID) (AdminMessageDetailRow, error)
 	AdminMessageQueuedCount(ctx context.Context, messageID pgtype.UUID) (int64, error)
 	AdminMessageRecipientActive(ctx context.Context, outboxID pgtype.UUID) (bool, error)
 	AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminPersonDetailRow, error)
+	AdminPersonDevices(ctx context.Context, arg AdminPersonDevicesParams) ([]AdminPersonDevicesRow, error)
 	AdminPersonEvents(ctx context.Context, arg AdminPersonEventsParams) ([]AdminPersonEventsRow, error)
 	AdminPersonMessages(ctx context.Context, arg AdminPersonMessagesParams) ([]AdminPersonMessagesRow, error)
 	AdminPersonRegistrations(ctx context.Context, arg AdminPersonRegistrationsParams) ([]AdminPersonRegistrationsRow, error)
 	AdminPersonSessions(ctx context.Context, arg AdminPersonSessionsParams) ([]AdminPersonSessionsRow, error)
+	AdminReadRestrictedDevice(ctx context.Context, id pgtype.UUID) (string, error)
+	AdminRecognizedDevice(ctx context.Context, arg AdminRecognizedDeviceParams) (AdminRecognizedDeviceRow, error)
+	AdminRecordDeviceAccounts(ctx context.Context, arg AdminRecordDeviceAccountsParams) error
+	AdminResolveDeviceReference(ctx context.Context, reference int64) (pgtype.UUID, error)
 	AdminResolveReferenceID(ctx context.Context, arg AdminResolveReferenceIDParams) (pgtype.UUID, error)
+	AdminRestrictDeviceAccounts(ctx context.Context, arg AdminRestrictDeviceAccountsParams) error
 	AdminRetryMessage(ctx context.Context, arg AdminRetryMessageParams) (pgtype.UUID, error)
 	AdminRevokeAccess(ctx context.Context, userID pgtype.UUID) (int64, error)
 	AdminRevokeAdminSessions(ctx context.Context, userID pgtype.UUID) error
@@ -42,7 +54,10 @@ type Querier interface {
 	AdminSerializeAction(ctx context.Context, scope string) error
 	AdminSessionCodeActive(ctx context.Context, codeHash string) (bool, error)
 	AdminSessionVerificationDeadline(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error)
+	AdminSetAccountRestriction(ctx context.Context, arg AdminSetAccountRestrictionParams) error
 	AdminTouchPerson(ctx context.Context, id pgtype.UUID) error
+	AdminTouchRestrictedAccounts(ctx context.Context, userIds []pgtype.UUID) error
+	AdminUnblockDevice(ctx context.Context, arg AdminUnblockDeviceParams) error
 	AdminUpdatePersonName(ctx context.Context, arg AdminUpdatePersonNameParams) error
 	AdminUserLock(ctx context.Context, id pgtype.UUID) (AdminUserLockRow, error)
 	AnalyticsAccountDaily(ctx context.Context, arg AnalyticsAccountDailyParams) ([]AnalyticsAccountDailyRow, error)
@@ -60,6 +75,7 @@ type Querier interface {
 	AuditCommunityMedia(ctx context.Context, arg AuditCommunityMediaParams) error
 	AuditEventMedia(ctx context.Context, arg AuditEventMediaParams) error
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
+	BindSessionDevice(ctx context.Context, arg BindSessionDeviceParams) error
 	BoundRecognizedDevices(ctx context.Context, userID pgtype.UUID) error
 	CampaignAudienceCount(ctx context.Context) (int64, error)
 	CampaignAudienceCountSelected(ctx context.Context, arg CampaignAudienceCountSelectedParams) (int64, error)
@@ -118,6 +134,7 @@ type Querier interface {
 	GetUserByGoogleSubject(ctx context.Context, subject string) (GetUserByGoogleSubjectRow, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	GrantLocalPreviewAdmin(ctx context.Context, email string) (pgtype.UUID, error)
+	HasActiveAdminGrant(ctx context.Context, userID pgtype.UUID) (bool, error)
 	ImportPromotionContact(ctx context.Context, arg ImportPromotionContactParams) (int64, error)
 	IncrementRSVPCount(ctx context.Context, id pgtype.UUID) error
 	InvalidateUserEmailCodes(ctx context.Context, userID pgtype.UUID) error
@@ -125,6 +142,8 @@ type Querier interface {
 	IsPlatformAdminSession(ctx context.Context, arg IsPlatformAdminSessionParams) (bool, error)
 	IsPlatformAdministrator(ctx context.Context, userID pgtype.UUID) (bool, error)
 	IsRecognizedDevice(ctx context.Context, arg IsRecognizedDeviceParams) (bool, error)
+	IsRestrictedAccount(ctx context.Context, userID pgtype.UUID) (bool, error)
+	IsRestrictedDevice(ctx context.Context, tokenHash string) (bool, error)
 	LinkUserIdentity(ctx context.Context, arg LinkUserIdentityParams) error
 	ListAccountSessions(ctx context.Context, userID pgtype.UUID) ([]ListAccountSessionsRow, error)
 	ListOwnedNotifications(ctx context.Context, arg ListOwnedNotificationsParams) ([]ListOwnedNotificationsRow, error)
@@ -140,6 +159,7 @@ type Querier interface {
 	LockEventMediaResource(ctx context.Context, id pgtype.UUID) (LockEventMediaResourceRow, error)
 	LockMediaEventGrant(ctx context.Context, arg LockMediaEventGrantParams) ([]pgtype.UUID, error)
 	LockMediaSpaceGrant(ctx context.Context, arg LockMediaSpaceGrantParams) ([]pgtype.UUID, error)
+	LockRestrictionDevice(ctx context.Context, tokenHash string) error
 	LockRuntimeRollout(ctx context.Context) (RuntimeRolloutControl, error)
 	LockSpaceMediaResource(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
@@ -226,6 +246,7 @@ type Querier interface {
 	ReadCityUpload(ctx context.Context, id pgtype.UUID) (ReadCityUploadRow, error)
 	ReadConfirmationPass(ctx context.Context, id pgtype.UUID) (ReadConfirmationPassRow, error)
 	ReadEmailVerification(ctx context.Context, userID pgtype.UUID) (ReadEmailVerificationRow, error)
+	ReadOAuthExchangeDevice(ctx context.Context, arg ReadOAuthExchangeDeviceParams) (ReadOAuthExchangeDeviceRow, error)
 	ReadOAuthExchangeUser(ctx context.Context, arg ReadOAuthExchangeUserParams) (pgtype.UUID, error)
 	ReadOutboxCurrentState(ctx context.Context, id pgtype.UUID) (ReadOutboxCurrentStateRow, error)
 	ReadOwnedUploadEvent(ctx context.Context, arg ReadOwnedUploadEventParams) (pgtype.UUID, error)
@@ -235,11 +256,16 @@ type Querier interface {
 	ReadRuntimeRollout(ctx context.Context) (ReadRuntimeRolloutRow, error)
 	ReadSpaceImageState(ctx context.Context, arg ReadSpaceImageStateParams) (ReadSpaceImageStateRow, error)
 	RecordAnalyticsBatch(ctx context.Context, arg RecordAnalyticsBatchParams) (RecordAnalyticsBatchRow, error)
+	RecordDeviceReviewAssociation(ctx context.Context, arg RecordDeviceReviewAssociationParams) error
 	// Trusted, already verified server-side issuance; password sign-in uses the
 	// separate unverified-session query before the email challenge.
 	RecordPlatformAdminSession(ctx context.Context, sessionID pgtype.UUID) error
 	RememberRecognizedDevice(ctx context.Context, arg RememberRecognizedDeviceParams) error
+	RequireDeviceAccountReview(ctx context.Context, arg RequireDeviceAccountReviewParams) (int64, error)
 	ResetAccountPassword(ctx context.Context, arg ResetAccountPasswordParams) (int64, error)
+	RestrictedDeviceByHash(ctx context.Context, tokenHash string) (RestrictedDeviceByHashRow, error)
+	RetireRestrictedAccountGrants(ctx context.Context, userIds []pgtype.UUID) error
+	RetireRestrictedAccountSessions(ctx context.Context, userIds []pgtype.UUID) error
 	RetryOwnedNotification(ctx context.Context, arg RetryOwnedNotificationParams) (pgtype.UUID, error)
 	RevokeOwnedSession(ctx context.Context, arg RevokeOwnedSessionParams) (int64, error)
 	RevokeUserOAuthExchanges(ctx context.Context, userID pgtype.UUID) error

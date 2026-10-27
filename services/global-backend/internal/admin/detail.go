@@ -44,6 +44,14 @@ func detailError(w http.ResponseWriter, err error) {
 func (h *Handler) detailID(w http.ResponseWriter, r *http.Request, resource, kind string) (pgtype.UUID, bool) {
 	var id pgtype.UUID
 	if reference, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64); err == nil && reference > 0 {
+		if resource == "devices" {
+			resolved, e := h.queries.AdminResolveDeviceReference(r.Context(), reference)
+			if e != nil {
+				detailError(w, e)
+				return id, false
+			}
+			return resolved, true
+		}
 		resolved, resolveErr := h.queries.AdminResolveReferenceID(r.Context(), db.AdminResolveReferenceIDParams{Reference: reference, Resource: resource, Kind: kind})
 		if resolveErr != nil {
 			detailError(w, resolveErr)
@@ -80,7 +88,7 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 	}
 	page := detailPage{Offset: offset, Tabs: []detailTab{{"activity", "Activity"}}}
 	if resource == "people" {
-		page.Tabs = append([]detailTab{{"events", "Events"}, {"registrations", "Registrations"}, {"sessions", "Sessions"}, {"messages", "Messages"}}, page.Tabs...)
+		page.Tabs = append([]detailTab{{"events", "Events"}, {"registrations", "Registrations"}, {"sessions", "Sessions"}, {"devices", "Browsers"}, {"messages", "Messages"}}, page.Tabs...)
 	}
 	page.Section = r.URL.Query().Get("section")
 	if page.Section == "" {
@@ -98,6 +106,12 @@ func (h *Handler) detailPage(w http.ResponseWriter, r *http.Request, id pgtype.U
 	}
 	var err error
 	switch page.Section {
+	case "devices":
+		rows, e := h.queries.AdminPersonDevices(r.Context(), db.AdminPersonDevicesParams{UserID: id, Limit: 21, Offset: offset})
+		err = e
+		for _, v := range rows {
+			page.Rows = append(page.Rows, relatedItem{v.ID, v.Reference, v.Label, v.Detail, v.Resource, v.Status, v.OccurredAt})
+		}
 	case "events":
 		var rows []db.AdminPersonEventsRow
 		rows, err = h.queries.AdminPersonEvents(r.Context(), db.AdminPersonEventsParams{UserID: id, Limit: 21, Offset: offset})

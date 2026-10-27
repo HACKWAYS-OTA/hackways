@@ -8,11 +8,14 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/hackways/global-backend/db"
+	"github.com/hackways/global-backend/internal/platform"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -37,8 +40,8 @@ func setDeviceCookie(w http.ResponseWriter, token string, admin bool) {
 	http.SetCookie(w, &http.Cookie{Name: deviceName(admin), Value: token, Path: "/", Secure: true, HttpOnly: true, SameSite: sameSite, MaxAge: int(deviceLifetime.Seconds()), Expires: time.Now().Add(deviceLifetime)})
 }
 
-// The caller holds the account row lock. Recognition only deduplicates alerts;
-// it never grants a session, role or authentication bypass.
+// The caller holds the account row lock. Recognition deduplicates alerts and
+// supports moderation associations; it never authenticates an account.
 func rememberDevice(ctx context.Context, q *db.Queries, user db.LockAuthenticationUserRow, r *http.Request, admin bool, locationProxies []netip.Prefix) (string, error) {
 	token := GetSessionToken(r, deviceName(admin))
 	decoded, err := hex.DecodeString(token)
@@ -130,6 +133,41 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 	if err = q.SetStorageWriteTimeout(r.Context()); err != nil {
 		return err
 	}
+	deviceHash := requestDeviceHash(r)
+	if admin {
+		deviceHash = ""
+		if token := GetSessionToken(r, adminDeviceCookie); len(token) == 64 {
+			if decoded, e := hex.DecodeString(token); e == nil && len(decoded) == 32 {
+				deviceHash = HashToken(token)
+			}
+		}
+	}
+	hashes := []string{}
+	if deviceHash != "" {
+		hashes = append(hashes, deviceHash)
+	}
+	if len(proof) > 0 {
+		source, e := q.ReadOAuthExchangeDevice(r.Context(), db.ReadOAuthExchangeDeviceParams{TokenHash: proof[0].TokenHash, NonceHash: proof[0].NonceHash})
+		if errors.Is(e, pgx.ErrNoRows) {
+			return errCredentialsChanged
+		}
+		if e != nil {
+			return e
+		}
+		for _, known := range []pgtype.Text{source.DeviceTokenHash, source.CallbackDeviceTokenHash} {
+			if known.Valid && known.String != "" && !slices.Contains(hashes, known.String) {
+				hashes = append(hashes, known.String)
+			}
+		}
+	}
+	sort.Strings(hashes)
+	// Every known browser lock precedes the user lock, including a hash carried
+	// through the validated OAuth state when the callback uses another origin.
+	for _, hash := range hashes {
+		if err = q.LockRestrictionDevice(r.Context(), hash); err != nil {
+			return err
+		}
+	}
 	user, err := q.LockAuthenticationUser(r.Context(), id)
 	if err != nil {
 		return err
@@ -148,6 +186,73 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 		if exchanged != id {
 			return errCredentialsChanged
 		}
+	}
+	for _, hash := range hashes {
+		restricted, e := q.RestrictedDeviceByHash(r.Context(), hash)
+		if e != nil && !errors.Is(e, pgx.ErrNoRows) {
+			return e
+		}
+		if e == nil {
+			protected, e := q.HasActiveAdminGrant(r.Context(), id)
+			if e != nil {
+				return e
+			}
+			if protected {
+				return ErrNotAllowed
+			}
+			changed, e := q.RequireDeviceAccountReview(r.Context(), db.RequireDeviceAccountReviewParams{UserID: id, SourceDeviceID: restricted.ID})
+			if e != nil {
+				return e
+			}
+			if e = q.RecordDeviceReviewAssociation(r.Context(), db.RecordDeviceReviewAssociationParams{DeviceID: restricted.ID, UserID: id}); e != nil {
+				return e
+			}
+			ids := []pgtype.UUID{id}
+			if e = q.RetireRestrictedAccountSessions(r.Context(), ids); e != nil {
+				return e
+			}
+			if e = q.RetireRestrictedAccountGrants(r.Context(), ids); e != nil {
+				return e
+			}
+			if e = q.RevokeUserOAuthExchanges(r.Context(), id); e != nil {
+				return e
+			}
+			if changed > 0 {
+				if e = q.AdminTouchPerson(r.Context(), id); e != nil {
+					return e
+				}
+				metadata, _ := json.Marshal(struct {
+					Device int64 `json:"device_reference"`
+				}{restricted.Reference})
+				if e = q.AppendAdminAudit(r.Context(), db.AppendAdminAuditParams{EntityID: id, Action: "account.review_required", RequestID: platform.GetRequestID(r.Context()), Metadata: metadata}); e != nil {
+					return e
+				}
+			}
+			// Persist quarantine and token retirement before returning the denial.
+			if e = tx.Commit(r.Context()); e != nil {
+				return e
+			}
+			return ErrNotAllowed
+		}
+	}
+	restricted, e := q.IsRestrictedAccount(r.Context(), id)
+	if e != nil {
+		return e
+	}
+	if restricted {
+		if e = q.RetireRestrictedAccountSessions(r.Context(), []pgtype.UUID{id}); e != nil {
+			return e
+		}
+		if e = q.RetireRestrictedAccountGrants(r.Context(), []pgtype.UUID{id}); e != nil {
+			return e
+		}
+		if e = q.RevokeUserOAuthExchanges(r.Context(), id); e != nil {
+			return e
+		}
+		if e = tx.Commit(r.Context()); e != nil {
+			return e
+		}
+		return ErrNotAllowed
 	}
 	if admin {
 		allowed, e := q.IsPlatformAdministrator(r.Context(), id)
@@ -175,6 +280,9 @@ func (h *Handler) establishSession(w http.ResponseWriter, r *http.Request, id pg
 	}
 	device, err := rememberDevice(r.Context(), q, user, r, admin, h.locationProxies)
 	if err != nil {
+		return err
+	}
+	if err = q.BindSessionDevice(r.Context(), db.BindSessionDeviceParams{ID: session.ID, DeviceTokenHash: pgtype.Text{String: HashToken(device), Valid: true}}); err != nil {
 		return err
 	}
 	if err = tx.Commit(r.Context()); err != nil {

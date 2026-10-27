@@ -54,32 +54,40 @@ const consumeOAuthState = `-- name: ConsumeOAuthState :one
 UPDATE oauth_states
 SET consumed_at = NOW()
 WHERE state_hash = $1 AND consumed_at IS NULL AND expires_at > NOW()
-RETURNING verifier, return_to, nonce_hash
+RETURNING verifier, return_to, nonce_hash,device_token_hash
 `
 
 type ConsumeOAuthStateRow struct {
-	Verifier  string `json:"verifier"`
-	ReturnTo  string `json:"return_to"`
-	NonceHash string `json:"nonce_hash"`
+	Verifier        string      `json:"verifier"`
+	ReturnTo        string      `json:"return_to"`
+	NonceHash       string      `json:"nonce_hash"`
+	DeviceTokenHash pgtype.Text `json:"device_token_hash"`
 }
 
 func (q *Queries) ConsumeOAuthState(ctx context.Context, stateHash string) (ConsumeOAuthStateRow, error) {
 	row := q.db.QueryRow(ctx, consumeOAuthState, stateHash)
 	var i ConsumeOAuthStateRow
-	err := row.Scan(&i.Verifier, &i.ReturnTo, &i.NonceHash)
+	err := row.Scan(
+		&i.Verifier,
+		&i.ReturnTo,
+		&i.NonceHash,
+		&i.DeviceTokenHash,
+	)
 	return i, err
 }
 
 const createOAuthExchangeToken = `-- name: CreateOAuthExchangeToken :exec
-INSERT INTO oauth_exchange_tokens (token_hash, user_id, nonce_hash, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO oauth_exchange_tokens (token_hash, user_id, nonce_hash, expires_at,device_token_hash,callback_device_token_hash)
+VALUES ($1, $2, $3, $4,$5,$6)
 `
 
 type CreateOAuthExchangeTokenParams struct {
-	TokenHash string             `json:"token_hash"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	NonceHash string             `json:"nonce_hash"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	TokenHash               string             `json:"token_hash"`
+	UserID                  pgtype.UUID        `json:"user_id"`
+	NonceHash               string             `json:"nonce_hash"`
+	ExpiresAt               pgtype.Timestamptz `json:"expires_at"`
+	DeviceTokenHash         pgtype.Text        `json:"device_token_hash"`
+	CallbackDeviceTokenHash pgtype.Text        `json:"callback_device_token_hash"`
 }
 
 func (q *Queries) CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthExchangeTokenParams) error {
@@ -88,21 +96,24 @@ func (q *Queries) CreateOAuthExchangeToken(ctx context.Context, arg CreateOAuthE
 		arg.UserID,
 		arg.NonceHash,
 		arg.ExpiresAt,
+		arg.DeviceTokenHash,
+		arg.CallbackDeviceTokenHash,
 	)
 	return err
 }
 
 const createOAuthState = `-- name: CreateOAuthState :exec
-INSERT INTO oauth_states (state_hash, verifier, return_to, nonce_hash, expires_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO oauth_states (state_hash, verifier, return_to, nonce_hash, expires_at,device_token_hash)
+VALUES ($1, $2, $3, $4, $5,$6)
 `
 
 type CreateOAuthStateParams struct {
-	StateHash string             `json:"state_hash"`
-	Verifier  string             `json:"verifier"`
-	ReturnTo  string             `json:"return_to"`
-	NonceHash string             `json:"nonce_hash"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	StateHash       string             `json:"state_hash"`
+	Verifier        string             `json:"verifier"`
+	ReturnTo        string             `json:"return_to"`
+	NonceHash       string             `json:"nonce_hash"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	DeviceTokenHash pgtype.Text        `json:"device_token_hash"`
 }
 
 func (q *Queries) CreateOAuthState(ctx context.Context, arg CreateOAuthStateParams) error {
@@ -112,6 +123,28 @@ func (q *Queries) CreateOAuthState(ctx context.Context, arg CreateOAuthStatePara
 		arg.ReturnTo,
 		arg.NonceHash,
 		arg.ExpiresAt,
+		arg.DeviceTokenHash,
 	)
 	return err
+}
+
+const readOAuthExchangeDevice = `-- name: ReadOAuthExchangeDevice :one
+SELECT device_token_hash,callback_device_token_hash FROM oauth_exchange_tokens WHERE token_hash=$1 AND nonce_hash=$2 AND expires_at>clock_timestamp() AND used_at IS NULL
+`
+
+type ReadOAuthExchangeDeviceParams struct {
+	TokenHash string `json:"token_hash"`
+	NonceHash string `json:"nonce_hash"`
+}
+
+type ReadOAuthExchangeDeviceRow struct {
+	DeviceTokenHash         pgtype.Text `json:"device_token_hash"`
+	CallbackDeviceTokenHash pgtype.Text `json:"callback_device_token_hash"`
+}
+
+func (q *Queries) ReadOAuthExchangeDevice(ctx context.Context, arg ReadOAuthExchangeDeviceParams) (ReadOAuthExchangeDeviceRow, error) {
+	row := q.db.QueryRow(ctx, readOAuthExchangeDevice, arg.TokenHash, arg.NonceHash)
+	var i ReadOAuthExchangeDeviceRow
+	err := row.Scan(&i.DeviceTokenHash, &i.CallbackDeviceTokenHash)
+	return i, err
 }

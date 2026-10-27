@@ -32,7 +32,7 @@ INSERT INTO sessions (
     $5,
     NOW()
 )
-RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen, admin_reference
+RETURNING id, user_id, token_hash, user_agent, ip_address, created_at, expires_at, last_seen, admin_reference, device_token_hash, revoked_at
 `
 
 type CreateSessionParams struct {
@@ -62,6 +62,8 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.ExpiresAt,
 		&i.LastSeen,
 		&i.AdminReference,
+		&i.DeviceTokenHash,
+		&i.RevokedAt,
 	)
 	return i, err
 }
@@ -88,7 +90,9 @@ func (q *Queries) DeleteSessionsByUserID(ctx context.Context, userID pgtype.UUID
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
 SELECT s.id, s.user_id, s.token_hash, s.user_agent, s.ip_address, s.created_at, s.expires_at, s.last_seen,
-       u.email, u.display_name, u.avatar_url, u.email_verified
+       u.email, u.display_name, u.avatar_url, u.email_verified,s.revoked_at,
+       (EXISTS(SELECT 1 FROM account_restrictions a WHERE a.user_id=u.id AND a.blocked)
+        OR EXISTS(SELECT 1 FROM device_restrictions d WHERE d.token_hash=s.device_token_hash AND d.blocked))::boolean AS restricted
 FROM sessions s
 JOIN users u ON s.user_id = u.id
 WHERE s.token_hash = $1
@@ -109,6 +113,8 @@ type GetSessionByTokenHashRow struct {
 	DisplayName   string             `json:"display_name"`
 	AvatarUrl     pgtype.Text        `json:"avatar_url"`
 	EmailVerified bool               `json:"email_verified"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+	Restricted    bool               `json:"restricted"`
 }
 
 func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error) {
@@ -127,6 +133,8 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 		&i.DisplayName,
 		&i.AvatarUrl,
 		&i.EmailVerified,
+		&i.RevokedAt,
+		&i.Restricted,
 	)
 	return i, err
 }
@@ -134,7 +142,7 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash string) (
 const updateSessionActivityBatch = `-- name: UpdateSessionActivityBatch :exec
 UPDATE sessions SET last_seen=clock_timestamp()
 WHERE id=ANY($1::uuid[]) AND last_seen<clock_timestamp()-INTERVAL '5 minutes'
-AND expires_at>clock_timestamp()
+AND expires_at>clock_timestamp() AND revoked_at IS NULL
 `
 
 func (q *Queries) UpdateSessionActivityBatch(ctx context.Context, ids []pgtype.UUID) error {

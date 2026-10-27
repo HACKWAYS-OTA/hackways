@@ -17,7 +17,7 @@ SELECT g.id AS grant_id,g.client_id,g.resource,g.scopes,g.session_id,u.id AS use
 FROM mcp_access_tokens t JOIN mcp_oauth_grants g ON g.id=t.grant_id JOIN sessions s ON s.id=g.session_id AND s.user_id=g.user_id
 JOIN users u ON u.id=g.user_id
 WHERE t.token_hash=$1 AND g.revoked_at IS NULL AND t.expires_at>clock_timestamp() AND g.expires_at>clock_timestamp()
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL AND u.email_verified
 `
 
 type MCPAccessIdentityRow struct {
@@ -384,7 +384,7 @@ func (q *Queries) MCPCreateAuthorizationRequest(ctx context.Context, arg MCPCrea
 const mCPCreateGrant = `-- name: MCPCreateGrant :one
 INSERT INTO mcp_oauth_grants(user_id,session_id,client_id,resource,scopes,expires_at)
 SELECT s.user_id,s.id,$2,$3,$4,LEAST(s.expires_at,clock_timestamp()+INTERVAL '90 days') FROM sessions s
-JOIN users u ON u.id=s.user_id WHERE s.id=$1 AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL
+JOIN users u ON u.id=s.user_id WHERE s.id=$1 AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL
 AND (SELECT count(*) FROM mcp_oauth_grants g WHERE g.user_id=s.user_id AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp())<50
 RETURNING id, user_id, session_id, client_id, resource, scopes, created_at, expires_at, revoked_at, revocation_reason
 `
@@ -454,7 +454,7 @@ SELECT EXISTS(SELECT 1 FROM mcp_action_intents a JOIN mcp_oauth_grants g ON g.id
 WHERE a.id=$1 AND a.grant_id=$2 AND a.request_hash=$3
 AND a.api_service=$4 AND a.method=$5 AND a.api_path=$6
 AND a.status='executing' AND a.approved_at IS NOT NULL AND a.approved_session_id IS NOT NULL
-AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp())
+AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp() AND approved.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=approved.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=approved.device_token_hash AND dr.blocked))
 AND a.lease_hash=$7 AND a.lease_expires_at>clock_timestamp() AND a.expires_at>clock_timestamp()
 AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp())
 `
@@ -643,7 +643,7 @@ func (q *Queries) MCPLockAccountGrants(ctx context.Context, userID pgtype.UUID) 
 const mCPLockAuthorizationCode = `-- name: MCPLockAuthorizationCode :one
 SELECT r.id, r.client_id, r.redirect_uri, r.state, r.resource, r.code_challenge, r.scopes, r.status, r.user_id, r.session_id, r.code_hash, r.code_used_at, r.created_at, r.expires_at,s.expires_at AS session_expires_at FROM mcp_oauth_requests r JOIN sessions s ON s.id=r.session_id AND s.user_id=r.user_id
 JOIN users u ON u.id=r.user_id WHERE r.code_hash=$1 AND r.status='approved' AND r.expires_at>clock_timestamp()
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified FOR UPDATE OF r
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL AND u.email_verified FOR UPDATE OF r
 `
 
 type MCPLockAuthorizationCodeRow struct {
@@ -747,7 +747,7 @@ func (q *Queries) MCPLockGrant(ctx context.Context, id pgtype.UUID) (McpOauthGra
 const mCPLockRefreshToken = `-- name: MCPLockRefreshToken :one
 SELECT t.token_hash,t.grant_id,t.expires_at,t.used_at,g.user_id,g.session_id,g.client_id,g.resource,g.scopes,g.revoked_at
 FROM mcp_refresh_tokens t JOIN mcp_oauth_grants g ON g.id=t.grant_id JOIN sessions s ON s.id=g.session_id AND s.user_id=g.user_id
-JOIN users u ON u.id=g.user_id WHERE t.token_hash=$1 AND s.expires_at>clock_timestamp() AND g.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
+JOIN users u ON u.id=g.user_id WHERE t.token_hash=$1 AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND g.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
 FOR UPDATE OF t,g
 `
 

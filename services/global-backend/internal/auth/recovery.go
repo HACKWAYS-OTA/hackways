@@ -218,8 +218,7 @@ func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 	ClearSessionCookie(w, DefaultSessionCookie)
 	ClearSessionCookie(w, AdminSessionCookie)
-	ClearSessionCookie(w, deviceCookie)
-	ClearSessionCookie(w, adminDeviceCookie)
+	// Recognition survives recovery so a blocked browser cannot reset its identity.
 	platform.RespondJSON(w, 200, struct {
 		Message string `json:"message"`
 	}{"Password changed. Sign in again on your devices."})

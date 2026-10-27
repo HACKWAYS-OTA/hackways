@@ -170,6 +170,7 @@ func main() {
 	programHandler := programs.New(pool)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
+		v1.Use(auth.RestrictionGuard(db.New(pool)))
 		v1.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			platform.RespondJSON(w, http.StatusOK, map[string]string{
 				"service": "Hackways Global Backend",

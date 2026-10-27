@@ -273,8 +273,9 @@ func (q *Queries) AdminMessageDetail(ctx context.Context, id pgtype.UUID) (Admin
 
 const adminPersonDetail = `-- name: AdminPersonDetail :one
 SELECT u.id,u.admin_reference AS reference,u.display_name,u.email,u.email_verified,COALESCE(split_part(split_part(u.avatar_url,'?',1),'#',1),'')::text AS avatar_url,u.created_at,u.updated_at,
+EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=u.id AND ar.blocked)::boolean AS blocked,
 CASE WHEN a.user_id IS NOT NULL AND a.revoked_at IS NULL THEN 'admin' ELSE 'member' END::text AS access,
-(SELECT count(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>clock_timestamp())::bigint AS active_sessions,
+(SELECT count(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL)::bigint AS active_sessions,
 o.id AS host_profile_id,o.display_name AS host_name,o.slug AS host_slug,o.verified AS host_verified
 FROM users u LEFT JOIN platform_administrators a ON a.user_id=u.id LEFT JOIN organizers o ON o.user_id=u.id WHERE u.id=$1 AND u.deleted_at IS NULL
 `
@@ -288,6 +289,7 @@ type AdminPersonDetailRow struct {
 	AvatarUrl      string             `json:"avatar_url"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Blocked        bool               `json:"blocked"`
 	Access         string             `json:"access"`
 	ActiveSessions int64              `json:"active_sessions"`
 	HostProfileID  pgtype.UUID        `json:"host_profile_id"`
@@ -308,6 +310,7 @@ func (q *Queries) AdminPersonDetail(ctx context.Context, id pgtype.UUID) (AdminP
 		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Blocked,
 		&i.Access,
 		&i.ActiveSessions,
 		&i.HostProfileID,
@@ -468,7 +471,7 @@ func (q *Queries) AdminPersonRegistrations(ctx context.Context, arg AdminPersonR
 const adminPersonSessions = `-- name: AdminPersonSessions :many
 SELECT id::text AS id,admin_reference::text AS reference,'Session'::text AS label,COALESCE(left(user_agent,200),'')::text AS detail,'sessions'::text AS resource,
 CASE WHEN id=$1::uuid THEN 'current' WHEN expires_at>clock_timestamp() THEN 'active' ELSE 'expired' END::text AS status,last_seen AS occurred_at,created_at,expires_at
-FROM sessions WHERE user_id=$2 AND expires_at>clock_timestamp() ORDER BY last_seen DESC,id LIMIT $4::int OFFSET $3::int
+FROM sessions WHERE user_id=$2 AND expires_at>clock_timestamp() AND revoked_at IS NULL ORDER BY last_seen DESC,id LIMIT $4::int OFFSET $3::int
 `
 
 type AdminPersonSessionsParams struct {
@@ -523,6 +526,17 @@ func (q *Queries) AdminPersonSessions(ctx context.Context, arg AdminPersonSessio
 		return nil, err
 	}
 	return items, nil
+}
+
+const adminResolveDeviceReference = `-- name: AdminResolveDeviceReference :one
+SELECT id FROM device_restrictions WHERE reference=$1
+`
+
+func (q *Queries) AdminResolveDeviceReference(ctx context.Context, reference int64) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, adminResolveDeviceReference, reference)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const adminResolveReferenceID = `-- name: AdminResolveReferenceID :one

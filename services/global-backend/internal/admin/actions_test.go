@@ -4,10 +4,12 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -51,6 +53,10 @@ func TestAdminRecordActions(t *testing.T) {
 	actor := create("detail-admin", true)
 	target := create("detail-member", false)
 	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM idempotency_records WHERE response_json->'data'->>'id' IN(SELECT id::text FROM device_restrictions WHERE updated_by=$1)", actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM restriction_device_accounts WHERE device_id IN(SELECT id FROM device_restrictions WHERE updated_by=$1) OR user_id=ANY($2::uuid[])", actor.ID, users)
+		_, _ = pool.Exec(ctx, "DELETE FROM account_restrictions WHERE user_id=ANY($1::uuid[]) OR source_device_id IN(SELECT id FROM device_restrictions WHERE updated_by=$2)", users, actor.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM device_restrictions WHERE updated_by=$1", actor.ID)
 		for _, id := range users {
 			_, _ = pool.Exec(ctx, "DELETE FROM audit_log WHERE actor_user_id=$1 OR entity_id=$1", id)
 			_, _ = pool.Exec(ctx, "DELETE FROM idempotency_records WHERE response_json->'data'->>'id'=$1", uuidText(id))
@@ -216,7 +222,7 @@ func TestAdminRecordActions(t *testing.T) {
 	if got := get(path + "?section=unknown").Code; got != 400 {
 		t.Fatalf("invalid section got %d", got)
 	}
-	for _, section := range []string{"events", "registrations", "sessions", "messages", "activity"} {
+	for _, section := range []string{"events", "registrations", "sessions", "devices", "messages", "activity"} {
 		if rec := get(path + "?section=" + section); rec.Code != 200 {
 			t.Fatalf("%s detail got %d %s", section, rec.Code, rec.Body.String())
 		}
@@ -344,6 +350,105 @@ func TestAdminRecordActions(t *testing.T) {
 	if got := post(messagePath+"/retry", actionBody{UpdatedAt: msg.UpdatedAt.Time}, "retry-ambiguous-key1").Code; got != 409 {
 		t.Fatalf("ambiguous delivery replay allowed %d", got)
 	}
+	// Extend mandatory real-PostgreSQL admin coverage with account/device review.
+	blocked, unblocked := true, false
+	if rec := post("/people/"+uuidText(actor.ID)+"/restriction", actionBody{UpdatedAt: version(actor.ID), Blocked: &blocked}, "restriction-self-key"); rec.Code != 409 {
+		t.Fatalf("admin recovery bypass %d %s", rec.Code, rec.Body.String())
+	}
+	linked := create("linked-member", true)
+	browser, _ := auth.GenerateToken()
+	deviceHash := auth.HashToken(browser)
+	for _, id := range []pgtype.UUID{target.ID, linked.ID, actor.ID} {
+		if err = q.RememberRecognizedDevice(ctx, db.RememberRecognizedDeviceParams{UserID: id, TokenHash: deviceHash, UserAgent: "CI restriction browser"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	devices, e := q.AdminPersonDevices(ctx, db.AdminPersonDevicesParams{UserID: target.ID, Limit: 20})
+	if e != nil || len(devices) != 1 {
+		t.Fatalf("recognized device missing %v", e)
+	}
+	ref, e := strconv.ParseInt(devices[0].Reference, 10, 64)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, err = pool.Exec(ctx, "DELETE FROM recognized_devices WHERE user_id=$1 AND token_hash=$2", actor.ID, deviceHash); err != nil {
+		t.Fatal(err)
+	}
+	if err = q.BindSessionDevice(ctx, db.BindSessionDeviceParams{ID: session.ID, DeviceTokenHash: pgtype.Text{String: deviceHash, Valid: true}}); err != nil {
+		t.Fatal(err)
+	}
+	browserBody := actionBody{UpdatedAt: version(target.ID), DeviceReference: &ref}
+	if rec := post(path+"/devices/block", browserBody, "restriction-admin-browser"); rec.Code != 409 {
+		t.Fatalf("admin-associated browser blocked %d", rec.Code)
+	}
+	if err = q.BindSessionDevice(ctx, db.BindSessionDeviceParams{ID: session.ID}); err != nil {
+		t.Fatal(err)
+	}
+	targetToken, _, e := sm.CreateSession(ctx, target.ID, "legacy ordinary", "", time.Hour)
+	if e != nil {
+		t.Fatal(e)
+	}
+	linkedToken, linkedSession, e := sm.CreateSession(ctx, linked.ID, "linked ordinary", "", time.Hour)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if err = q.BindSessionDevice(ctx, db.BindSessionDeviceParams{ID: linkedSession.ID, DeviceTokenHash: pgtype.Text{String: deviceHash, Valid: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "DELETE FROM recognized_devices WHERE user_id=$1 AND token_hash=$2", linked.ID, deviceHash); err != nil {
+		t.Fatal(err)
+	}
+	if rec := post(path+"/devices/block", browserBody, "restriction-browser-key"); rec.Code != 200 {
+		t.Fatalf("browser block %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := post(path+"/devices/block", browserBody, "restriction-browser-key"); rec.Code != 200 || rec.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatal("browser restriction retry failed")
+	}
+	for _, id := range []pgtype.UUID{target.ID, linked.ID} {
+		if flag, e := q.IsRestrictedAccount(ctx, id); e != nil || !flag {
+			t.Fatal("associated account not restricted")
+		}
+	}
+	for _, credential := range []string{targetToken, linkedToken} {
+		if _, e := sm.GetSession(ctx, credential); !errors.Is(e, auth.ErrNotAllowed) {
+			t.Fatalf("restricted old session allowed %v", e)
+		}
+	}
+	browserRows, e := q.AdminListRestrictedDevices(ctx, db.AdminListRestrictedDevicesParams{Q: "CI restriction browser", PageLimit: 20})
+	if e != nil || len(browserRows) != 1 {
+		t.Fatal("blocked browser list missing")
+	}
+	deviceRecord := browserRows[0]
+	privateList := get("/restrictions/devices?q=CI%20restriction%20browser")
+	if privateList.Code != 200 || strings.Contains(privateList.Body.String(), deviceHash) || strings.Contains(privateList.Body.String(), "token_hash") {
+		t.Fatal("browser list exposed identifier")
+	}
+	if rec := post(path+"/restriction", actionBody{UpdatedAt: version(target.ID), Blocked: &unblocked}, "restriction-account-review"); rec.Code != 200 {
+		t.Fatalf("account unblock %d %s", rec.Code, rec.Body.String())
+	}
+	if _, e = sm.GetSession(ctx, targetToken); !errors.Is(e, auth.ErrSessionNotFound) {
+		t.Fatal("unblocking account revived its retired session")
+	}
+	if flag, e := q.IsRestrictedDevice(ctx, deviceHash); e != nil || !flag {
+		t.Fatal("account unblock changed browser restriction")
+	}
+	devicePath := "/devices/" + fmt.Sprint(deviceRecord.Reference) + "/restriction"
+	if rec := post(devicePath, actionBody{UpdatedAt: deviceRecord.UpdatedAt.Time, Blocked: &unblocked}, "restriction-device-review"); rec.Code != 200 {
+		t.Fatalf("browser unblock %d %s", rec.Code, rec.Body.String())
+	}
+	if flag, e := q.IsRestrictedAccount(ctx, linked.ID); e != nil || !flag {
+		t.Fatal("browser unblock reactivated associated account")
+	}
+	if rec := post(path+"/restriction", actionBody{UpdatedAt: version(target.ID), Blocked: &blocked}, "restriction-manual-account"); rec.Code != 200 {
+		t.Fatal("manual suspension failed")
+	}
+	if rec := post(path+"/access", actionBody{UpdatedAt: version(target.ID), Access: &admin}, "restriction-admin-grant"); rec.Code != 409 {
+		t.Fatal("restricted account received admin grant")
+	}
+	if rec := post(path+"/restriction", actionBody{UpdatedAt: version(target.ID), Blocked: &unblocked}, "restriction-manual-review"); rec.Code != 200 {
+		t.Fatal("manual account review failed")
+	}
+
 }
 func uuidText(id pgtype.UUID) string {
 	b := id.Bytes

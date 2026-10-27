@@ -4,14 +4,14 @@ SELECT g.id AS grant_id,g.client_id,g.resource,g.scopes,g.session_id,u.id AS use
 FROM mcp_access_tokens t JOIN mcp_oauth_grants g ON g.id=t.grant_id JOIN sessions s ON s.id=g.session_id AND s.user_id=g.user_id
 JOIN users u ON u.id=g.user_id
 WHERE t.token_hash=$1 AND g.revoked_at IS NULL AND t.expires_at>clock_timestamp() AND g.expires_at>clock_timestamp()
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified;
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL AND u.email_verified;
 
 -- name: MCPExecutionAllowed :one
 SELECT EXISTS(SELECT 1 FROM mcp_action_intents a JOIN mcp_oauth_grants g ON g.id=a.grant_id
 WHERE a.id=sqlc.arg(intent_id) AND a.grant_id=sqlc.arg(grant_id) AND a.request_hash=sqlc.arg(request_hash)
 AND a.api_service=sqlc.arg(api_service) AND a.method=sqlc.arg(method) AND a.api_path=sqlc.arg(api_path)
 AND a.status='executing' AND a.approved_at IS NOT NULL AND a.approved_session_id IS NOT NULL
-AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp())
+AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp() AND approved.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=approved.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=approved.device_token_hash AND dr.blocked))
 AND a.lease_hash=sqlc.arg(lease_hash) AND a.lease_expires_at>clock_timestamp() AND a.expires_at>clock_timestamp()
 AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp());
 
@@ -44,7 +44,7 @@ UPDATE mcp_oauth_requests SET status='denied' WHERE id=$1 AND status='pending' A
 -- name: MCPLockAuthorizationCode :one
 SELECT r.*,s.expires_at AS session_expires_at FROM mcp_oauth_requests r JOIN sessions s ON s.id=r.session_id AND s.user_id=r.user_id
 JOIN users u ON u.id=r.user_id WHERE r.code_hash=$1 AND r.status='approved' AND r.expires_at>clock_timestamp()
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified FOR UPDATE OF r;
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL AND u.email_verified FOR UPDATE OF r;
 
 -- name: MCPConsumeAuthorizationCode :exec
 UPDATE mcp_oauth_requests SET code_used_at=clock_timestamp() WHERE id=$1;
@@ -52,7 +52,7 @@ UPDATE mcp_oauth_requests SET code_used_at=clock_timestamp() WHERE id=$1;
 -- name: MCPCreateGrant :one
 INSERT INTO mcp_oauth_grants(user_id,session_id,client_id,resource,scopes,expires_at)
 SELECT s.user_id,s.id,$2,$3,$4,LEAST(s.expires_at,clock_timestamp()+INTERVAL '90 days') FROM sessions s
-JOIN users u ON u.id=s.user_id WHERE s.id=$1 AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL
+JOIN users u ON u.id=s.user_id WHERE s.id=$1 AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL
 AND (SELECT count(*) FROM mcp_oauth_grants g WHERE g.user_id=s.user_id AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp())<50
 RETURNING *;
 
@@ -68,7 +68,7 @@ WHERE g.id=$2 AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp();
 -- name: MCPLockRefreshToken :one
 SELECT t.token_hash,t.grant_id,t.expires_at,t.used_at,g.user_id,g.session_id,g.client_id,g.resource,g.scopes,g.revoked_at
 FROM mcp_refresh_tokens t JOIN mcp_oauth_grants g ON g.id=t.grant_id JOIN sessions s ON s.id=g.session_id AND s.user_id=g.user_id
-JOIN users u ON u.id=g.user_id WHERE t.token_hash=$1 AND s.expires_at>clock_timestamp() AND g.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
+JOIN users u ON u.id=g.user_id WHERE t.token_hash=$1 AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND g.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
 FOR UPDATE OF t,g;
 
 -- name: MCPConsumeRefreshToken :exec

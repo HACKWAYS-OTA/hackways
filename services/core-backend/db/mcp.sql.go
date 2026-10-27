@@ -17,7 +17,7 @@ SELECT g.id AS grant_id,g.client_id,g.resource,g.scopes,g.session_id,u.id AS use
 FROM mcp_access_tokens t JOIN mcp_oauth_grants g ON g.id=t.grant_id JOIN sessions s ON s.id=g.session_id AND s.user_id=g.user_id
 JOIN users u ON u.id=g.user_id
 WHERE t.token_hash=$1 AND g.revoked_at IS NULL AND t.expires_at>clock_timestamp() AND g.expires_at>clock_timestamp()
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=s.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=s.device_token_hash AND dr.blocked) AND u.deleted_at IS NULL AND u.email_verified
 `
 
 type MCPAccessIdentityRow struct {
@@ -58,7 +58,7 @@ SELECT EXISTS(SELECT 1 FROM mcp_action_intents a JOIN mcp_oauth_grants g ON g.id
 WHERE a.id=$1 AND a.grant_id=$2 AND a.request_hash=$3
 AND a.api_service=$4 AND a.method=$5 AND a.api_path=$6
 AND a.status='executing' AND a.approved_at IS NOT NULL AND a.approved_session_id IS NOT NULL
-AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp())
+AND EXISTS(SELECT 1 FROM sessions approved WHERE approved.id=a.approved_session_id AND approved.user_id=g.user_id AND approved.expires_at>clock_timestamp() AND approved.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=approved.user_id AND ar.blocked) AND NOT EXISTS(SELECT 1 FROM device_restrictions dr WHERE dr.token_hash=approved.device_token_hash AND dr.blocked))
 AND a.lease_hash=$7 AND a.lease_expires_at>clock_timestamp() AND a.expires_at>clock_timestamp()
 AND g.revoked_at IS NULL AND g.expires_at>clock_timestamp())
 `

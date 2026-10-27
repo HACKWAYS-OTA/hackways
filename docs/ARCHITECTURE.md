@@ -18,6 +18,8 @@ The production topology has four independently deployed Next.js applications and
 
 **Topology decision is unresolved:** [AGENTS.md](../AGENTS.md) budgets a PostgreSQL container on the VM, while [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md) and `deploy/docker/docker-compose.prod.yml` describe Azure Database for PostgreSQL as the production database. Do not infer that both deployments are supported until the team selects one and reconciles the config and resource budgets.
 
+Global Go owns account/browser moderation and sign-in quarantine; both engines enforce database restrictions and retired access. See [the restriction contract](backend/ACCOUNT_DEVICE_RESTRICTIONS.md). Administrator event deletion/recovery retains existing records; see [Bin](backend/ADMIN_BIN.md).
+
 Managed Space/event operation uses persisted role assignments enforced by core Go; global Go independently checks delegated media rights. Ownership remains unchanged and public membership is separate. See [the workspace contract](backend/WORKSPACE.md).
 
 `packages/api-client` and `packages/shared-types` are intended shared contracts. They do not own business logic. TypeScript applications call Go APIs; authorization, persistence, validation, and RSVP invariants remain in Go and PostgreSQL.

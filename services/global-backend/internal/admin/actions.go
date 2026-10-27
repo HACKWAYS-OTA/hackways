@@ -23,19 +23,26 @@ import (
 )
 
 type actionBody struct {
-	UpdatedAt   time.Time `json:"updated_at"`
-	DisplayName *string   `json:"display_name,omitempty"`
-	Access      *string   `json:"access,omitempty"`
-	Kind        *string   `json:"kind,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	DisplayName     *string   `json:"display_name,omitempty"`
+	Access          *string   `json:"access,omitempty"`
+	Kind            *string   `json:"kind,omitempty"`
+	Blocked         *bool     `json:"blocked,omitempty"`
+	DeviceReference *int64    `json:"device_reference,omitempty"`
 }
 type actionAudit struct {
-	Reason    string `json:"reason"`
-	Previous  string `json:"previous,omitempty"`
-	Value     string `json:"value,omitempty"`
-	SessionID string `json:"session_id,omitempty"`
+	Reason           string `json:"reason"`
+	Previous         string `json:"previous,omitempty"`
+	Value            string `json:"value,omitempty"`
+	SessionID        string `json:"session_id,omitempty"`
+	DeviceReference  int64  `json:"device_reference,omitempty"`
+	AffectedAccounts int    `json:"affected_accounts,omitempty"`
 }
 
 func (h *Handler) mountActions(r chi.Router) {
+	r.Post("/people/{id}/restriction", h.action("person.restriction"))
+	r.Post("/people/{id}/devices/block", h.action("person.device"))
+	r.Post("/devices/{id}/restriction", h.action("device.restriction"))
 	r.Post("/people/{id}/edit", h.action("person.edit"))
 	r.Post("/people/{id}/access", h.action("person.access"))
 	r.Post("/people/{id}/sessions/{sessionID}/revoke", h.action("session.revoke"))
@@ -89,14 +96,19 @@ func (h *Handler) action(action string) http.HandlerFunc {
 			return
 		}
 		// Reject fields belonging to a different action, even if they are otherwise known.
-		valid := body.DisplayName == nil && body.Access == nil && body.Kind == nil
+		extraEmpty := body.Blocked == nil && body.DeviceReference == nil
+		valid := body.DisplayName == nil && body.Access == nil && body.Kind == nil && extraEmpty
 		switch action {
 		case "person.edit":
-			valid = body.DisplayName != nil && body.Access == nil && body.Kind == nil
+			valid = body.DisplayName != nil && body.Access == nil && body.Kind == nil && extraEmpty
 		case "person.access":
-			valid = body.Access != nil && body.DisplayName == nil && body.Kind == nil
+			valid = body.Access != nil && body.DisplayName == nil && body.Kind == nil && extraEmpty
+		case "person.restriction", "device.restriction":
+			valid = body.Blocked != nil && body.DeviceReference == nil && body.DisplayName == nil && body.Access == nil && body.Kind == nil
+		case "person.device":
+			valid = body.DeviceReference != nil && *body.DeviceReference > 0 && body.Blocked == nil && body.DisplayName == nil && body.Access == nil && body.Kind == nil
 		case "asset.detach":
-			valid = body.Kind != nil && body.DisplayName == nil && body.Access == nil
+			valid = body.Kind != nil && body.DisplayName == nil && body.Access == nil && extraEmpty
 		}
 		if !valid {
 			platform.RespondError(w, 400, "INVALID_REQUEST", "Invalid action fields", nil)
@@ -109,6 +121,9 @@ func (h *Handler) action(action string) http.HandlerFunc {
 		if action == "asset.detach" {
 			resource = "storage"
 			kind = *body.Kind
+		}
+		if action == "device.restriction" {
+			resource = "devices"
 		}
 		id, ok := h.detailID(w, r, resource, kind)
 		if !ok {
@@ -167,6 +182,12 @@ func (h *Handler) action(action string) http.HandlerFunc {
 		metadata := actionAudit{Reason: reason}
 		var eventID pgtype.UUID
 		switch action {
+		case "person.restriction", "person.device", "device.restriction":
+			var proceed bool
+			metadata, err, proceed = h.applyRestriction(w, r, q, action, id, user.UserID, body, reason)
+			if !proceed {
+				return
+			}
 		case "person.edit", "person.access", "session.revoke":
 			target, readErr := q.AdminUserLock(r.Context(), id)
 			if readErr != nil {
@@ -207,6 +228,13 @@ func (h *Handler) action(action string) http.HandlerFunc {
 				}
 				metadata.Value = *body.Access
 				if *body.Access == "admin" {
+					if restricted, e := q.IsRestrictedAccount(r.Context(), id); e != nil {
+						platform.RespondDatabaseError(w, e)
+						return
+					} else if restricted {
+						platform.RespondError(w, 409, "ACCOUNT_RESTRICTED", "Unblock this account before granting administrator access", nil)
+						return
+					}
 					if !target.EmailVerified {
 						platform.RespondError(w, 422, "EMAIL_NOT_VERIFIED", "This account must verify its email before receiving admin access", nil)
 						return

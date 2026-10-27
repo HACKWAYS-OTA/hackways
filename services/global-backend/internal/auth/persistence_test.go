@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,6 +155,134 @@ func TestPersistentSessionsMultipleDevicesAndCookieRefresh(t *testing.T) {
 	if _, err = sm.GetSession(ctx, tokens[1]); err != nil {
 		t.Fatal("revoking one browser affected the other")
 	}
+	t.Run("blocked browser account switch persists quarantine", func(t *testing.T) {
+		password := "RestrictionProof123!"
+		hash, e := HashPassword(password)
+		if e != nil {
+			t.Fatal(e)
+		}
+		other, e := q.CreateUser(ctx, db.CreateUserParams{Email: fmt.Sprintf("restriction-switch-%d@example.invalid", time.Now().UnixNano()), PasswordHash: hash, DisplayName: "Switch CI"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		browser, e := GenerateToken()
+		if e != nil {
+			t.Fatal(e)
+		}
+		deviceHash := HashToken(browser)
+		device, e := q.AdminBlockDevice(ctx, db.AdminBlockDeviceParams{TokenHash: deviceHash, UserAgent: "Isolated browser", Reason: "Mandatory isolated restriction regression", UpdatedBy: user.ID})
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer func() {
+			_, _ = pool.Exec(ctx, "DELETE FROM audit_log WHERE entity_id=$1", other.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM restriction_device_accounts WHERE device_id=$1", device.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM account_restrictions WHERE user_id=$1", other.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM device_restrictions WHERE id=$1", device.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM sessions WHERE user_id=$1", other.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM recognized_devices WHERE user_id=$1", other.ID)
+			_, _ = pool.Exec(ctx, "DELETE FROM email_outbox WHERE recipient_email=$1", other.Email)
+			_, _ = pool.Exec(ctx, "DELETE FROM users WHERE id=$1", other.ID)
+		}()
+		credential, _, e := sm.CreateSession(ctx, other.ID, "Other browser", "", time.Hour)
+		if e != nil {
+			t.Fatal(e)
+		}
+		call := func(path, password string) *httptest.ResponseRecorder {
+			payload := map[string]string{"email": other.Email, "password": password}
+			if path == "/register" {
+				payload["display_name"] = "Blocked signup"
+			}
+			raw, _ := json.Marshal(payload)
+			req := httptest.NewRequest("POST", path, strings.NewReader(string(raw)))
+			req.Header.Set("Content-Type", "application/json")
+			req.AddCookie(&http.Cookie{Name: deviceCookie, Value: browser})
+			out := httptest.NewRecorder()
+			handler.Routes().ServeHTTP(out, req)
+			return out
+		}
+		if rec := call("/login", "wrong-password"); rec.Code != 401 {
+			t.Fatalf("wrong proof %d", rec.Code)
+		}
+		if flag, e := q.IsRestrictedAccount(ctx, other.ID); e != nil || flag {
+			t.Fatal("wrong credentials suspended supplied account")
+		}
+		rec := call("/login", password)
+		if rec.Code != 403 || !strings.Contains(rec.Body.String(), "You are not allowed") {
+			t.Fatalf("blocked login %d %s", rec.Code, rec.Body.String())
+		}
+		if flag, e := q.IsRestrictedAccount(ctx, other.ID); e != nil || !flag {
+			t.Fatal("quarantine rolled back on denial")
+		}
+		if _, e = sm.GetSession(ctx, credential); !errors.Is(e, ErrNotAllowed) {
+			t.Fatal("old account2 session stayed active")
+		}
+		if e = q.AdminSetAccountRestriction(ctx, db.AdminSetAccountRestrictionParams{UserID: other.ID, Blocked: false, Reason: "Isolated account review", UpdatedBy: user.ID}); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = sm.GetSession(ctx, credential); !errors.Is(e, ErrSessionNotFound) {
+			t.Fatal("unblock revived retired credential")
+		}
+		// A valid OAuth exchange on the same blocked browser must persist the same
+		// quarantine, consume its proof and never issue a session.
+		newGoogle := googleUserInfo{Sub: "blocked-new-" + browser, Email: "new-" + other.Email, Name: "Blocked new Google", VerifiedEmail: true}
+		if _, e = handler.upsertGoogleIdentity(ctx, newGoogle, HashToken("clean-"+browser), deviceHash); !errors.Is(e, ErrNotAllowed) {
+			t.Fatalf("blocked Google signup %v", e)
+		}
+		var created int
+		if e = pool.QueryRow(ctx, "SELECT count(*) FROM users WHERE email=$1", newGoogle.Email).Scan(&created); e != nil || created != 0 {
+			t.Fatal("blocked Google signup persisted user")
+		}
+		existingGoogle := googleUserInfo{Sub: "blocked-existing-" + browser, Email: other.Email, Name: other.DisplayName, VerifiedEmail: true}
+		if found, e := handler.upsertGoogleIdentity(ctx, existingGoogle, deviceHash); e != nil || found != other.ID {
+			t.Fatal("existing Google proof could not reach quarantine")
+		}
+		if e = pool.QueryRow(ctx, "SELECT count(*) FROM user_identities WHERE provider='google' AND subject=$1", existingGoogle.Sub).Scan(&created); e != nil || created != 0 {
+			t.Fatal("blocked Google proof linked identity")
+		}
+		exchange, nonce := "ci-exchange-"+browser, "ci-nonce-"+browser
+		if e = q.CreateOAuthExchangeToken(ctx, db.CreateOAuthExchangeTokenParams{TokenHash: HashToken(exchange), UserID: other.ID, NonceHash: HashToken(nonce), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Minute), Valid: true}, DeviceTokenHash: pgtype.Text{String: HashToken("clean-" + browser), Valid: true}, CallbackDeviceTokenHash: pgtype.Text{String: deviceHash, Valid: true}}); e != nil {
+			t.Fatal(e)
+		}
+		req := httptest.NewRequest("POST", "/google/exchange", nil)
+		out := httptest.NewRecorder()
+		e = handler.establishSession(out, req, other.ID, "", false, db.ConsumeOAuthExchangeTokenParams{TokenHash: HashToken(exchange), NonceHash: HashToken(nonce)})
+		if !errors.Is(e, ErrNotAllowed) || len(out.Result().Cookies()) != 0 {
+			t.Fatalf("OAuth restriction bypass %v", e)
+		}
+		if flag, e := q.IsRestrictedAccount(ctx, other.ID); e != nil || !flag {
+			t.Fatal("OAuth quarantine did not commit")
+		}
+		if e = q.AdminUnblockDevice(ctx, db.AdminUnblockDeviceParams{ID: device.ID, Reason: "Isolated browser review", UpdatedBy: user.ID}); e != nil {
+			t.Fatal(e)
+		}
+		if rec = call("/login", password); rec.Code != 403 {
+			t.Fatal("browser unblock reactivated account")
+		}
+		if e = q.AdminSetAccountRestriction(ctx, db.AdminSetAccountRestrictionParams{UserID: other.ID, Blocked: false, Reason: "Isolated final account review", UpdatedBy: user.ID}); e != nil {
+			t.Fatal(e)
+		}
+		if rec = call("/login", password); rec.Code != 200 {
+			t.Fatalf("reviewed sign-in failed %d %s", rec.Code, rec.Body.String())
+		}
+		if _, e = sm.GetSession(ctx, credential); !errors.Is(e, ErrSessionNotFound) {
+			t.Fatal("new sign-in revived old credential")
+		}
+		logout := call("/logout", password)
+		for _, cookie := range logout.Result().Cookies() {
+			if cookie.Name == deviceCookie && cookie.MaxAge < 0 {
+				t.Fatal("logout cleared recognition")
+			}
+		}
+		// A blocked browser cannot create even an unverified account.
+		if _, e = q.AdminBlockDevice(ctx, db.AdminBlockDeviceParams{TokenHash: deviceHash, UserAgent: "Isolated browser", Reason: "Isolated signup rejection", UpdatedBy: user.ID}); e != nil {
+			t.Fatal(e)
+		}
+		if rec = call("/register", password); rec.Code != 403 {
+			t.Fatal("blocked browser registration was not denied first")
+		}
+	})
+
 }
 
 func TestSessionActivityQueueIsBounded(t *testing.T) {

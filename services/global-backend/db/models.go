@@ -234,6 +234,17 @@ func (ns NullRegistrationStatus) Value() (driver.Value, error) {
 	return string(ns.RegistrationStatus), nil
 }
 
+type AccountRestrictions struct {
+	UserID         pgtype.UUID        `json:"user_id"`
+	Blocked        bool               `json:"blocked"`
+	Revision       int64              `json:"revision"`
+	Reason         string             `json:"reason"`
+	SourceDeviceID pgtype.UUID        `json:"source_device_id"`
+	UpdatedBy      pgtype.UUID        `json:"updated_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type AdminCustomMessageDeliveries struct {
 	MessageID pgtype.UUID `json:"message_id"`
 	UserID    pgtype.UUID `json:"user_id"`
@@ -317,6 +328,19 @@ type CityHubs struct {
 	CreationHash string             `json:"creation_hash"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DeviceRestrictions struct {
+	ID        pgtype.UUID        `json:"id"`
+	Reference int64              `json:"reference"`
+	TokenHash string             `json:"token_hash"`
+	UserAgent string             `json:"user_agent"`
+	Blocked   bool               `json:"blocked"`
+	Revision  int64              `json:"revision"`
+	Reason    string             `json:"reason"`
+	UpdatedBy pgtype.UUID        `json:"updated_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type DiscoverPromotionSettings struct {
@@ -568,22 +592,25 @@ type McpRefreshTokens struct {
 }
 
 type OauthExchangeTokens struct {
-	TokenHash string             `json:"token_hash"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	NonceHash string             `json:"nonce_hash"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	UsedAt    pgtype.Timestamptz `json:"used_at"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	TokenHash               string             `json:"token_hash"`
+	UserID                  pgtype.UUID        `json:"user_id"`
+	NonceHash               string             `json:"nonce_hash"`
+	ExpiresAt               pgtype.Timestamptz `json:"expires_at"`
+	UsedAt                  pgtype.Timestamptz `json:"used_at"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	DeviceTokenHash         pgtype.Text        `json:"device_token_hash"`
+	CallbackDeviceTokenHash pgtype.Text        `json:"callback_device_token_hash"`
 }
 
 type OauthStates struct {
-	StateHash  string             `json:"state_hash"`
-	Verifier   string             `json:"verifier"`
-	ReturnTo   string             `json:"return_to"`
-	NonceHash  string             `json:"nonce_hash"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
-	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	StateHash       string             `json:"state_hash"`
+	Verifier        string             `json:"verifier"`
+	ReturnTo        string             `json:"return_to"`
+	NonceHash       string             `json:"nonce_hash"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt      pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	DeviceTokenHash pgtype.Text        `json:"device_token_hash"`
 }
 
 type Organizers struct {
@@ -705,12 +732,13 @@ type PromotionContacts struct {
 
 // Browser recognition for notification deduplication only; never an authentication factor.
 type RecognizedDevices struct {
-	UserID     pgtype.UUID        `json:"user_id"`
-	TokenHash  string             `json:"token_hash"`
-	UserAgent  string             `json:"user_agent"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	TokenHash      string             `json:"token_hash"`
+	UserAgent      string             `json:"user_agent"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt     pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	AdminReference int64              `json:"admin_reference"`
 }
 
 type RegistrationSubmissions struct {
@@ -719,6 +747,12 @@ type RegistrationSubmissions struct {
 	FormRevision int64              `json:"form_revision"`
 	Answers      []byte             `json:"answers"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type RestrictionDeviceAccounts struct {
+	DeviceID  pgtype.UUID        `json:"device_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Rsvps struct {
@@ -760,15 +794,17 @@ type RuntimeRolloutVersions struct {
 }
 
 type Sessions struct {
-	ID             pgtype.UUID        `json:"id"`
-	UserID         pgtype.UUID        `json:"user_id"`
-	TokenHash      string             `json:"token_hash"`
-	UserAgent      pgtype.Text        `json:"user_agent"`
-	IpAddress      *netip.Addr        `json:"ip_address"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
-	LastSeen       pgtype.Timestamptz `json:"last_seen"`
-	AdminReference int64              `json:"admin_reference"`
+	ID              pgtype.UUID        `json:"id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	TokenHash       string             `json:"token_hash"`
+	UserAgent       pgtype.Text        `json:"user_agent"`
+	IpAddress       *netip.Addr        `json:"ip_address"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	LastSeen        pgtype.Timestamptz `json:"last_seen"`
+	AdminReference  int64              `json:"admin_reference"`
+	DeviceTokenHash pgtype.Text        `json:"device_token_hash"`
+	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type SpaceAccess struct {

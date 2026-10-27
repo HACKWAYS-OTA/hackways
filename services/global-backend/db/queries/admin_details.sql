@@ -1,7 +1,8 @@
 -- name: AdminPersonDetail :one
 SELECT u.id,u.admin_reference AS reference,u.display_name,u.email,u.email_verified,COALESCE(split_part(split_part(u.avatar_url,'?',1),'#',1),'')::text AS avatar_url,u.created_at,u.updated_at,
+EXISTS(SELECT 1 FROM account_restrictions ar WHERE ar.user_id=u.id AND ar.blocked)::boolean AS blocked,
 CASE WHEN a.user_id IS NOT NULL AND a.revoked_at IS NULL THEN 'admin' ELSE 'member' END::text AS access,
-(SELECT count(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>clock_timestamp())::bigint AS active_sessions,
+(SELECT count(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL)::bigint AS active_sessions,
 o.id AS host_profile_id,o.display_name AS host_name,o.slug AS host_slug,o.verified AS host_verified
 FROM users u LEFT JOIN platform_administrators a ON a.user_id=u.id LEFT JOIN organizers o ON o.user_id=u.id WHERE u.id=$1 AND u.deleted_at IS NULL;
 
@@ -22,7 +23,7 @@ FROM users u WHERE u.id=sqlc.arg(id) AND u.deleted_at IS NULL AND sqlc.arg(kind)
 -- name: AdminPersonSessions :many
 SELECT id::text AS id,admin_reference::text AS reference,'Session'::text AS label,COALESCE(left(user_agent,200),'')::text AS detail,'sessions'::text AS resource,
 CASE WHEN id=sqlc.arg(current_session_id)::uuid THEN 'current' WHEN expires_at>clock_timestamp() THEN 'active' ELSE 'expired' END::text AS status,last_seen AS occurred_at,created_at,expires_at
-FROM sessions WHERE user_id=sqlc.arg(user_id) AND expires_at>clock_timestamp() ORDER BY last_seen DESC,id LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
+FROM sessions WHERE user_id=sqlc.arg(user_id) AND expires_at>clock_timestamp() AND revoked_at IS NULL ORDER BY last_seen DESC,id LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: AdminPersonEvents :many
 SELECT e.id::text AS id,e.admin_reference::text AS reference,e.title AS label,e.slug AS detail,'events'::text AS resource,e.status::text AS status,e.starts_at AS occurred_at
@@ -102,3 +103,6 @@ UNION ALL
 SELECT id FROM events WHERE admin_reference=sqlc.arg(reference)::bigint AND deleted_at IS NULL AND sqlc.arg(resource)::text='storage' AND sqlc.arg(kind)::text='event_banner'
 UNION ALL
 SELECT id FROM sessions WHERE admin_reference=sqlc.arg(reference)::bigint AND sqlc.arg(resource)::text='sessions';
+
+-- name: AdminResolveDeviceReference :one
+SELECT id FROM device_restrictions WHERE reference=$1;

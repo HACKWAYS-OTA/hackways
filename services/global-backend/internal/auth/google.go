@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -116,7 +118,8 @@ func (h *Handler) GoogleStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.queries.CreateOAuthState(r.Context(), db.CreateOAuthStateParams{
 		StateHash: HashToken(state), Verifier: verifier, ReturnTo: returnTo,
-		NonceHash: HashToken(nonce), ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(googleStateLifetime), Valid: true},
+		NonceHash:       HashToken(nonce),
+		DeviceTokenHash: pgtype.Text{String: requestDeviceHash(r), Valid: requestDeviceHash(r) != ""}, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(googleStateLifetime), Valid: true},
 	}); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -178,8 +181,16 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := h.upsertGoogleIdentity(ctx, info)
+	sourceHash := payload.DeviceTokenHash.String
+	if sourceHash == "" {
+		sourceHash = requestDeviceHash(r)
+	}
+	userID, err := h.upsertGoogleIdentity(ctx, info, sourceHash, requestDeviceHash(r))
 	if err != nil {
+		if errors.Is(err, ErrNotAllowed) {
+			respondNotAllowed(w)
+			return
+		}
 		if errors.Is(err, errIdentityConflict) {
 			h.redirectGoogleError(w, r, payload.ReturnTo, "This Google account is already linked to another Hackways account")
 			return
@@ -193,10 +204,12 @@ func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.queries.CreateOAuthExchangeToken(ctx, db.CreateOAuthExchangeTokenParams{
-		TokenHash: HashToken(exchange),
-		UserID:    userID,
-		NonceHash: payload.NonceHash,
-		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(googleExchangeLifetime), Valid: true},
+		TokenHash:               HashToken(exchange),
+		UserID:                  userID,
+		NonceHash:               payload.NonceHash,
+		DeviceTokenHash:         pgtype.Text{String: sourceHash, Valid: sourceHash != ""},
+		CallbackDeviceTokenHash: pgtype.Text{String: requestDeviceHash(r), Valid: requestDeviceHash(r) != ""},
+		ExpiresAt:               pgtype.Timestamptz{Time: time.Now().Add(googleExchangeLifetime), Valid: true},
 	}); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
@@ -236,6 +249,10 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 	}
 	h.clearGoogleNonceCookie(w)
 	if err = h.establishSession(w, r, userID, "", false, db.ConsumeOAuthExchangeTokenParams{TokenHash: HashToken(strings.TrimSpace(req.Code)), NonceHash: HashToken(nonceCookie.Value)}); err != nil {
+		if errors.Is(err, ErrNotAllowed) {
+			respondNotAllowed(w)
+			return
+		}
 		if errors.Is(err, errCredentialsChanged) {
 			platform.RespondError(w, 401, "INVALID_EXCHANGE", "The Google sign-in exchange expired or was already used", nil)
 			return
@@ -257,13 +274,28 @@ func (h *Handler) GoogleExchange(w http.ResponseWriter, r *http.Request) {
 
 var errIdentityConflict = errors.New("google identity conflict")
 
-func (h *Handler) upsertGoogleIdentity(ctx context.Context, info googleUserInfo) (pgtype.UUID, error) {
+func (h *Handler) upsertGoogleIdentity(ctx context.Context, info googleUserInfo, sourceDevice ...string) (pgtype.UUID, error) {
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return pgtype.UUID{}, err
 	}
 	defer tx.Rollback(ctx)
 	q := h.queries.WithTx(tx)
+	if err = q.SetStorageWriteTimeout(ctx); err != nil {
+		return pgtype.UUID{}, err
+	}
+	hashes := []string{}
+	for _, hash := range sourceDevice {
+		if hash != "" && !slices.Contains(hashes, hash) {
+			hashes = append(hashes, hash)
+		}
+	}
+	sort.Strings(hashes)
+	for _, hash := range hashes {
+		if err = q.LockRestrictionDevice(ctx, hash); err != nil {
+			return pgtype.UUID{}, err
+		}
+	}
 	linked, err := q.GetUserByGoogleSubject(ctx, info.Sub)
 	if err == nil {
 		if !strings.EqualFold(linked.Email, info.Email) {
@@ -276,6 +308,31 @@ func (h *Handler) upsertGoogleIdentity(ctx context.Context, info googleUserInfo)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return pgtype.UUID{}, err
+	}
+	// Provider proof for an existing account must still reach the exchange and
+	// quarantine path. A known blocked browser must not create or link identities.
+	deviceBlocked := false
+	for _, hash := range hashes {
+		flag, e := q.IsRestrictedDevice(ctx, hash)
+		if e != nil {
+			return pgtype.UUID{}, e
+		}
+		deviceBlocked = deviceBlocked || flag
+	}
+	existing, lookupErr := q.GetUserByEmail(ctx, info.Email)
+	if lookupErr != nil && !errors.Is(lookupErr, pgx.ErrNoRows) {
+		return pgtype.UUID{}, lookupErr
+	}
+	if lookupErr == nil {
+		accountBlocked, e := q.IsRestrictedAccount(ctx, existing.ID)
+		if e != nil {
+			return pgtype.UUID{}, e
+		}
+		if deviceBlocked || accountBlocked {
+			return existing.ID, nil
+		}
+	} else if deviceBlocked {
+		return pgtype.UUID{}, ErrNotAllowed
 	}
 	passwordMarker, err := GenerateToken()
 	if err != nil {

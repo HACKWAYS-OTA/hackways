@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { type AdminModule, type AdminRecord, type AdminCell, adminModules } from '@/lib/admin-modules';
 import { detailPath, isAdminModule, relatedPath } from '@/lib/admin-detail-paths';
 import type { AdminDetail as DetailResponse } from '@/lib/admin-details';
-import { AdminActions, SessionRevoke } from './AdminActions';
+import { AdminActions, BrowserBlockAction, SessionRevoke } from './AdminActions';
 
 type Field = { key: string; label: string; date?: boolean; resource?: AdminModule; idKey?: string; url?: boolean };
 type Group = { title: string; fields: Field[] };
@@ -126,8 +126,8 @@ export function AdminDetail({ resource, detail }: { resource: AdminModule; detai
       <h2>Related records</h2>
       <nav className="admin-detail-tabs" aria-label="Related records">{related.tabs.map(tab => <Link key={tab.key} href={relatedPath(resource, record.reference, tab.key, 0, kind)} scroll={false} prefetch={false} aria-current={related.section === tab.key ? 'page' : undefined}>{tab.label}</Link>)}</nav>
       {related.rows.length === 0 ? <p className="admin-related-empty">No records in this view.</p> : <div className="admin-table-scroll" role="region" aria-label={`${related.tabs.find(tab => tab.key === related.section)?.label || 'Related records'} table`} tabIndex={0}><table className="admin-table">
-        <caption className="sr-only">Related records</caption><thead><tr><th scope="col">Record</th><th scope="col">Details</th><th scope="col">Status</th><th scope="col">When</th>{related.section === 'sessions' && <th scope="col">Action</th>}</tr></thead>
-        <tbody>{related.rows.map(row => <tr key={`${row.resource}-${row.reference}`}><th scope="row">{isAdminModule(row.resource) ? <a className="admin-record-link" href={detailPath(row.resource, row.reference)}>{row.label}</a> : row.label}</th><td>{row.detail}</td><td>{row.status.replaceAll('_', ' ')}</td><td>{display(row.occurred_at, { key: 'occurred_at', label: 'When', date: true })}</td>{related.section === 'sessions' && <td>{row.status === 'active' ? <SessionRevoke person={record} sessionID={row.reference} /> : row.status === 'current' ? 'This session' : ''}</td>}</tr>)}</tbody>
+        <caption className="sr-only">Related records</caption><thead><tr><th scope="col">Record</th><th scope="col">Details</th><th scope="col">Status</th><th scope="col">When</th>{['sessions','devices'].includes(related.section) && <th scope="col">Action</th>}</tr></thead>
+        <tbody>{related.rows.map(row => <tr key={`${row.resource}-${row.reference}`}><th scope="row">{isAdminModule(row.resource) ? <a className="admin-record-link" href={detailPath(row.resource, row.reference)}>{row.label}</a> : row.label}</th><td>{row.detail}</td><td>{row.status.replaceAll('_', ' ')}</td><td>{display(row.occurred_at, { key: 'occurred_at', label: 'When', date: true })}</td>{related.section === 'sessions' && <td>{row.status === 'active' ? <SessionRevoke person={record} sessionID={row.reference} /> : row.status === 'current' ? 'This session' : ''}</td>}{related.section === 'devices' && <td>{row.status === 'blocked' ? <Link className="quiet-link" href="/restrictions?kind=devices">Review restriction</Link> : record.access !== 'admin' ? <details><summary className="app-button app-button-outline app-button-sm">Block browser</summary><BrowserBlockAction person={record} reference={row.reference} /></details> : null}</td>}</tr>)}</tbody>
       </table></div>}
       <nav className="admin-pagination" aria-label="Related records pagination">
         {related.offset > 0 && <Link className="app-button app-button-outline app-button-sm" href={relatedPath(resource, record.reference, related.section, Math.max(0, related.offset - 20), kind)} scroll={false} prefetch={false}>Previous</Link>}

@@ -23,6 +23,7 @@ export async function fetchApi<T>(path: string, options: RequestInit = {}): Prom
     if (!response.ok) {
       let envelope: ApiError | null = null;
       try { envelope = await response.json() as ApiError; } catch { /* Non-JSON error responses use the HTTP status. */ }
+      if (typeof window !== 'undefined' && envelope?.error?.code === 'ACCOUNT_RESTRICTED') window.location.assign('/not-allowed');
       throw new ApiClientError(envelope?.error?.message || 'The request could not be completed. Please try again.', envelope?.error?.code || `HTTP_${response.status}`, envelope?.error?.details);
     }
     if (response.status === 204) return {} as T;

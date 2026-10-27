@@ -211,7 +211,7 @@ const isPlatformAdminIdentitySession = `-- name: IsPlatformAdminIdentitySession 
 SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
 JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
 WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
-AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified)
+AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND u.deleted_at IS NULL AND u.email_verified)
 `
 
 type IsPlatformAdminIdentitySessionParams struct {
@@ -230,7 +230,7 @@ const isPlatformAdminSession = `-- name: IsPlatformAdminSession :one
 SELECT EXISTS(SELECT 1 FROM platform_admin_sessions g JOIN sessions s ON s.id=g.session_id
 JOIN platform_administrators a ON a.user_id=s.user_id JOIN users u ON u.id=s.user_id
 WHERE g.session_id=$1 AND a.user_id=$2 AND a.revoked_at IS NULL
-AND g.otp_verified_at>clock_timestamp()-INTERVAL '24 hours' AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL AND u.email_verified)
+AND g.otp_verified_at>clock_timestamp()-INTERVAL '24 hours' AND s.expires_at>clock_timestamp() AND s.revoked_at IS NULL AND u.deleted_at IS NULL AND u.email_verified)
 `
 
 type IsPlatformAdminSessionParams struct {

@@ -152,6 +152,15 @@ func (e *Engine) Register(ctx context.Context, req Request) (Reply, bool, error)
 		return Reply{}, false, err
 	}
 	defer tx.Rollback(ctx)
+	// Guest registration must not bypass an account restriction by supplying
+	// that account's email after logout. Existing bookings remain untouched.
+	restricted, err := q.IsRestrictedRegistrationIdentity(ctx, db.IsRestrictedRegistrationIdentityParams{UserID: req.UserID, Email: req.Email})
+	if err != nil {
+		return Reply{}, false, err
+	}
+	if restricted {
+		return Reply{}, false, &Failure{403, "ACCOUNT_RESTRICTED", "You are not allowed"}
+	}
 	scope := "guest:" + req.Email
 	if req.UserID.Valid {
 		scope = "user:" + hex.EncodeToString(req.UserID.Bytes[:])

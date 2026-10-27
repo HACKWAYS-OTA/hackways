@@ -214,6 +214,71 @@ func TestMCPOAuthAndApprovedProfileWrite(t *testing.T) {
 	if got := request("GET", "/api/v1/auth/me", "", "", "", tokens.Access, false).Code; got != 401 {
 		t.Fatalf("refresh reuse did not revoke grant: %d", got)
 	}
+	// Extend the existing mandatory OAuth journey: session-bound recognition
+	// blocks bearer clients even without cookies, and review cannot revive grants.
+	_, freshSession, e := h.sm.CreateSession(ctx, user.ID, "Restricted MCP CI", "", time.Hour)
+	if e != nil {
+		t.Fatal(e)
+	}
+	freshGrant, e := q.MCPCreateGrant(ctx, db.MCPCreateGrantParams{ID: freshSession.ID, ClientID: client.ClientID, Resource: MCPResource(), Scopes: []string{"profile:read"}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	opaque, _ := GenerateToken()
+	access := "mcp_at_" + opaque
+	if _, e = q.MCPInsertAccessToken(ctx, db.MCPInsertAccessTokenParams{TokenHash: HashToken(access), ID: freshGrant.ID}); e != nil {
+		t.Fatal(e)
+	}
+	browser, _ := GenerateToken()
+	deviceHash := HashToken(browser)
+	if e = q.BindSessionDevice(ctx, db.BindSessionDeviceParams{ID: freshSession.ID, DeviceTokenHash: pgtype.Text{String: deviceHash, Valid: true}}); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = MCPIdentity(ctx, q, "Bearer "+access); e != nil {
+		t.Fatal("fresh MCP credential invalid")
+	}
+	restrictedDevice, e := q.AdminBlockDevice(ctx, db.AdminBlockDeviceParams{TokenHash: deviceHash, UserAgent: "MCP isolated browser", Reason: "Isolated bearer recognition check", UpdatedBy: user.ID})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, "DELETE FROM account_restrictions WHERE user_id=$1", user.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM device_restrictions WHERE id=$1", restrictedDevice.ID)
+	}()
+	if got := request("GET", "/api/v1/auth/me", "", "", "", access, false).Code; got != 401 {
+		t.Fatalf("bound browser bearer bypass %d", got)
+	}
+	if e = q.AdminUnblockDevice(ctx, db.AdminUnblockDeviceParams{ID: restrictedDevice.ID, Reason: "Isolated browser read check complete", UpdatedBy: user.ID}); e != nil {
+		t.Fatal(e)
+	}
+	tx, e := pool.Begin(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tx.Rollback(ctx)
+	txq := q.WithTx(tx)
+	if e = txq.AdminSetAccountRestriction(ctx, db.AdminSetAccountRestrictionParams{UserID: user.ID, Blocked: true, Reason: "Isolated MCP session retirement", UpdatedBy: user.ID}); e != nil {
+		t.Fatal(e)
+	}
+	if e = txq.RetireRestrictedAccountSessions(ctx, []pgtype.UUID{user.ID}); e != nil {
+		t.Fatal(e)
+	}
+	if e = txq.RetireRestrictedAccountGrants(ctx, []pgtype.UUID{user.ID}); e != nil {
+		t.Fatal(e)
+	}
+	if e = tx.Commit(ctx); e != nil {
+		t.Fatal(e)
+	}
+	if got := request("GET", "/api/v1/auth/me", "", "", "", access, false).Code; got != 401 {
+		t.Fatal("restricted MCP bearer accepted")
+	}
+	if e = q.AdminSetAccountRestriction(ctx, db.AdminSetAccountRestrictionParams{UserID: user.ID, Blocked: false, Reason: "Isolated MCP account review", UpdatedBy: user.ID}); e != nil {
+		t.Fatal(e)
+	}
+	if got := request("GET", "/api/v1/auth/me", "", "", "", access, false).Code; got != 401 {
+		t.Fatal("account review revived retired MCP grant")
+	}
+
 }
 
 func TestAuthHandler_LivePostgres(t *testing.T) {
@@ -689,15 +754,25 @@ func TestAuthRecoveryAndRecognizedDevices_LivePostgres(t *testing.T) {
 		}
 		token := readResetToken()
 		var statuses [2]int
+		var clearedRecognition [2]bool
 		var wg sync.WaitGroup
 		for i := range statuses {
 			wg.Add(1)
 			go func(index int) {
 				defer wg.Done()
-				statuses[index] = call("/password-reset/confirm", map[string]string{"token": token, "password": nextPassword}).Code
+				result := call("/password-reset/confirm", map[string]string{"token": token, "password": nextPassword}, device)
+				statuses[index] = result.Code
+				for _, cookie := range result.Result().Cookies() {
+					if cookie.Name == deviceCookie && cookie.MaxAge < 0 {
+						clearedRecognition[index] = true
+					}
+				}
 			}(i)
 		}
 		wg.Wait()
+		if clearedRecognition[0] || clearedRecognition[1] {
+			t.Fatal("password recovery cleared browser recognition")
+		}
 		if !(statuses[0] == 200 && statuses[1] == 400 || statuses[1] == 200 && statuses[0] == 400) {
 			t.Fatalf("concurrent reset statuses %v", statuses)
 		}

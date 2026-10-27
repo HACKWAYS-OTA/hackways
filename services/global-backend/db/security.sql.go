@@ -224,7 +224,7 @@ func (q *Queries) CreateEmailVerification(ctx context.Context, arg CreateEmailVe
 }
 
 const listAccountSessions = `-- name: ListAccountSessions :many
-SELECT id,user_agent,created_at,expires_at,last_seen FROM sessions WHERE user_id=$1 AND expires_at>NOW() ORDER BY last_seen DESC LIMIT 100
+SELECT id,user_agent,created_at,expires_at,last_seen FROM sessions WHERE user_id=$1 AND expires_at>NOW() AND revoked_at IS NULL ORDER BY last_seen DESC LIMIT 100
 `
 
 type ListAccountSessionsRow struct {

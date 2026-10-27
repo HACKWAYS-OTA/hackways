@@ -301,6 +301,9 @@ func (h *Handler) mcpAuthorize(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) mcpBrowser(w http.ResponseWriter, r *http.Request, admin, mutation bool) (*SessionUser, bool) {
+	if !admin && !allowRequestDevice(w, r, h.queries) {
+		return nil, false
+	}
 	if r.Header.Get("Authorization") != "" {
 		platform.RespondError(w, 401, "BROWSER_SIGN_IN_REQUIRED", "Open this page in your browser and sign in", nil)
 		return nil, false
@@ -315,7 +318,9 @@ func (h *Handler) mcpBrowser(w http.ResponseWriter, r *http.Request, admin, muta
 	}
 	user, e := h.sm.GetSession(r.Context(), GetSessionToken(r, cookie))
 	if e != nil {
-		if errors.Is(e, ErrSessionNotFound) || errors.Is(e, ErrInvalidToken) {
+		if errors.Is(e, ErrNotAllowed) {
+			respondNotAllowed(w)
+		} else if errors.Is(e, ErrSessionNotFound) || errors.Is(e, ErrInvalidToken) {
 			platform.RespondError(w, 401, "SIGN_IN_REQUIRED", "Sign in to continue", nil)
 		} else {
 			platform.RespondDatabaseError(w, e)

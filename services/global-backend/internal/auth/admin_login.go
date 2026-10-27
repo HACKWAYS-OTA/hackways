@@ -44,6 +44,8 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = h.establishSession(w, r, user.ID, user.PasswordHash, true); err != nil {
 		switch {
+		case errors.Is(err, ErrNotAllowed):
+			respondNotAllowed(w)
 		case errors.Is(err, errAdminAccess):
 			platform.RespondError(w, 403, "ADMIN_ACCESS_REQUIRED", "This account does not have admin access", nil)
 		case errors.Is(err, errCredentialsChanged):
@@ -96,6 +98,10 @@ func (h *Handler) AdminEntry(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 		user, err := h.sm.GetSession(ctx, token)
+		if errors.Is(err, ErrNotAllowed) {
+			respondNotAllowed(w)
+			return
+		}
 		if err != nil && !errors.Is(err, ErrSessionNotFound) && !errors.Is(err, ErrInvalidToken) {
 			platform.RespondDatabaseError(w, err)
 			return

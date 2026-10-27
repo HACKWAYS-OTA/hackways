@@ -6,11 +6,25 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Account and browser restrictions (candidate)
+
+- Added additive schema 30 and SQLc moderation, review association and session retirement contracts. Preserved legacy permissions by default. Both Go engines enforce account/browser restrictions; valid password or Google proof on a blocked browser commits account review and retirement before denial. Wrong credentials cannot suspend an email. Signup checks known browser hashes before record creation; OAuth carries source/callback recognition across origins.
+- Added bounded admin restriction lists, per-account browser review/suspension and independent unblock operations with existing role/Origin/reason/version/receipt/audit controls. Associated active session bindings survive recognition pruning. Protected active-admin recovery. Retired sessions/MCP grants never revive on unblock. No production accounts/devices were blocked for checks.
+- Added guest email protection after logout, MCP identity/exchange/execution checks, retained recovery cookies and canonical public denial navigation without root-layout loops. Added the scoped Nginx public denial route. Existing RSVPs, ownership, media, outbox and capacity behavior retained.
+- Mandatory existing integration cases were extended for real admin suspension/review/replay, pruned recognition bindings/admin recovery, wrong/correct password account switching, committed quarantine, mixed-origin OAuth, no blocked Google signup/linking, cookie-preserving recovery, guest identity and MCP retirement. Both Go full suites/vet and all frontend type/lint passed locally; focused final OAuth regression passed. Hosted PostgreSQL 16/race and production activation remain pending.
+- Source-only finish review found session-pruning and mixed OAuth-hash gaps, now corrected with regression coverage and targeted confirmation. Browser checks remain excluded by user. No rendered/production moderation interaction is claimed. See the backend contract for browser recognition limits and rollback restrictions.
+
+## 2026-10-27 - City photo refinement production verification
+
+- Release 1db0670 passed hosted run 40503532894, all mandatory integration/type/lint/source/deployment checks and a single immutable core-web publication. Verified fresh encrypted backups, then activated only core-web. Schema29 stayed clean; environment and other five service containers retained. All six services ready.
+- External Hyderabad returned200 and served the wider backdrop/title rules and variable-height header feather. No browser/render claim. Removed temporary publication variables. Account/browser candidate work was excluded from that release.
+
+
 ## 2026-10-27 - City photo composition refinement (candidate)
 
 - Responded to the supplied live screenshot: removed the navbar background strip and solid tint behind the hero title. Wider feathered blur reaches the viewport edge, with text contrast treatment retained. Slightly reduced display size and tightened copy/action spacing. Fixed navigation, viewport-height hero, image, content, events and section jump remain.
-- Core/admin Bin release7a6cf1b passed hosted run40500732330 and activated after fresh verified encrypted backups. Schema29 clean, environment retained, all six services ready; only core-backend/admin-web replaced. Public authentication and live applications retained. External /bin redirects to sign-in and anonymous /api/v1/admin/core/bin returns401.
-- Core type/lint, source-only review, detector and whitespace checks passed. The review caught variable-height mobile navbar feathering; its stop now follows the actual header height. No browser check per user instruction. Account/device restriction schema30 and SQL remain uncommitted planning/implementation, excluded from this UI candidate and production.
+- Core/admin Bin release 7a6cf1b passed hosted run 40500732330 and activated after fresh verified encrypted backups. Schema29 clean, environment retained, all six services ready; only core-backend/admin-web replaced. Public authentication and live applications retained. External /bin redirects to sign-in and anonymous /api/v1/admin/core/bin returns401.
+- Core type/lint, source-only review, detector and whitespace checks passed. The review caught variable-height mobile navbar feathering; its stop now follows the actual header height. No browser check per user instruction. Account/device restriction schema 30 and SQL remain uncommitted planning/implementation, excluded from this UI candidate and production.
 
 
 ## 2026-10-27 - Recoverable administrator event Bin (candidate)
@@ -22,8 +36,8 @@ All completed work is logged here with verified commands and output.
 
 ## 2026-10-27 - Analytics ranges and adaptive City hero activated
 
-- Hosted release2771e7b passed run40497145397: PostgreSQL16/race integration for both engines, SQLc, all frontend type/lint and source/deployment guards. Two immutable frontend images were published.
-- Fresh private encrypted database/config backups verified SHA256 and restore catalog. Activated core-web/admin-web only; schema29 stayed clean, runtime environment unchanged, all six services ready. Both engines, public-web and organizer-web retained their containers/start times.
+- Hosted release2771e7b passed run40497145397: PostgreSQL 16/race integration for both engines, SQLc, all frontend type/lint and source/deployment guards. Two immutable frontend images were published.
+- Fresh private encrypted database/config backups verified SHA256 and restore catalog. Activated core-web/admin-web only; schema 29 stayed clean, runtime environment unchanged, all six services ready. Both engines, public-web and organizer-web retained their containers/start times.
 - External HTTP checks returned200 for Hyderabad/cities, ambassador program, managed sign-in and admin sign-in. Published Hyderabad HTML/CSS includes the copy wrapper,100svh hero, localized blur and adaptive fixed-header rules. Anonymous live analytics remains401. No browser, authenticated report interaction or rendered verification claimed.
 - Rebuilt both local Go previews and resumed core-web at localhost:4000. Preview schema27/28 DDL was already present but its ledger was stale; reconciled metadata only after schema/type/constraint/index inspection, then applied additive29. Existing preview data retained. Local engine health and cities returned200; external media/mail credentials remain omitted.
 - Removed temporary candidate repository variables. Bin and account/device restrictions remain separate work.
@@ -1608,7 +1622,7 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 ### Final creation flow and owner controls
 
 - User rejected the borderless page composer. Community details now use visible labeled inputs as step one; optional Appearance/cropped branding is step two. Continue validates without creating records; Back retains draft fields and selected files. Removed ownership/member tags and grouped owner actions under one Manage Space disclosure.
-- Final core-web type check and lint passed. Base release44659a6 passed hosted Linux race/PostgreSQL16 integration checks and published both Go, public and core images; admin image is still building. Final core UI correction will be published separately and pinned with that verified service set before activation.
+- Final core-web type check and lint passed. Base release44659a6 passed hosted Linux race/PostgreSQL 16 integration checks and published both Go, public and core images; admin image is still building. Final core UI correction will be published separately and pinned with that verified service set before activation.
 - Predeployment database and configuration backups streamed to private Azure Blob Storage, SHA256/encryption checked; PostgreSQL restore catalog validated. Schema remains26 clean and no runtime changed during staging.
 
 - Latest visibility correction: each Space directory card is one semantic link, with no nested links. Owner attribution was removed from directory/profile and from events presented under a Space; standalone organizer attribution remains. No ownership/API authorization was changed.
@@ -1616,7 +1630,7 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 
 ## 2026-10-27 - Spaces and City Hubs production activation verified
 
-- Hosted run40394547108 passed full Linux race/PostgreSQL16 and published five base images from44659a6. Run40396892475 passed the same mandatory checks and published final core-web92c5a83. Backend/package/deployment sources are identical between these commits.
+- Hosted run40394547108 passed full Linux race/PostgreSQL 16 and published five base images from44659a6. Run40396892475 passed the same mandatory checks and published final core-web92c5a83. Backend/package/deployment sources are identical between these commits.
 - Verified private streamed database/configuration backups and restore catalog. Applied additive migrations27/28: schema28 clean. Activated core/global engines independently, then public/core/admin web, and patched only City route additions in existing ingress. All six runtimes ready, no OOM, organizer runtime identity retained, runtime environment unchanged.
 - Live HTTP200 verified Cities, Spaces, Discover, Ambassadors, login, both sitemaps and public City API. Whole-card Space anchors and absent visible owner attribution confirmed; the supplied public community event no longer displays gathering/owner labels. Static sitemap includes Cities. No City Hubs were seeded (actual public list empty). Temporary publisher variables removed.
 - User then requested a separate managed-team workspace with Space/event role assignment. Planning/source work is pending separately; it is not included in this deployed release. Browser work was explicitly excluded by the user; actual Azure upload and authenticated admin creation were not exercised with production records.

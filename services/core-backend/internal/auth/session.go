@@ -18,6 +18,7 @@ import (
 var (
 	ErrSessionNotFound = errors.New("session not found or expired")
 	ErrInvalidToken    = errors.New("invalid session token")
+	ErrNotAllowed      = errors.New("you are not allowed")
 )
 
 // SessionUser encapsulates session data and authenticated user identity.
@@ -102,6 +103,13 @@ func (sm *SessionManager) GetSession(ctx context.Context, token string) (*Sessio
 			return nil, ErrSessionNotFound
 		}
 		return nil, err
+	}
+
+	if row.Restricted {
+		return nil, ErrNotAllowed
+	}
+	if row.RevokedAt.Valid {
+		return nil, ErrSessionNotFound
 	}
 
 	// Activity is non-authoritative telemetry. Only stale heartbeats enter the

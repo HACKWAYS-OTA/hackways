@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"github.com/hackways/core-backend/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"testing"
 	"time"
@@ -143,6 +145,44 @@ func TestSessionManager_LivePostgres(t *testing.T) {
 		t.Errorf("expected ErrSessionNotFound for tampered token, got %v", err)
 	}
 
+	// Mandatory isolated persistence coverage: both engines reject restriction
+	// state, old sessions remain retired after review, and guests cannot bypass it.
+	if _, err = pool.Exec(ctx, "INSERT INTO account_restrictions(user_id,reason,updated_by) VALUES($1,'Isolated core account restriction',$1) ON CONFLICT(user_id) DO UPDATE SET blocked=true", user.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM account_restrictions WHERE user_id=$1", user.ID) }()
+	if _, err = sm.GetSession(ctx, token); !errors.Is(err, ErrNotAllowed) {
+		t.Fatal("core accepted restricted account")
+	}
+	request := httptest.NewRequest("POST", "/api/v1/rsvps", nil)
+	request.AddCookie(&http.Cookie{Name: DefaultSessionCookie, Value: token})
+	denied := httptest.NewRecorder()
+	RequireAuth(sm)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("restricted account reached action") })).ServeHTTP(denied, request)
+	if denied.Code != 403 || !strings.Contains(denied.Body.String(), "You are not allowed") {
+		t.Fatal("core restriction response missing")
+	}
+	if _, err = pool.Exec(ctx, "UPDATE account_restrictions SET blocked=false WHERE user_id=$1;", user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE sessions SET revoked_at=clock_timestamp() WHERE id=$1", session.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = sm.GetSession(ctx, token); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatal("core revived retired session")
+	}
+	browser, _ := GenerateToken()
+	deviceHash := HashToken(browser)
+	if _, err = pool.Exec(ctx, "INSERT INTO device_restrictions(token_hash,reason,updated_by) VALUES($1,'Isolated core browser restriction',$2)", deviceHash, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM device_restrictions WHERE token_hash=$1", deviceHash) }()
+	request = httptest.NewRequest("POST", "/api/v1/rsvps", nil)
+	request.AddCookie(&http.Cookie{Name: "__Host-hackways_device", Value: browser})
+	denied = httptest.NewRecorder()
+	RestrictionGuard(queries)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("blocked guest reached action") })).ServeHTTP(denied, request)
+	if denied.Code != 403 {
+		t.Fatalf("blocked guest got%d", denied.Code)
+	}
 	// 4. Revoke session
 	if err := sm.RevokeSession(ctx, token); err != nil {
 		t.Fatalf("failed to revoke session: %v", err)
