@@ -58,6 +58,7 @@ type Querier interface {
 	AttachOwnedEventBanner(ctx context.Context, arg AttachOwnedEventBannerParams) (Events, error)
 	AttachSpaceImage(ctx context.Context, arg AttachSpaceImageParams) (AttachSpaceImageRow, error)
 	AuditCommunityMedia(ctx context.Context, arg AuditCommunityMediaParams) error
+	AuditEventMedia(ctx context.Context, arg AuditEventMediaParams) error
 	BeginOutboxProviderAttempt(ctx context.Context, arg BeginOutboxProviderAttemptParams) (pgtype.Timestamptz, error)
 	BoundRecognizedDevices(ctx context.Context, userID pgtype.UUID) error
 	CampaignAudienceCount(ctx context.Context) (int64, error)
@@ -136,7 +137,11 @@ type Querier interface {
 	LockAdminVerificationSession(ctx context.Context, arg LockAdminVerificationSessionParams) (LockAdminVerificationSessionRow, error)
 	LockAuthenticationUser(ctx context.Context, id pgtype.UUID) (LockAuthenticationUserRow, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
+	LockEventMediaResource(ctx context.Context, id pgtype.UUID) (LockEventMediaResourceRow, error)
+	LockMediaEventGrant(ctx context.Context, arg LockMediaEventGrantParams) ([]pgtype.UUID, error)
+	LockMediaSpaceGrant(ctx context.Context, arg LockMediaSpaceGrantParams) ([]pgtype.UUID, error)
 	LockRuntimeRollout(ctx context.Context) (RuntimeRolloutControl, error)
+	LockSpaceMediaResource(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
 	MCPAppendAudit(ctx context.Context, arg MCPAppendAuditParams) error
 	MCPApproveActionIntent(ctx context.Context, arg MCPApproveActionIntentParams) (int64, error)

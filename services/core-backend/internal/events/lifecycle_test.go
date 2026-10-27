@@ -23,6 +23,7 @@ import (
 	"github.com/hackways/core-backend/internal/rsvps"
 	"github.com/hackways/core-backend/internal/spaces"
 	"github.com/hackways/core-backend/internal/workflows"
+	"github.com/hackways/core-backend/internal/workspace"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -1004,4 +1005,157 @@ func TestSectionedRegistration_ValidationInvitationAndSnapshot(t *testing.T) {
 	if err != nil || event.CurrentRsvpCount != 0 || event.HeldRsvpCount != 0 {
 		t.Fatal("application reserved inventory")
 	}
+}
+
+// Extends the mandatory PostgreSQL lifecycle regression with shared operation.
+func TestOwnerLifecycle_WorkspaceAccess(t *testing.T) {
+	f, outsider := ownerSetup(t), ownerSetup(t)
+	ctx := context.Background()
+	eventAPI, spaceAPI, teamAPI := NewHandler(f.pool).Routes(), spaces.NewHandler(f.pool).Routes(), workspace.NewHandler(f.pool).Routes()
+	member, err := f.q.CreateUser(ctx, db.CreateUserParams{Email: fmt.Sprintf("workspace-%d@example.invalid", time.Now().UnixNano()), DisplayName: "CI teammate", PasswordHash: "isolated-ci-only"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := auth.NewSessionManager(f.q).CreateSession(ctx, member.ID, "CI workspace", "", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie := &http.Cookie{Name: auth.DefaultSessionCookie, Value: token}
+	req := func(api http.Handler, method, path string, body []byte, actor *http.Cookie) *httptest.ResponseRecorder {
+		return requestJSON(t, api, method, path, body, actor)
+	}
+	check := func(out *httptest.ResponseRecorder, status int) {
+		t.Helper()
+		if out.Code != status {
+			t.Fatalf("expected %d got %d: %s", status, out.Code, out.Body.String())
+		}
+	}
+	r := httptest.NewRequest("POST", "/", strings.NewReader(`{"name":"CI shared Space","description":"Shared operation regression"}`))
+	r.Header.Set("Idempotency-Key", fmt.Sprintf("workspace-space-%d", time.Now().UnixNano()))
+	r.AddCookie(f.cookie)
+	w := httptest.NewRecorder()
+	spaceAPI.ServeHTTP(w, r)
+	check(w, 201)
+	var space struct{ Data spaceRecordForWorkspace }
+	if json.Unmarshal(w.Body.Bytes(), &space) != nil {
+		t.Fatal("invalid persisted Space")
+	}
+	spacePath := "/spaces/" + idString(space.Data.ID) + "/access"
+	eventPath := "/" + idString(f.event.ID)
+	directPath := "/events/" + idString(f.event.ID) + "/access"
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(ctx, "DELETE FROM event_access WHERE event_id IN(SELECT id FROM events WHERE organizer_id=$1)", f.organizer.ID)
+		_, _ = f.pool.Exec(ctx, "DELETE FROM space_access WHERE space_id=$1", space.Data.ID)
+		_, _ = f.pool.Exec(ctx, "DELETE FROM audit_log WHERE actor_user_id=$1 OR entity_id=$2", member.ID, space.Data.ID)
+		_, _ = f.pool.Exec(ctx, "DELETE FROM sessions WHERE user_id=$1", member.ID)
+		_, _ = f.pool.Exec(ctx, "DELETE FROM users WHERE id=$1", member.ID)
+	})
+	type grantResult struct {
+		Data struct {
+			ID       pgtype.UUID `json:"id"`
+			Revision int64       `json:"revision"`
+			Role     string      `json:"role"`
+		}
+	}
+	grant := func(path, role string, revision int64) grantResult {
+		t.Helper()
+		body, _ := json.Marshal(struct {
+			Email    string `json:"email"`
+			Role     string `json:"role"`
+			Revision int64  `json:"revision"`
+		}{member.Email, role, revision})
+		out := req(teamAPI, "POST", path, body, f.cookie)
+		check(out, 200)
+		var result grantResult
+		if json.Unmarshal(out.Body.Bytes(), &result) != nil {
+			t.Fatal("invalid access result")
+		}
+		return result
+	}
+	payload := []byte(fmt.Sprintf(`{"email":%q,"role":"manager","revision":0}`, member.Email))
+	check(req(teamAPI, "GET", "/spaces", nil, nil), 401)
+	check(req(eventAPI, "GET", eventPath+"/manage", nil, cookie), 404)
+	check(req(teamAPI, "POST", spacePath, payload, f.cookie), 422)
+	if _, err = f.pool.Exec(ctx, "UPDATE users SET email_verified=true WHERE id=$1", member.ID); err != nil {
+		t.Fatal(err)
+	}
+	assigned := grant(spacePath, "manager", 0)
+	check(req(teamAPI, "POST", spacePath, payload, f.cookie), 200)
+	check(req(teamAPI, "POST", spacePath, payload, cookie), 403)
+	check(req(teamAPI, "GET", spacePath, nil, outsider.cookie), 404)
+	body := []byte(fmt.Sprintf(`{"space_slug":%q,"revision":1}`, space.Data.Slug))
+	check(req(eventAPI, "PUT", eventPath+"/space", body, f.cookie), 200)
+	var managed struct {
+		Data   db.Events
+		Access auth.WorkspaceAccess
+	}
+	out := req(eventAPI, "GET", eventPath+"/manage", nil, cookie)
+	check(out, 200)
+	if json.Unmarshal(out.Body.Bytes(), &managed) != nil || managed.Access.Role != "manager" {
+		t.Fatal("Space manager role not inherited")
+	}
+	update := updateRequest{Title: f.event.Title, Description: "Changed by actual teammate", Format: string(f.event.Format), StartsAt: f.event.StartsAt.Time, EndsAt: f.event.EndsAt.Time, Timezone: "UTC", Capacity: &f.event.Capacity.Int32, Location: f.event.LocationName.String, Mode: "instant", AllowGuest: true, OfferMinutes: 10, Revision: managed.Data.Revision}
+	body, _ = json.Marshal(update)
+	check(req(eventAPI, "PUT", eventPath, body, cookie), 200)
+	var audited bool
+	if err = f.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM audit_log WHERE event_id=$1 AND actor_user_id=$2 AND action='event.updated')", f.event.ID, member.ID).Scan(&audited); err != nil || !audited {
+		t.Fatal("team mutation lost actual audit actor")
+	}
+	creation, _ := json.Marshal(map[string]string{"title": "CI shared creation", "description": "Created by a manager without an organizer profile", "format": "in_person", "starts_at": time.Now().Add(3 * time.Hour).Format(time.RFC3339), "ends_at": time.Now().Add(4 * time.Hour).Format(time.RFC3339), "timezone": "UTC", "location_name": "CI venue", "space_slug": space.Data.Slug, "status": "draft"})
+	out = req(eventAPI, "POST", "/", creation, cookie)
+	check(out, 201)
+	var created struct{ Data db.Events }
+	if json.Unmarshal(out.Body.Bytes(), &created) != nil || created.Data.OrganizerID != f.organizer.ID || created.Data.SpaceID != space.Data.ID {
+		t.Fatal("shared creation changed owner or Space association")
+	}
+	assigned = grant(spacePath, "editor", assigned.Data.Revision)
+	check(req(eventAPI, "GET", eventPath+"/registrations", nil, cookie), 403)
+	check(req(eventAPI, "POST", eventPath+"/status", nil, cookie), 403)
+	check(req(eventAPI, "DELETE", eventPath, nil, cookie), 403)
+	explicit := grant(directPath, "checkin", 0)
+	check(req(eventAPI, "PUT", eventPath, body, cookie), 403)
+	out = req(eventAPI, "GET", eventPath+"/manage", nil, cookie)
+	check(out, 200)
+	if json.Unmarshal(out.Body.Bytes(), &managed) != nil || managed.Access.Role != "checkin" {
+		t.Fatal("explicit event role did not override Space access")
+	}
+	registration, _, err := workflows.New(f.pool).Register(ctx, workflows.Request{EventID: f.event.ID, UserID: outsider.owner.ID, Name: outsider.owner.DisplayName, Notes: "CI confidential operator-only note", Key: fmt.Sprintf("workspace-rsvp-%d", time.Now().UnixNano()), RequestID: "CI workspace"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ticket, err := f.q.GetTicketByRSVP(ctx, registration.Data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admission := []byte(fmt.Sprintf(`{"ticket_id":%q,"reason":"CI delegated admission"}`, idString(ticket.ID)))
+	check(req(eventAPI, "POST", eventPath+"/check-in", admission, cookie), 200)
+	ticket, err = f.q.GetTicketByRSVP(ctx, registration.Data.ID)
+	if err != nil || ticket.CheckedInBy != member.ID {
+		t.Fatal("delegated admission actor missing")
+	}
+	detail := req(eventAPI, "GET", eventPath+"/registrations/by-code/"+registration.Data.PublicCode, nil, cookie)
+	check(detail, 200)
+	if strings.Contains(detail.Body.String(), `"status_options":[{`) {
+		t.Fatal("check-in staff received management actions")
+	}
+	if strings.Contains(detail.Body.String(), "CI confidential operator-only note") {
+		t.Fatal("check-in staff received private notes")
+	}
+	ownerDetail := req(eventAPI, "GET", eventPath+"/registrations/by-code/"+registration.Data.PublicCode, nil, f.cookie)
+	check(ownerDetail, 200)
+	if !strings.Contains(ownerDetail.Body.String(), "CI confidential operator-only note") {
+		t.Fatal("owner lost private registration notes")
+	}
+	revoke := []byte(fmt.Sprintf(`{"revision":%d}`, explicit.Data.Revision))
+	check(req(teamAPI, "DELETE", directPath+"/"+idString(explicit.Data.ID), revoke, f.cookie), 200)
+	check(req(eventAPI, "GET", eventPath+"/registrations", nil, cookie), 403)
+	revoke = []byte(fmt.Sprintf(`{"revision":%d}`, assigned.Data.Revision))
+	check(req(teamAPI, "DELETE", spacePath+"/"+idString(assigned.Data.ID), revoke, f.cookie), 200)
+	check(req(eventAPI, "GET", eventPath+"/manage", nil, cookie), 404)
+	check(req(spaceAPI, "GET", "/"+idString(space.Data.ID)+"/manage", nil, cookie), 404)
+}
+
+type spaceRecordForWorkspace struct {
+	ID   pgtype.UUID `json:"id"`
+	Slug string      `json:"slug"`
 }

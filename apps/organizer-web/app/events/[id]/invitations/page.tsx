@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { RegistrationStatus } from "@/types/api";
 import { SectionJumpButton } from "@hackways/ui/section-jump";
-import { managedEvent } from "@/lib/management";
+import { requireEventPermission } from "@/lib/management";
 import { pageOffset, privateApi, requireUser } from "@/lib/account";
 import { dateLabel, registrationLabels } from "@/lib/journeys";
 import { queryPath } from "@/lib/dashboard";
@@ -36,7 +36,7 @@ export default async function Invitations({
   searchParams: { offset?: string; q?: string; status?: string };
 }) {
   const [event, user] = await Promise.all([
-    managedEvent(params.id),
+    requireEventPermission(params.id, 'guests.manage').then(result => result.data),
     requireUser(`/events/${params.id}/invitations`),
   ]);
   const offset = pageOffset(searchParams.offset),

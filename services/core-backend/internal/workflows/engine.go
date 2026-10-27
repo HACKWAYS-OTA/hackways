@@ -72,10 +72,22 @@ func (e *Engine) Begin(ctx context.Context, id pgtype.UUID) (pgx.Tx, *db.Queries
 		}
 		return nil, nil, event, err
 	}
+	if err = auth.RecheckWorkspace(ctx, q, "event", id); err != nil {
+		tx.Rollback(ctx)
+		if errors.Is(err, auth.ErrWorkspaceAccessDenied) {
+			err = &Failure{403, "WORKSPACE_ACCESS_DENIED", "Your workspace access changed. Reload before continuing"}
+		}
+		return nil, nil, event, err
+	}
 	return tx, q, event, nil
 }
 func Audit(ctx context.Context, q *db.Queries, actor, event, entity pgtype.UUID, action, requestID string) error {
 	metadata := []byte("{}")
+	if _, scoped := auth.WorkspaceFromContext(ctx); scoped {
+		if user, ok := auth.UserFromContext(ctx); ok {
+			actor = user.UserID
+		}
+	}
 	if mutation, ok := auth.AdminMutationFromContext(ctx); ok {
 		user, _ := auth.UserFromContext(ctx)
 		actor = user.UserID

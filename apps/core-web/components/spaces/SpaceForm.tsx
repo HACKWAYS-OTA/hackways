@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/Input';
 import { MediaField } from '@hackways/ui/media-field';
 import { saveSpaceImage, type SpaceImageAttempt } from '@/lib/space-upload';
 import { Icon } from '@/components/ui/Icon';
-export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; hostName: string; hasProfile: boolean }) {
+import { site } from '@/lib/site';
+export function SpaceForm({ space, hostName, hasProfile, canArchive = false, managed = false }: { space?: Space; hostName: string; hasProfile: boolean; canArchive?: boolean; managed?: boolean }) {
   const router = useRouter();
   const formID = useId();
   const [step, setStep] = useState(0);
@@ -47,13 +48,13 @@ export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; host
           setImages(current => ({ ...current, [kind]: { file: null, removed: false } }));
         }
       }
-      router.push(`/spaces/${saved.current.slug}`); router.refresh();
+      if (managed) { window.location.assign(`${site.organizer}/spaces/${saved.current.slug}`); return; } router.push(`/spaces/${saved.current.slug}`); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Your Space could not be saved. Your entries are still here.'); }
     finally { setBusy(''); }
   }
   async function status() {
     if (!space) return; setBusy('status'); setError('');
-    try { await fetchApi(`/spaces/${space.id}/status`, { method: 'POST', body: JSON.stringify({ status: space.status === 'active' ? 'archived' : 'active', revision: saved.current?.revision || space.revision }) }); router.push(`/spaces/${space.slug}`); router.refresh(); }
+    try { await fetchApi(`/spaces/${space.id}/status`, { method: 'POST', body: JSON.stringify({ status: space.status === 'active' ? 'archived' : 'active', revision: saved.current?.revision || space.revision }) }); window.location.assign(`${site.organizer}/spaces/${space.slug}`); }
     catch (err) { setError(err instanceof Error ? err.message : 'The Space status could not be updated.'); }
     finally { setBusy(''); }
   }
@@ -75,6 +76,6 @@ export function SpaceForm({ space, hostName, hasProfile }: { space?: Space; host
       </fieldset>
       {error && <div className="journey-error" role="alert"><p>{error}</p>{saved.current && <button className="quiet-link" type="button" disabled={!!busy} onClick={() => void reloadLatest()}>Reload the latest Space</button>}</div>}
     </form>
-    {space && <section className="space-archive-settings"><h2>{space.status === 'active' ? 'Pause this community.' : 'Welcome people back.'}</h2><p>{space.status === 'active' ? 'Archiving pauses new members and events. Existing events and memberships stay in place.' : 'Reactivating lets people join and lets you organize new events again.'}</p>{space.status === 'active' && !archive ? <button className="quiet-link" onClick={() => setArchive(true)}>Archive this Space</button> : <div className="journey-actions"><button className="app-button app-button-outline" disabled={!!busy} onClick={() => void status()}>{busy === 'status' ? 'Saving...' : space.status === 'active' ? 'Confirm archive' : 'Reactivate Space'}</button>{archive && <button className="quiet-link" disabled={!!busy} onClick={() => setArchive(false)}>Keep it active</button>}</div>}</section>}
+    {space && canArchive && <section className="space-archive-settings"><h2>{space.status === 'active' ? 'Pause this community.' : 'Welcome people back.'}</h2><p>{space.status === 'active' ? 'Archiving pauses new members and events. Existing events and memberships stay in place.' : 'Reactivating lets people join and lets you organize new events again.'}</p>{space.status === 'active' && !archive ? <button className="quiet-link" onClick={() => setArchive(true)}>Archive this Space</button> : <div className="journey-actions"><button className="app-button app-button-outline" disabled={!!busy} onClick={() => void status()}>{busy === 'status' ? 'Saving...' : space.status === 'active' ? 'Confirm archive' : 'Reactivate Space'}</button>{archive && <button className="quiet-link" disabled={!!busy} onClick={() => setArchive(false)}>Keep it active</button>}</div>}</section>}
   </div>;
 }

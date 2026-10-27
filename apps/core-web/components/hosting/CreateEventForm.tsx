@@ -1,6 +1,7 @@
 'use client';
 
 import { RadioGroup } from '@hackways/ui/radio-group';
+import { Select } from '@hackways/ui/select';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -21,11 +22,12 @@ import './create-event.css';
 export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
   organizer: { display_name: string } | null;
   name: string;
-  spaces: Space[];
+  spaces: Pick<Space, 'id' | 'slug' | 'name' | 'status'>[];
   initialSpace: string;
 }) {
   const router = useRouter();
   const [host, setHost] = useState(organizer?.display_name || '');
+  const [personalName, setPersonalName] = useState(name);
   const [format, setFormat] = useState<EventFormat>('in_person');
   const [zone, setZone] = useState('');
   const [busy, setBusy] = useState('');
@@ -78,7 +80,7 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
       const ends = new Date(String(form.get('ends_at')));
       if (ends <= starts) throw new Error('Choose an end time after the start time.');
       if (starts.getTime() <= Date.now()) throw new Error('Choose a start time in the future.');
-      if (!host) {
+      if (!host && !spaceSlug) {
         const profile = await fetchApi<{ data: { display_name: string } }>('/events/organizer/profile', {
           method: 'POST', body: JSON.stringify({ display_name: String(form.get('host')).trim() }),
         });
@@ -154,7 +156,8 @@ export function CreateEventForm({ organizer, name, spaces, initialSpace }: {
       <fieldset className="compose-fields" disabled={!!busy}>
         <legend className="visually-hidden">Event details</legend>
         <div className="compose-meta">
-          {host ? <EditorMenu disabled={!!busy} label={<><Icon name="people" size={16} /><span>{spaces.find(space => space.slug === spaceSlug)?.name || host}</span></>}><p className="editor-menu-caption">Organize this event under</p><button type="button" aria-pressed={!spaceSlug} onClick={() => setSpaceSlug('')}><span>{host}<small>Personal event</small></span>{!spaceSlug && <Icon name="check" size={16} />}</button>{spaces.map(space => <button type="button" key={space.slug} aria-pressed={spaceSlug === space.slug} onClick={() => setSpaceSlug(space.slug)}><Icon name="people" size={17} /><span>{space.name}<small>Space</small></span>{spaceSlug === space.slug && <Icon name="check" size={16} />}</button>)}<Link href="/spaces/new" className="editor-menu-link">Create a Space</Link><Link href="/spaces?view=owned" className="editor-menu-link">All my Spaces</Link></EditorMenu> : <div className="compose-host"><label htmlFor="event-host">Hosted by</label><input id="event-host" name="host" defaultValue={name} required maxLength={100} autoComplete="organization" aria-describedby="host-help" /><span className="visually-hidden" id="host-help">Use your name or your community’s name. This will appear on the event page.</span></div>}
+          {(host || spaces.length > 0) && <Select className="compose-scope-select" label="Organize under" value={spaceSlug ? `space:${spaceSlug}` : 'personal'} options={[{ value: 'personal', label: host || 'Personal event' }, ...spaces.map(space => ({ value: `space:${space.slug}`, label: space.name }))]} disabled={!!busy} onValueChange={value => { if (value === 'personal') setSpaceSlug(''); else { const selected = spaces.find(space => `space:${space.slug}` === value); if (selected) setSpaceSlug(selected.slug); } }} />}
+          {!host && !spaceSlug && <div className="compose-host"><label htmlFor="event-host">Hosted by</label><input id="event-host" name="host" value={personalName} onChange={event => setPersonalName(event.target.value)} required maxLength={100} autoComplete="organization" aria-describedby="host-help" /><span className="visually-hidden" id="host-help">Use your name or your community&apos;s name. This appears on personal events.</span></div>}
           <EditorMenu align="right" disabled={!!busy} label={<><Icon name={visibility === 'public' ? 'globe' : 'lock'} size={15} />{visibility === 'public' ? 'Public' : 'Private'}</>}><button type="button" aria-pressed={visibility === 'public'} onClick={() => setVisibility('public')}><Icon name="globe" size={18} /><span>Public<small>Publish on Discover so people can register.</small></span>{visibility === 'public' && <Icon name="check" size={16} />}</button><button type="button" aria-pressed={visibility === 'private'} onClick={() => setVisibility('private')}><Icon name="lock" size={18} /><span>Private<small>Unlisted. Share the link to invite people to view and register.</small></span>{visibility === 'private' && <Icon name="check" size={16} />}</button></EditorMenu>
         </div>
 

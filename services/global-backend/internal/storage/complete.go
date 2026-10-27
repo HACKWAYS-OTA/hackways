@@ -104,6 +104,15 @@ func (h *Handler) CompleteEventBanner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Repeat ownership, editable event state and revision checks atomically.
+	before, err := lockEventMediaAccess(r.Context(), queries, id, user.UserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed or editing closed. Reload before continuing.", nil)
+		return
+	}
+	if err != nil {
+		platform.RespondDatabaseError(w, err)
+		return
+	}
 	event, err := queries.AttachOwnedEventBanner(r.Context(), db.AttachOwnedEventBannerParams{ID: id, UserID: user.UserID, BannerUrl: pgtype.Text{String: publicURL, Valid: true}, Revision: req.Revision})
 	if errors.Is(err, pgx.ErrNoRows) {
 		platform.RespondError(w, 409, "REVISION_CONFLICT", "The event changed or editing closed. Reload the event before continuing.", nil)
@@ -112,6 +121,12 @@ func (h *Handler) CompleteEventBanner(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
+	}
+	if before.BannerUrl.String != publicURL {
+		if err = queries.AuditEventMedia(r.Context(), db.AuditEventMediaParams{ActorUserID: user.UserID, EventID: id, RequestID: platform.GetRequestID(r.Context())}); err != nil {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
 	}
 	if err = tx.Commit(r.Context()); err != nil {
 		platform.RespondDatabaseError(w, err)

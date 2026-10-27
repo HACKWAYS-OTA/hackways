@@ -41,11 +41,12 @@ func (h *Handler) Routes() chi.Router {
 	r.With(auth.RequireAuth(h.sessions)).Post("/{id}/join", h.Join)
 	r.With(auth.RequireAuth(h.sessions)).Post("/{id}/leave", h.Leave)
 	r.Group(func(owner chi.Router) {
-		owner.Use(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.q))
-		owner.Post("/", h.Create)
-		owner.Get("/{id}/manage", h.Manage)
-		owner.Put("/{id}", h.Update)
-		owner.Post("/{id}/status", h.Status)
+		owner.Use(auth.RequireAuth(h.sessions))
+		owner.With(auth.RequireOrganizer(h.q)).Post("/", h.Create)
+		owner.With(auth.RequireSpacePermission(h.q, "view")).Get("/{id}/manage", h.Manage)
+		owner.With(auth.RequireSpacePermission(h.q, "view")).Get("/manage-by-slug/{slug}", h.Manage)
+		owner.With(auth.RequireSpacePermission(h.q, "content")).Put("/{id}", h.Update)
+		owner.With(auth.RequireSpacePermission(h.q, "delete")).Post("/{id}/status", h.Status)
 	})
 	return r
 }
@@ -68,7 +69,9 @@ func resource(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
 	return id, true
 }
 func failure(w http.ResponseWriter, e error) {
-	if errors.Is(e, pgx.ErrNoRows) {
+	if errors.Is(e, auth.ErrWorkspaceAccessDenied) {
+		platform.RespondError(w, 403, "WORKSPACE_ACCESS_DENIED", "Your workspace access changed. Reload before continuing", nil)
+	} else if errors.Is(e, pgx.ErrNoRows) {
 		platform.RespondError(w, 404, "NOT_FOUND", "Space not found", nil)
 	} else {
 		platform.RespondDatabaseError(w, e)
@@ -194,17 +197,19 @@ func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	}{rows})
 }
 func (h *Handler) Manage(w http.ResponseWriter, r *http.Request) {
-	id, ok := resource(w, r)
-	if !ok {
-		return
-	}
+	scoped, _ := auth.WorkspaceFromContext(r.Context())
+	id := scoped.ResourceID
 	owner, _ := auth.OrganizerFromContext(r.Context())
 	s, e := h.q.ReadOwnedSpace(r.Context(), db.ReadOwnedSpaceParams{ID: id, OrganizerID: owner.ID})
 	if e != nil {
 		failure(w, e)
 		return
 	}
-	reply(w, 200, s)
+	access, _ := auth.WorkspaceFromContext(r.Context())
+	platform.RespondJSON(w, 200, struct {
+		Data   spaceRecord          `json:"data"`
+		Access auth.WorkspaceAccess `json:"access"`
+	}{view(s), access})
 }
 
 type details struct {
@@ -308,6 +313,10 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request, statusOnly bool)
 	} else if replayed {
 		return
 	}
+	if e = auth.RecheckWorkspace(r.Context(), q, "space", id); e != nil {
+		failure(w, e)
+		return
+	}
 	if s.OrganizerID != owner.ID {
 		failure(w, pgx.ErrNoRows)
 		return
@@ -327,7 +336,7 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request, statusOnly bool)
 		failure(w, e)
 		return
 	}
-	if _, admin := auth.AdminMutationFromContext(r.Context()); admin {
+	{
 		actor, _ := auth.UserFromContext(r.Context())
 		action := "space.updated"
 		if statusOnly {

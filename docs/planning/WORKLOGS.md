@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Managed Space and event collaboration (candidate)
+
+- Added additive migration 29 and SQLc-owned Space/event assignments with manager/editor/check-in roles, revisions and revocation. Owners retain immutable ownership and alone assign verified accounts by exact email. Explicit event roles override Space inheritance; removing an override restores any Space role.
+- Scoped every event/Space management route to real backend permissions, rechecked writes under existing resource/grant locks, retained RSVP invariants and recorded actual actors. Check-in staff cannot change registrations/send messages and receive no private guest notes/form answers. Global Go independently checks media signing/finalization roles; direct SAS uploads remain unchanged.
+- Added the managed organizer shell, owned/assigned Space and event catalogues, resource teams and profile shortcut. Space managers can create events without a personal organizer profile. Role-aware tabs/actions reflect persisted access. Public membership stays independent; cross-app links use normal navigation.
+- Verified locally: SQLc generation, both Go vet/full test suites on isolated PostgreSQL 18, additional role/admission/privacy and media override/revocation integration cases, shared-client build, all frontend type/lint and tracked-source audit. Final focused role check passed after privacy hardening. Hosted PostgreSQL 16/race checks remain required before activation.
+- Impeccable detector returned []; source review identified and confirmed three fixes (independent membership controls, no-profile manager scope selection, explicit event override removal semantics). Browser verification remains excluded by the user; no rendered pass is claimed. Candidate is not yet deployed.
+
 ## 2026-10-27 - City and shared crop production verification
 
 - Hosted candidate 40407521477 for 697e2b6 passed both PostgreSQL 16 Go race suites, SQLc compilation, all frontend type/lint checks and deployment/source guards. Published immutable core-web and admin-web images only.

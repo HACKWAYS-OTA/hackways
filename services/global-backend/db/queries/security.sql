@@ -32,13 +32,13 @@ WHERE id=$1 AND lease_token=$2 AND status='pending';
 
 -- name: ReadOwnedUploadEvent :one
 SELECT e.id FROM events e JOIN organizers o ON o.id=e.organizer_id
-WHERE e.id=$1 AND o.user_id=$2 AND e.deleted_at IS NULL AND NOT e.management_closed;
+WHERE e.id=$1 AND (o.user_id=$2 OR COALESCE((SELECT a.role FROM event_access a WHERE a.event_id=e.id AND a.user_id=$2 AND a.revoked_at IS NULL),(SELECT a.role FROM space_access a WHERE a.space_id=e.space_id AND a.user_id=$2 AND a.revoked_at IS NULL),'') IN ('manager','editor')) AND e.deleted_at IS NULL AND NOT e.management_closed;
 
 -- name: AttachOwnedEventBanner :one
 UPDATE events e SET banner_url=$3,
 revision=CASE WHEN e.banner_url=$3 THEN e.revision ELSE e.revision+1 END,
 updated_at=CASE WHEN e.banner_url=$3 THEN e.updated_at ELSE clock_timestamp() END
-FROM organizers o WHERE e.organizer_id=o.id AND e.id=$1 AND o.user_id=$2
+FROM organizers o WHERE e.organizer_id=o.id AND e.id=$1 AND (o.user_id=$2 OR COALESCE((SELECT a.role FROM event_access a WHERE a.event_id=e.id AND a.user_id=$2 AND a.revoked_at IS NULL),(SELECT a.role FROM space_access a WHERE a.space_id=e.space_id AND a.user_id=$2 AND a.revoked_at IS NULL),'') IN ('manager','editor'))
 AND e.deleted_at IS NULL AND NOT e.management_closed
 AND (e.revision=$4 OR (e.banner_url=$3 AND e.revision=$4+1))
 RETURNING e.*;

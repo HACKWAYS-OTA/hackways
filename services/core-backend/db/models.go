@@ -393,6 +393,19 @@ type EmailVerifications struct {
 	Attempts   int16              `json:"attempts"`
 }
 
+type EventAccess struct {
+	ID        pgtype.UUID        `json:"id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Role      string             `json:"role"`
+	Revision  int64              `json:"revision"`
+	GrantedBy pgtype.UUID        `json:"granted_by"`
+	UpdatedBy pgtype.UUID        `json:"updated_by"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type EventCategories struct {
 	ID          int64              `json:"id"`
 	Name        string             `json:"name"`
@@ -756,6 +769,19 @@ type Sessions struct {
 	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
 	LastSeen       pgtype.Timestamptz `json:"last_seen"`
 	AdminReference int64              `json:"admin_reference"`
+}
+
+type SpaceAccess struct {
+	ID        pgtype.UUID        `json:"id"`
+	SpaceID   pgtype.UUID        `json:"space_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Role      string             `json:"role"`
+	Revision  int64              `json:"revision"`
+	GrantedBy pgtype.UUID        `json:"granted_by"`
+	UpdatedBy pgtype.UUID        `json:"updated_by"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type SpaceMemberships struct {

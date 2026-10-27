@@ -46,7 +46,7 @@ UPDATE spaces s SET
  logo_url=CASE WHEN $1::text='logo' THEN $2::text ELSE s.logo_url END,
  banner_url=CASE WHEN $1::text='banner' THEN $2::text ELSE s.banner_url END,
  revision=s.revision+1,updated_at=clock_timestamp()
-FROM organizers o WHERE s.organizer_id=o.id AND s.id=$3 AND o.user_id=$4 AND s.revision=$5
+FROM organizers o WHERE s.organizer_id=o.id AND s.id=$3 AND (o.user_id=$4 OR EXISTS(SELECT 1 FROM space_access a WHERE a.space_id=s.id AND a.user_id=$4 AND a.revoked_at IS NULL AND a.role IN ('manager','editor'))) AND s.revision=$5
 RETURNING s.id,s.slug,s.revision,s.logo_url,s.banner_url
 `
 
@@ -106,6 +106,107 @@ func (q *Queries) AuditCommunityMedia(ctx context.Context, arg AuditCommunityMed
 	return err
 }
 
+const auditEventMedia = `-- name: AuditEventMedia :exec
+INSERT INTO audit_log(actor_user_id,event_id,entity_id,action,request_id) VALUES($1,$2,$2,'event.banner_updated',$3)
+`
+
+type AuditEventMediaParams struct {
+	ActorUserID pgtype.UUID `json:"actor_user_id"`
+	EventID     pgtype.UUID `json:"event_id"`
+	RequestID   string      `json:"request_id"`
+}
+
+func (q *Queries) AuditEventMedia(ctx context.Context, arg AuditEventMediaParams) error {
+	_, err := q.db.Exec(ctx, auditEventMedia, arg.ActorUserID, arg.EventID, arg.RequestID)
+	return err
+}
+
+const lockEventMediaResource = `-- name: LockEventMediaResource :one
+SELECT space_id,banner_url,revision FROM events WHERE id=$1 AND deleted_at IS NULL AND NOT management_closed FOR UPDATE
+`
+
+type LockEventMediaResourceRow struct {
+	SpaceID   pgtype.UUID `json:"space_id"`
+	BannerUrl pgtype.Text `json:"banner_url"`
+	Revision  int64       `json:"revision"`
+}
+
+func (q *Queries) LockEventMediaResource(ctx context.Context, id pgtype.UUID) (LockEventMediaResourceRow, error) {
+	row := q.db.QueryRow(ctx, lockEventMediaResource, id)
+	var i LockEventMediaResourceRow
+	err := row.Scan(&i.SpaceID, &i.BannerUrl, &i.Revision)
+	return i, err
+}
+
+const lockMediaEventGrant = `-- name: LockMediaEventGrant :many
+SELECT id FROM event_access WHERE event_id=$1 AND user_id=$2 FOR SHARE
+`
+
+type LockMediaEventGrantParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	UserID  pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) LockMediaEventGrant(ctx context.Context, arg LockMediaEventGrantParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, lockMediaEventGrant, arg.EventID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockMediaSpaceGrant = `-- name: LockMediaSpaceGrant :many
+SELECT id FROM space_access WHERE space_id=$1 AND user_id=$2 FOR SHARE
+`
+
+type LockMediaSpaceGrantParams struct {
+	SpaceID pgtype.UUID `json:"space_id"`
+	UserID  pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) LockMediaSpaceGrant(ctx context.Context, arg LockMediaSpaceGrantParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, lockMediaSpaceGrant, arg.SpaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockSpaceMediaResource = `-- name: LockSpaceMediaResource :one
+SELECT id FROM spaces WHERE id=$1 FOR UPDATE
+`
+
+func (q *Queries) LockSpaceMediaResource(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockSpaceMediaResource, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const readCityUpload = `-- name: ReadCityUpload :one
 SELECT id,reference,revision,banner_url FROM city_hubs WHERE id=$1
 `
@@ -130,7 +231,7 @@ func (q *Queries) ReadCityUpload(ctx context.Context, id pgtype.UUID) (ReadCityU
 }
 
 const readOwnedUploadSpace = `-- name: ReadOwnedUploadSpace :one
-SELECT s.id FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1 AND o.user_id=$2
+SELECT s.id FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1 AND (o.user_id=$2 OR EXISTS(SELECT 1 FROM space_access a WHERE a.space_id=s.id AND a.user_id=$2 AND a.revoked_at IS NULL AND a.role IN ('manager','editor')))
 `
 
 type ReadOwnedUploadSpaceParams struct {
@@ -146,7 +247,7 @@ func (q *Queries) ReadOwnedUploadSpace(ctx context.Context, arg ReadOwnedUploadS
 }
 
 const readSpaceImageState = `-- name: ReadSpaceImageState :one
-SELECT s.id,s.slug,s.revision,s.logo_url,s.banner_url FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1 AND o.user_id=$2
+SELECT s.id,s.slug,s.revision,s.logo_url,s.banner_url FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1 AND (o.user_id=$2 OR EXISTS(SELECT 1 FROM space_access a WHERE a.space_id=s.id AND a.user_id=$2 AND a.revoked_at IS NULL AND a.role IN ('manager','editor')))
 `
 
 type ReadSpaceImageStateParams struct {

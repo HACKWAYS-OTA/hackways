@@ -15,7 +15,7 @@ Manage real event registration and attendance with persisted records and authori
 Four independent Next.js apps and two Go engines remain separate. Go and PostgreSQL own authorization, validation, event capacity, registration transitions and the transactional email outbox. Shared controls come from packages/ui; icons come from Hugeicons. Clean page paths are required. Production builds run off the VM.
 
 ## Brand Commitments
-Hackways' existing wordmark, Google Sans Flex/FG Futurist fonts and application palette remain. The user requests a Kaggle-inspired, centered event management console at hackways.in/manage with the existing top navigation, no sidebar, concise content and recognizable action buttons. The public event footer is explicitly outside this redesign.
+Hackways' existing wordmark, Google Sans Flex/FG Futurist fonts and application palette remain. The latest user direction requests a responsive managed workspace at hackways.in/manage with an admin-console-like sidebar for Space and event workflows only. It supersedes the previous top-navigation-only preference. Keep content concise and actions recognizable; platform administration stays separate. The public event footer is explicitly outside this redesign.
 
 ## Product Principles
 - Use real APIs and persisted data; confirm success only after the operation succeeds.

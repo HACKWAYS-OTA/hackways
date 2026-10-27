@@ -206,6 +206,10 @@ func (h *Handler) completeCommunity(w http.ResponseWriter, r *http.Request, city
 			Data db.AttachCityBannerRow `json:"data"`
 		}{row})
 	} else {
+		if e = lockSpaceMediaAccess(r.Context(), q, b.ResourceID, user.UserID); e != nil {
+			mediaFailure(w, e)
+			return
+		}
 		state, err := q.ReadSpaceImageState(r.Context(), db.ReadSpaceImageStateParams{ID: b.ResourceID, UserID: user.UserID})
 		if err != nil {
 			mediaFailure(w, err)

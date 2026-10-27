@@ -18,6 +18,8 @@ The production topology has four independently deployed Next.js applications and
 
 **Topology decision is unresolved:** [AGENTS.md](../AGENTS.md) budgets a PostgreSQL container on the VM, while [ARCHITECTURE_PLAN.md](ARCHITECTURE_PLAN.md) and `deploy/docker/docker-compose.prod.yml` describe Azure Database for PostgreSQL as the production database. Do not infer that both deployments are supported until the team selects one and reconciles the config and resource budgets.
 
+Managed Space/event operation uses persisted role assignments enforced by core Go; global Go independently checks delegated media rights. Ownership remains unchanged and public membership is separate. See [the workspace contract](backend/WORKSPACE.md).
+
 `packages/api-client` and `packages/shared-types` are intended shared contracts. They do not own business logic. TypeScript applications call Go APIs; authorization, persistence, validation, and RSVP invariants remain in Go and PostgreSQL.
 
 `packages/ui` is the shared frontend control package, linked through root npm workspaces. Each independent Next.js root installs its provider/styles and transpiles the source; checkbox, radio group, select and toggle behavior is configured once. Base UI and Motion retain React 18 compatibility; this does not upgrade Next.js or introduce frontend business endpoints. See [the shared controls guide](../packages/ui/README.md).

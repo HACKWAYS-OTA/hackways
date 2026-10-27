@@ -43,7 +43,7 @@ func (h *Handler) Routes() chi.Router {
 	r.With(auth.RequireAuth(h.sessions)).Post("/organizer/profile", h.CreateOrganizerProfile)
 	r.With(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries)).Get("/organizer/profile", h.GetOrganizerProfile)
 	r.With(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries)).Get("/organizer", h.ListOrganizerEvents)
-	r.With(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries)).Post("/", h.CreateEvent)
+	r.With(auth.RequireAuth(h.sessions)).Post("/", h.CreateEvent)
 	r.Get("/", h.ListEvents)
 	r.Get("/promotions", h.DiscoverPromotions)
 	r.Get("/by-slug/{slug}", h.GetEventBySlug)
@@ -241,11 +241,7 @@ type createEventRequest struct {
 
 // CreateEvent publishes an event owned by the authenticated organizer.
 func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	organizer, ok := auth.OrganizerFromContext(r.Context())
-	if !ok {
-		platform.RespondError(w, http.StatusForbidden, "FORBIDDEN", "Organizer profile required", nil)
-		return
-	}
+	actor, _ := auth.UserFromContext(r.Context())
 
 	var req createEventRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -337,10 +333,29 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var spaceID pgtype.UUID
+	var organizer db.Organizers
 	if req.SpaceSlug != "" {
-		space, readErr := qtx.LockOwnedActiveSpaceBySlug(r.Context(), db.LockOwnedActiveSpaceBySlugParams{Slug: req.SpaceSlug, OrganizerID: organizer.ID})
-		if errors.Is(readErr, pgx.ErrNoRows) {
-			platform.RespondError(w, 404, "SPACE_NOT_AVAILABLE", "Choose an active Space you own", nil)
+		access, readErr := qtx.SpaceWorkspaceAccess(r.Context(), db.SpaceWorkspaceAccessParams{ActorID: actor.UserID, Slug: req.SpaceSlug})
+		if readErr != nil {
+			if errors.Is(readErr, pgx.ErrNoRows) {
+				platform.RespondError(w, 404, "SPACE_NOT_AVAILABLE", "Choose an active Space you manage", nil)
+			} else {
+				platform.RespondDatabaseError(w, readErr)
+			}
+			return
+		}
+		space, readErr := qtx.LockSpace(r.Context(), access.ResourceID)
+		if readErr != nil {
+			platform.RespondDatabaseError(w, readErr)
+			return
+		}
+		if _, readErr = qtx.LockSpaceAccessForActor(r.Context(), db.LockSpaceAccessForActorParams{SpaceID: space.ID, UserID: actor.UserID}); readErr != nil {
+			platform.RespondDatabaseError(w, readErr)
+			return
+		}
+		access, readErr = qtx.SpaceWorkspaceAccess(r.Context(), db.SpaceWorkspaceAccessParams{ActorID: actor.UserID, ResourceID: space.ID})
+		if errors.Is(readErr, pgx.ErrNoRows) || readErr == nil && (!auth.RoleAllows(access.AccessRole, "create") || space.Status != "active") {
+			platform.RespondError(w, 403, "WORKSPACE_ACCESS_DENIED", "Your Space role does not allow event creation", nil)
 			return
 		}
 		if readErr != nil {
@@ -348,7 +363,19 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		spaceID = space.ID
+		organizer = access.Organizers
+	} else {
+		organizer, err = qtx.GetOrganizerByUserID(r.Context(), actor.UserID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			platform.RespondError(w, 403, "FORBIDDEN", "Organizer profile required", nil)
+			return
+		}
+		if err != nil {
+			platform.RespondDatabaseError(w, err)
+			return
+		}
 	}
+
 	event, err := qtx.CreateEventRecord(r.Context(), db.CreateEventRecordParams{
 		Status:           status,
 		OrganizerID:      organizer.ID,
@@ -373,7 +400,7 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		platform.RespondDatabaseError(w, err)
 		return
 	}
-	if err = workflows.Audit(r.Context(), qtx, organizer.UserID, event.ID, event.ID, "event.created", platform.GetRequestID(r.Context())); err != nil {
+	if err = workflows.Audit(r.Context(), qtx, actor.UserID, event.ID, event.ID, "event.created", platform.GetRequestID(r.Context())); err != nil {
 		platform.RespondDatabaseError(w, err)
 		return
 	}

@@ -11,6 +11,7 @@ import { currentUser } from '@/lib/account';
 import './globals.css';
 import './dashboard.css';
 import './host-dashboard.css';
+import './workspace.css';
 import '@hackways/ui/auth.css';
 
 export const metadata: Metadata = { ...staticSocialMetadata(site.app, 'manage', 'Manage events | Hackways', 'Welcome your guests and manage the details of your events.'), icons: brandIcons('/manage', 'event'), metadataBase: new URL(site.organizer), title: { default: 'Manage events | Hackways', template: '%s | Hackways' }, description: 'Welcome your guests and manage the details of your events.', robots: { index: false, follow: false } };

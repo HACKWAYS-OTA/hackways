@@ -20,25 +20,25 @@ import (
 
 func (h *Handler) mountManagement(r chi.Router) {
 	r.Group(func(owner chi.Router) {
-		owner.Use(auth.RequireAuth(h.sessions), auth.RequireOrganizer(h.queries))
-		owner.Get("/{id}/manage", h.ManageEvent)
-		owner.Get("/manage-by-slug/{slug}", h.ManageBySlug)
-		owner.Put("/{id}/space", h.ChangeSpace)
-		owner.Put("/{id}/appearance", h.ChangeAppearance)
-		owner.Put("/{id}", h.UpdateEvent)
-		owner.Delete("/{id}", h.DeleteDraft)
-		owner.Post("/{id}/status", h.TransitionEvent)
-		owner.Get("/{id}/registrations", h.Roster)
-		owner.Get("/{id}/invitations", h.Invitations)
-		owner.Post("/{id}/invitations", h.InviteAttendees)
-		owner.Get("/{id}/registrations/by-code/{code}", h.GuestDetail)
-		owner.Post("/{id}/registrations/by-code/{code}/status", h.ChangeGuestStatus)
-		owner.Get("/{id}/registration-form", h.OwnerRegistrationForm)
-		owner.Put("/{id}/registration-form", h.SaveRegistrationForm)
-		owner.Get("/{id}/summary", h.GuestSummary)
-		owner.Get("/{id}/audit", h.AuditTrail)
-		owner.Post("/{id}/check-in", h.CheckIn)
-		owner.Post("/{id}/check-in/undo", h.UndoCheckIn)
+		owner.Use(auth.RequireAuth(h.sessions))
+		owner.With(auth.RequireEventPermission(h.queries, "view")).Get("/{id}/manage", h.ManageEvent)
+		owner.With(auth.RequireEventPermission(h.queries, "view")).Get("/manage-by-slug/{slug}", h.ManageBySlug)
+		owner.With(auth.RequireEventPermission(h.queries, "association")).Put("/{id}/space", h.ChangeSpace)
+		owner.With(auth.RequireEventPermission(h.queries, "content")).Put("/{id}/appearance", h.ChangeAppearance)
+		owner.With(auth.RequireEventPermission(h.queries, "content")).Put("/{id}", h.UpdateEvent)
+		owner.With(auth.RequireEventPermission(h.queries, "delete")).Delete("/{id}", h.DeleteDraft)
+		owner.With(auth.RequireEventPermission(h.queries, "lifecycle")).Post("/{id}/status", h.TransitionEvent)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.read")).Get("/{id}/registrations", h.Roster)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.manage")).Get("/{id}/invitations", h.Invitations)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.manage")).Post("/{id}/invitations", h.InviteAttendees)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.read")).Get("/{id}/registrations/by-code/{code}", h.GuestDetail)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.manage")).Post("/{id}/registrations/by-code/{code}/status", h.ChangeGuestStatus)
+		owner.With(auth.RequireEventPermission(h.queries, "content")).Get("/{id}/registration-form", h.OwnerRegistrationForm)
+		owner.With(auth.RequireEventPermission(h.queries, "content")).Put("/{id}/registration-form", h.SaveRegistrationForm)
+		owner.With(auth.RequireEventPermission(h.queries, "view")).Get("/{id}/summary", h.GuestSummary)
+		owner.With(auth.RequireEventPermission(h.queries, "guests.manage")).Get("/{id}/audit", h.AuditTrail)
+		owner.With(auth.RequireEventPermission(h.queries, "checkin")).Post("/{id}/check-in", h.CheckIn)
+		owner.With(auth.RequireEventPermission(h.queries, "checkin")).Post("/{id}/check-in/undo", h.UndoCheckIn)
 	})
 }
 func eventID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
@@ -78,8 +78,9 @@ func (h *Handler) ManageEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data db.Events `json:"data"`
-	}{event})
+		Data   db.Events            `json:"data"`
+		Access auth.WorkspaceAccess `json:"access"`
+	}{Data: event, Access: workspaceAccess(r)})
 }
 func (h *Handler) Roster(w http.ResponseWriter, r *http.Request) {
 	event, ok := h.owned(w, r)
@@ -108,6 +109,11 @@ func (h *Handler) Roster(w http.ResponseWriter, r *http.Request) {
 	}
 	if rows == nil {
 		rows = []db.EventRosterFilteredRow{}
+	}
+	if access, scoped := auth.WorkspaceFromContext(r.Context()); scoped && !auth.RoleAllows(access.Role, "guests.manage") {
+		for index := range rows {
+			rows[index].Notes = pgtype.Text{}
+		}
 	}
 	platform.RespondJSON(w, 200, struct {
 		Data   []db.EventRosterFilteredRow `json:"data"`
@@ -603,4 +609,9 @@ func publishable(event db.LockWorkflowEventRow) bool {
 		validFormat && event.StartsAt.Valid && event.EndsAt.Valid && event.StartsAt.Time.After(event.DatabaseNow.Time) && event.EndsAt.Time.After(event.StartsAt.Time) &&
 		event.Timezone != "" && zoneErr == nil && len(event.LocationName.String) <= 1000 && len(event.LocationAddress.String) <= 2000 && len(link) <= 2048 &&
 		(link == "" || validHTTPSURL(link)) && (!event.Capacity.Valid || event.Capacity.Int32 > 0)
+}
+
+func workspaceAccess(r *http.Request) auth.WorkspaceAccess {
+	value, _ := auth.WorkspaceFromContext(r.Context())
+	return value
 }

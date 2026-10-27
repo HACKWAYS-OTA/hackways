@@ -2,7 +2,7 @@ import { pageSocialMetadata } from '@/lib/social-metadata';
 import { requireUser, privateApi } from '@/lib/account';
 import { ApiClientError } from '@/lib/api';
 import { CreateEventForm } from '@/components/hosting/CreateEventForm';
-import type { Space } from '@/types/api';
+import type { Space, WorkspaceSpace, WorkspaceAccess } from '@/types/api';
 import Link from 'next/link';
 export const metadata = { ...pageSocialMetadata('create'), title: 'Create an event', robots: { index: false, follow: false } };
 export default async function CreatePage({ searchParams }: { searchParams: { space?: string } }) {
@@ -10,18 +10,18 @@ export default async function CreatePage({ searchParams }: { searchParams: { spa
   const returnPath = spaceSlug ? `/create?space=${encodeURIComponent(spaceSlug)}` : '/create';
   const user = await requireUser(returnPath);
   let organizer: { display_name: string } | null = null;
-  const [profile, list] = await Promise.allSettled([privateApi<{ data: { display_name: string } }>('/events/organizer/profile'), privateApi<{ data: Space[] }>('/spaces/mine?view=owned&limit=100')]);
+  const [profile, list] = await Promise.allSettled([privateApi<{ data: { display_name: string } }>('/events/organizer/profile'), privateApi<{ data: WorkspaceSpace[] }>('/workspace/spaces?limit=100')]);
   if (profile.status === 'fulfilled') organizer = profile.value.data;
   else if (!(profile.reason instanceof ApiClientError && profile.reason.code === 'FORBIDDEN')) return <Unavailable path={returnPath} message={profile.reason instanceof Error ? profile.reason.message : 'The host profile service is unavailable.'} />;
   if (list.status === 'rejected' || !Array.isArray(list.value.data)) return <Unavailable path={returnPath} message="Your Spaces could not be loaded. Please retry when the event service is available." />;
-  const spaces = list.value.data.filter(space => space.status === 'active');
+  const spaces: Pick<Space, 'id' | 'slug' | 'name' | 'status'>[] = list.value.data.filter(space => space.status === 'active' && (space.access_role === 'owner' || space.access_role === 'manager'));
   let initialSpace = spaces.find(space => space.slug === spaceSlug)?.slug || '';
   if (spaceSlug && !initialSpace) {
-    if (!/^[a-z0-9-]{1,230}$/.test(spaceSlug)) return <Unavailable path="/spaces?view=owned" message="Choose an active Space you own, or start a personal event." />;
+    if (!/^[a-z0-9-]{1,230}$/.test(spaceSlug)) return <Unavailable path="/spaces?view=owned" message="Choose an active Space you manage, or start a personal event." />;
     try {
-      const candidate = (await privateApi<{ data: Space }>(`/spaces/by-slug/${encodeURIComponent(spaceSlug)}`)).data;
-      const membership = (await privateApi<{ data: { owned: boolean } }>(`/spaces/${candidate.id}/membership`)).data;
-      if (!membership.owned || candidate.status !== 'active') return <Unavailable path="/spaces?view=owned" message="This Space is archived or belongs to another host. Choose an active Space you own." />;
+      const result = await privateApi<{ data: Space; access: WorkspaceAccess }>(`/spaces/manage-by-slug/${encodeURIComponent(spaceSlug)}`);
+      const candidate = result.data;
+      if (!result.access.permissions.includes('create') || candidate.status !== 'active') return <Unavailable path="/spaces?view=owned" message="This Space is archived or is not available to your role. Choose an active Space you manage." />;
       spaces.push(candidate); initialSpace = candidate.slug;
     } catch (error) { return <Unavailable path="/spaces?view=owned" message={error instanceof ApiClientError && error.code === 'NOT_FOUND' ? 'This Space is no longer available. Choose another Space or start a personal event.' : 'The Space could not be loaded. Please retry.'} />; }
   }

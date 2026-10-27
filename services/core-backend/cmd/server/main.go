@@ -22,6 +22,7 @@ import (
 	"github.com/hackways/core-backend/internal/rsvps"
 	"github.com/hackways/core-backend/internal/spaces"
 	"github.com/hackways/core-backend/internal/workflows"
+	"github.com/hackways/core-backend/internal/workspace"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"sync"
 )
@@ -112,6 +113,7 @@ func main() {
 
 			v1.Mount("/rsvps", rsvpsHandler.Routes())
 			v1.Mount("/spaces", spaces.NewHandler(pool).Routes())
+			v1.Mount("/workspace", workspace.NewHandler(pool).Routes())
 			v1.Mount("/cities", cities.NewHandler(pool).Routes())
 		}
 	})

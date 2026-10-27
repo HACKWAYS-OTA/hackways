@@ -26,7 +26,8 @@ ORDER BY s.created_at DESC,s.id LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_
 
 -- name: ReadSpaceMembership :one
 SELECT (o.user_id=$2)::boolean AS owned,
-EXISTS(SELECT 1 FROM space_memberships m WHERE m.space_id=s.id AND m.user_id=$2) AS joined
+EXISTS(SELECT 1 FROM space_memberships m WHERE m.space_id=s.id AND m.user_id=$2) AS joined,
+(o.user_id=$2 OR EXISTS(SELECT 1 FROM space_access a WHERE a.space_id=s.id AND a.user_id=$2 AND a.revoked_at IS NULL))::boolean AS managed
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1;
 
 -- name: LockSpace :one

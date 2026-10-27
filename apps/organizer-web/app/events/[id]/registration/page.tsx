@@ -1,12 +1,12 @@
 import { SectionJumpButton } from '@hackways/ui/section-jump';
 import Link from 'next/link';
-import { managedEvent } from '@/lib/management';
+import { requireEventPermission } from '@/lib/management';
 import { EventSettings } from '@/components/management/EventSettings';
 import { RegistrationTabs } from '@/components/management/RegistrationTabs';
 import { Icon } from '@/components/ui/Icon';
 export const metadata = { title: 'Event registration' };
 export default async function Registration({ params }: { params: { id: string } }) {
-  const event = await managedEvent(params.id);
+  const event = (await requireEventPermission(params.id, 'content')).data;
   const editable = !event.management_closed;
   return <><RegistrationTabs slug={event.slug} /><div className="host-settings-layout host-registration-layout">
     <section><h2>Registration settings</h2>{editable ? <EventSettings key={event.revision} event={event} section="registration" /> : <p className="journey-notice">An administrator has closed editing for this event.</p>}</section>

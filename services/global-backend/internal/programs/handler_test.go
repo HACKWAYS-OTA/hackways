@@ -86,7 +86,7 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 	h := New(pool)
 	// Verify community media authorization/CAS using this mandatory suite's
 	// existing isolated identities. No storage calls or production data are used.
-	var mediaOrganizer, mediaSpace pgtype.UUID
+	var mediaOrganizer, mediaSpace, mediaEvent pgtype.UUID
 	if e = pool.QueryRow(ctx, "INSERT INTO organizers(user_id,display_name,slug) VALUES($1,'CI community',$2) RETURNING id", ids[1], "media-owner-"+nonce[:12]).Scan(&mediaOrganizer); e != nil {
 		t.Fatal(e)
 	}
@@ -95,6 +95,9 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 	}
 	defer func() {
 		_, _ = pool.Exec(ctx, "DELETE FROM audit_log WHERE entity_id=$1", mediaSpace)
+		_, _ = pool.Exec(ctx, "DELETE FROM event_access WHERE event_id=$1", mediaEvent)
+		_, _ = pool.Exec(ctx, "DELETE FROM space_access WHERE space_id=$1", mediaSpace)
+		_, _ = pool.Exec(ctx, "DELETE FROM events WHERE id=$1", mediaEvent)
 		_, _ = pool.Exec(ctx, "DELETE FROM spaces WHERE id=$1", mediaSpace)
 		_, _ = pool.Exec(ctx, "DELETE FROM organizers WHERE id=$1", mediaOrganizer)
 	}()
@@ -135,6 +138,53 @@ func TestProgramApplicationsPrivateReviewAndRelease(t *testing.T) {
 	}
 	if got := mediaCall(1, "/upload-intent", intentBody); got.Code != 503 {
 		t.Fatalf("unconfigured storage must report unavailable: %d", got.Code)
+	}
+	// Team media permissions use the same persisted assignments as core Go.
+	if _, e = pool.Exec(ctx, "INSERT INTO space_access(space_id,user_id,role,granted_by,updated_by) VALUES($1,$2,'editor',$3,$3)", mediaSpace, ids[2], ids[1]); e != nil {
+		t.Fatal(e)
+	}
+	if got := mediaCall(2, "/upload-intent", intentBody); got.Code != 503 {
+		t.Fatalf("Space editor signing authorization %d %s", got.Code, got.Body.String())
+	}
+	editorRemoval := fmt.Sprintf(`{"resource_id":%q,"kind":"banner","revision":3,"remove":true}`, mediaID)
+	if got := mediaCall(2, "/space-image/complete", editorRemoval); got.Code != 200 {
+		t.Fatalf("Space editor finalization %d %s", got.Code, got.Body.String())
+	}
+	var mediaActor bool
+	if e = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM audit_log WHERE entity_id=$1 AND actor_user_id=$2 AND action='space.banner_updated')", mediaSpace, ids[2]).Scan(&mediaActor); e != nil || !mediaActor {
+		t.Fatal("delegated image mutation lost actual actor")
+	}
+	if e = pool.QueryRow(ctx, "INSERT INTO events(organizer_id,space_id,slug,status,format,title,description,starts_at,ends_at,timezone) VALUES($1,$2,$3,'published','in_person','CI media event','Isolated access regression',now()+interval '1 hour',now()+interval '2 hours','UTC') RETURNING id", mediaOrganizer, mediaSpace, "media-event-"+nonce[:12]).Scan(&mediaEvent); e != nil {
+		t.Fatal(e)
+	}
+	eventID := fmt.Sprintf("%x-%x-%x-%x-%x", mediaEvent.Bytes[:4], mediaEvent.Bytes[4:6], mediaEvent.Bytes[6:8], mediaEvent.Bytes[8:10], mediaEvent.Bytes[10:])
+	eventIntent := fmt.Sprintf(`{"resource_id":%q,"category":"event-banners","filename":"image.png","mime_type":"image/png","size":100}`, eventID)
+	if got := mediaCall(2, "/upload-intent", eventIntent); got.Code != 503 {
+		t.Fatalf("inherited editor signing %d", got.Code)
+	}
+	if _, e = pool.Exec(ctx, "INSERT INTO event_access(event_id,user_id,role,granted_by,updated_by) VALUES($1,$2,'checkin',$3,$3)", mediaEvent, ids[2], ids[1]); e != nil {
+		t.Fatal(e)
+	}
+	if got := mediaCall(2, "/upload-intent", eventIntent); got.Code != 404 {
+		t.Fatalf("explicit check-in role bypassed media restriction %d", got.Code)
+	}
+	if _, e = pool.Exec(ctx, "UPDATE event_access SET role='manager' WHERE event_id=$1 AND user_id=$2", mediaEvent, ids[2]); e != nil {
+		t.Fatal(e)
+	}
+	if got := mediaCall(2, "/upload-intent", eventIntent); got.Code != 503 {
+		t.Fatalf("explicit event manager signing %d", got.Code)
+	}
+	if _, e = pool.Exec(ctx, "UPDATE event_access SET revoked_at=now() WHERE event_id=$1 AND user_id=$2", mediaEvent, ids[2]); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = pool.Exec(ctx, "UPDATE space_access SET revoked_at=now() WHERE space_id=$1 AND user_id=$2", mediaSpace, ids[2]); e != nil {
+		t.Fatal(e)
+	}
+	if got := mediaCall(2, "/upload-intent", eventIntent); got.Code != 404 {
+		t.Fatalf("revoked event upload authorization %d", got.Code)
+	}
+	if got := mediaCall(2, "/space-image/complete", editorRemoval); got.Code != 404 {
+		t.Fatalf("revoked Space finalization authorization %d", got.Code)
 	}
 	public, admin := h.Routes(), h.AdminRoutes()
 	call := func(isAdmin bool, user int, method, path, body, key string) *httptest.ResponseRecorder {

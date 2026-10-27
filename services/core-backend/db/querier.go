@@ -55,12 +55,14 @@ type Querier interface {
 	CountEventInvitations(ctx context.Context, eventID pgtype.UUID) (int64, error)
 	CountNewEventInvitationRecipients(ctx context.Context, arg CountNewEventInvitationRecipientsParams) (int64, error)
 	CreateCity(ctx context.Context, arg CreateCityParams) (CityHubs, error)
+	CreateEventAccess(ctx context.Context, arg CreateEventAccessParams) (EventAccess, error)
 	CreateEventRecord(ctx context.Context, arg CreateEventRecordParams) (Events, error)
 	CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error)
 	CreateRSVP(ctx context.Context, arg CreateRSVPParams) (Rsvps, error)
 	CreateRegistrationQuestion(ctx context.Context, arg CreateRegistrationQuestionParams) (string, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Sessions, error)
 	CreateSpace(ctx context.Context, arg CreateSpaceParams) (Spaces, error)
+	CreateSpaceAccess(ctx context.Context, arg CreateSpaceAccessParams) (SpaceAccess, error)
 	CreateTransferredRegistration(ctx context.Context, arg CreateTransferredRegistrationParams) (Rsvps, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeactivateRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) error
@@ -77,7 +79,9 @@ type Querier interface {
 	EventInvitationSummary(ctx context.Context, eventID pgtype.UUID) (EventInvitationSummaryRow, error)
 	EventRoster(ctx context.Context, arg EventRosterParams) ([]EventRosterRow, error)
 	EventRosterFiltered(ctx context.Context, arg EventRosterFilteredParams) ([]EventRosterFilteredRow, error)
+	EventSpaceForAccess(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	EventWorkflowActivity(ctx context.Context, eventID pgtype.UUID) (EventWorkflowActivityRow, error)
+	EventWorkspaceAccess(ctx context.Context, arg EventWorkspaceAccessParams) (EventWorkspaceAccessRow, error)
 	ExpiredEventApplications(ctx context.Context, eventID pgtype.UUID) ([]Rsvps, error)
 	ExpiredEventOffers(ctx context.Context, eventID pgtype.UUID) ([]Rsvps, error)
 	// Claim rows atomically. The scheduled_at lease expires if a worker crashes.
@@ -116,7 +120,9 @@ type Querier interface {
 	LeaveSpace(ctx context.Context, arg LeaveSpaceParams) error
 	ListAccountRegistrations(ctx context.Context, arg ListAccountRegistrationsParams) ([]ListAccountRegistrationsRow, error)
 	ListCityEvents(ctx context.Context, arg ListCityEventsParams) ([]Events, error)
+	ListEventAccess(ctx context.Context, arg ListEventAccessParams) ([]ListEventAccessRow, error)
 	ListEventInvitations(ctx context.Context, arg ListEventInvitationsParams) ([]ListEventInvitationsRow, error)
+	ListInheritedEventAccess(ctx context.Context, arg ListInheritedEventAccessParams) ([]ListInheritedEventAccessRow, error)
 	ListManagedEvents(ctx context.Context, arg ListManagedEventsParams) ([]Events, error)
 	ListMySpaces(ctx context.Context, arg ListMySpacesParams) ([]ListMySpacesRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]Events, error)
@@ -125,18 +131,23 @@ type Querier interface {
 	ListPublishedEvents(ctx context.Context, arg ListPublishedEventsParams) ([]Events, error)
 	ListRSVPsByEvent(ctx context.Context, arg ListRSVPsByEventParams) ([]Rsvps, error)
 	ListRegistrationQuestions(ctx context.Context, eventID pgtype.UUID) ([]ListRegistrationQuestionsRow, error)
+	ListSpaceAccess(ctx context.Context, arg ListSpaceAccessParams) ([]ListSpaceAccessRow, error)
 	ListSpaceEvents(ctx context.Context, arg ListSpaceEventsParams) ([]Events, error)
 	ListWorkflowAudit(ctx context.Context, arg ListWorkflowAuditParams) ([]ListWorkflowAuditRow, error)
+	ListWorkspaceEvents(ctx context.Context, arg ListWorkspaceEventsParams) ([]ListWorkspaceEventsRow, error)
+	ListWorkspaceSpaces(ctx context.Context, arg ListWorkspaceSpacesParams) ([]ListWorkspaceSpacesRow, error)
 	LiveAnalyticsWindow(ctx context.Context, windowSeconds float64) (LiveAnalyticsWindowRow, error)
 	LiveRegistrationActivity(ctx context.Context, arg LiveRegistrationActivityParams) ([]LiveRegistrationActivityRow, error)
 	LockCity(ctx context.Context, reference int64) (CityHubs, error)
 	LockDiscoverPromotionSettings(ctx context.Context) (LockDiscoverPromotionSettingsRow, error)
+	LockEventAccessForActor(ctx context.Context, arg LockEventAccessForActorParams) ([]pgtype.UUID, error)
 	LockEventForRSVP(ctx context.Context, id pgtype.UUID) (LockEventForRSVPRow, error)
 	LockOwnedActiveSpace(ctx context.Context, arg LockOwnedActiveSpaceParams) (Spaces, error)
 	LockOwnedActiveSpaceBySlug(ctx context.Context, arg LockOwnedActiveSpaceBySlugParams) (Spaces, error)
 	LockPromotionActor(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockPromotionEvent(ctx context.Context, adminReference int64) (Events, error)
 	LockSpace(ctx context.Context, id pgtype.UUID) (Spaces, error)
+	LockSpaceAccessForActor(ctx context.Context, arg LockSpaceAccessForActorParams) ([]pgtype.UUID, error)
 	LockWorkflowEvent(ctx context.Context, id pgtype.UUID) (LockWorkflowEventRow, error)
 	MCPAccessIdentity(ctx context.Context, tokenHash string) (MCPAccessIdentityRow, error)
 	MCPExecutionAllowed(ctx context.Context, arg MCPExecutionAllowedParams) (bool, error)
@@ -147,11 +158,15 @@ type Querier interface {
 	PromotionEventChoices(ctx context.Context, arg PromotionEventChoicesParams) ([]PromotionEventChoicesRow, error)
 	ReadCheckInAttendee(ctx context.Context, arg ReadCheckInAttendeeParams) (ReadCheckInAttendeeRow, error)
 	ReadCityAdmin(ctx context.Context, reference int64) (CityHubs, error)
+	ReadEventAccess(ctx context.Context, arg ReadEventAccessParams) (EventAccess, error)
+	ReadEventAccessByID(ctx context.Context, arg ReadEventAccessByIDParams) (EventAccess, error)
 	ReadEventNotificationContext(ctx context.Context, id pgtype.UUID) (ReadEventNotificationContextRow, error)
 	ReadOwnedSpace(ctx context.Context, arg ReadOwnedSpaceParams) (Spaces, error)
 	ReadPublicCity(ctx context.Context, slug string) (ReadPublicCityRow, error)
 	ReadPublicSpace(ctx context.Context, slug string) (ReadPublicSpaceRow, error)
 	ReadRegistrationForm(ctx context.Context, id pgtype.UUID) (ReadRegistrationFormRow, error)
+	ReadSpaceAccess(ctx context.Context, arg ReadSpaceAccessParams) (SpaceAccess, error)
+	ReadSpaceAccessByID(ctx context.Context, arg ReadSpaceAccessByIDParams) (SpaceAccess, error)
 	ReadSpaceCreation(ctx context.Context, arg ReadSpaceCreationParams) (Spaces, error)
 	ReadSpaceID(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	ReadSpaceMembership(ctx context.Context, arg ReadSpaceMembershipParams) (ReadSpaceMembershipRow, error)
@@ -162,7 +177,9 @@ type Querier interface {
 	RegistrationWaitlistPosition(ctx context.Context, id pgtype.UUID) (int64, error)
 	RemoveCityEvent(ctx context.Context, arg RemoveCityEventParams) error
 	ResetWorkflowRSVP(ctx context.Context, arg ResetWorkflowRSVPParams) (Rsvps, error)
+	RevokeEventAccess(ctx context.Context, arg RevokeEventAccessParams) (EventAccess, error)
 	RevokeEventTickets(ctx context.Context, eventID pgtype.UUID) error
+	RevokeSpaceAccess(ctx context.Context, arg RevokeSpaceAccessParams) (SpaceAccess, error)
 	RevokeWorkflowTicket(ctx context.Context, rsvpID pgtype.UUID) error
 	SearchPublishedEvents(ctx context.Context, arg SearchPublishedEventsParams) ([]Events, error)
 	SetEventAppearance(ctx context.Context, arg SetEventAppearanceParams) (Events, error)
@@ -173,19 +190,23 @@ type Querier interface {
 	SetWorkflowRSVPState(ctx context.Context, arg SetWorkflowRSVPStateParams) (Rsvps, error)
 	SetWorkflowTimeout(ctx context.Context) error
 	SoftDeleteWorkflowEvent(ctx context.Context, id pgtype.UUID) error
+	SpaceWorkspaceAccess(ctx context.Context, arg SpaceWorkspaceAccessParams) (SpaceWorkspaceAccessRow, error)
 	StoreIdempotentResponse(ctx context.Context, arg StoreIdempotentResponseParams) error
 	TransitionWorkflowEvent(ctx context.Context, arg TransitionWorkflowEventParams) (Events, error)
 	UndoCheckInWorkflowTicket(ctx context.Context, arg UndoCheckInWorkflowTicketParams) (Tickets, error)
 	UpdateCity(ctx context.Context, arg UpdateCityParams) (CityHubs, error)
 	UpdateDiscoverPromotionSettings(ctx context.Context, updatedBy pgtype.UUID) error
+	UpdateEventAccess(ctx context.Context, arg UpdateEventAccessParams) (EventAccess, error)
 	UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) error
 	UpdateRegistrationForm(ctx context.Context, arg UpdateRegistrationFormParams) error
 	UpdateRegistrationQuestion(ctx context.Context, arg UpdateRegistrationQuestionParams) (string, error)
 	UpdateSessionActivityBatch(ctx context.Context, ids []pgtype.UUID) error
 	UpdateSessionLastSeen(ctx context.Context, id pgtype.UUID) error
 	UpdateSpace(ctx context.Context, arg UpdateSpaceParams) (Spaces, error)
+	UpdateSpaceAccess(ctx context.Context, arg UpdateSpaceAccessParams) (SpaceAccess, error)
 	UpdateWorkflowEvent(ctx context.Context, arg UpdateWorkflowEventParams) (Events, error)
 	WorkflowMaintenanceEvents(ctx context.Context) ([]pgtype.UUID, error)
+	WorkspaceAccountByEmail(ctx context.Context, email string) (WorkspaceAccountByEmailRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -541,7 +541,8 @@ func (q *Queries) ReadSpaceID(ctx context.Context, id pgtype.UUID) (pgtype.UUID,
 
 const readSpaceMembership = `-- name: ReadSpaceMembership :one
 SELECT (o.user_id=$2)::boolean AS owned,
-EXISTS(SELECT 1 FROM space_memberships m WHERE m.space_id=s.id AND m.user_id=$2) AS joined
+EXISTS(SELECT 1 FROM space_memberships m WHERE m.space_id=s.id AND m.user_id=$2) AS joined,
+(o.user_id=$2 OR EXISTS(SELECT 1 FROM space_access a WHERE a.space_id=s.id AND a.user_id=$2 AND a.revoked_at IS NULL))::boolean AS managed
 FROM spaces s JOIN organizers o ON o.id=s.organizer_id WHERE s.id=$1
 `
 
@@ -551,14 +552,15 @@ type ReadSpaceMembershipParams struct {
 }
 
 type ReadSpaceMembershipRow struct {
-	Owned  bool `json:"owned"`
-	Joined bool `json:"joined"`
+	Owned   bool `json:"owned"`
+	Joined  bool `json:"joined"`
+	Managed bool `json:"managed"`
 }
 
 func (q *Queries) ReadSpaceMembership(ctx context.Context, arg ReadSpaceMembershipParams) (ReadSpaceMembershipRow, error) {
 	row := q.db.QueryRow(ctx, readSpaceMembership, arg.ID, arg.UserID)
 	var i ReadSpaceMembershipRow
-	err := row.Scan(&i.Owned, &i.Joined)
+	err := row.Scan(&i.Owned, &i.Joined, &i.Managed)
 	return i, err
 }
 

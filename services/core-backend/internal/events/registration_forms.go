@@ -169,6 +169,11 @@ func (h *Handler) GuestDetail(w http.ResponseWriter, r *http.Request) {
 	editable := event.Status == db.EventStatusPublished && event.StartsAt.Time.After(now)
 	canConfirm := editable && (!event.RegistrationOpensAt.Valid || !event.RegistrationOpensAt.Time.After(now)) && (!event.RegistrationClosesAt.Valid || event.RegistrationClosesAt.Time.After(now))
 	options := workflows.OwnerStatusOptions(row.Status, row.TicketStatus.String == "scanned", editable, canConfirm)
+	if access, scoped := auth.WorkspaceFromContext(r.Context()); scoped && !auth.RoleAllows(access.Role, "guests.manage") {
+		options = []workflows.StatusOption{}
+		answers = []registrationforms.Snapshot{}
+		row.Notes = pgtype.Text{}
+	}
 	platform.RespondJSON(w, 200, struct {
 		Data          db.ManagedGuestDetailRow     `json:"data"`
 		Answers       []registrationforms.Snapshot `json:"answers"`

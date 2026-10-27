@@ -20,8 +20,9 @@ func (h *Handler) ManageBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	platform.RespondJSON(w, 200, struct {
-		Data db.Events `json:"data"`
-	}{event})
+		Data   db.Events            `json:"data"`
+		Access auth.WorkspaceAccess `json:"access"`
+	}{event, workspaceAccess(r)})
 }
 func (h *Handler) ChangeSpace(w http.ResponseWriter, r *http.Request) {
 	id, ok := eventID(w, r)
