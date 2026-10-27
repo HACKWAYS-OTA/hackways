@@ -24,6 +24,8 @@ serviceAccountKey.json
 # ------------------------------------------------------------------------------
 services/api/bin/
 bin/
+!apps/admin-web/app/(console)/bin/
+!apps/admin-web/app/(console)/bin/*.tsx
 *.exe
 *.exe~
 *.dll
