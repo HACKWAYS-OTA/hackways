@@ -6,6 +6,14 @@ All completed work is logged here with verified commands and output.
 
 ## Log
 
+## 2026-10-27 - Analytics ranges and adaptive City hero activated
+
+- Hosted release2771e7b passed run40497145397: PostgreSQL16/race integration for both engines, SQLc, all frontend type/lint and source/deployment guards. Two immutable frontend images were published.
+- Fresh private encrypted database/config backups verified SHA256 and restore catalog. Activated core-web/admin-web only; schema29 stayed clean, runtime environment unchanged, all six services ready. Both engines, public-web and organizer-web retained their containers/start times.
+- External HTTP checks returned200 for Hyderabad/cities, ambassador program, managed sign-in and admin sign-in. Published Hyderabad HTML/CSS includes the copy wrapper,100svh hero, localized blur and adaptive fixed-header rules. Anonymous live analytics remains401. No browser, authenticated report interaction or rendered verification claimed.
+- Rebuilt both local Go previews and resumed core-web at localhost:4000. Preview schema27/28 DDL was already present but its ledger was stale; reconciled metadata only after schema/type/constraint/index inspection, then applied additive29. Existing preview data retained. Local engine health and cities returned200; external media/mail credentials remain omitted.
+- Removed temporary candidate repository variables. Bin and account/device restrictions remain separate work.
+
 ## 2026-10-27 - Analytics range and City hero follow-up (candidate)
 
 - Added one shared time-range selector for sliding 5 min/1 hr/24 hr and existing 7/30/90-day/custom date reports. Date inputs retain backend validation and confirmed CSV exports. Changing the saved period resets draft dates; editing dates selects Custom dates.
