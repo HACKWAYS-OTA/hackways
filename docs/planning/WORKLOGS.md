@@ -1755,3 +1755,24 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   independent formatting/schema and standalone workspace markup. Source review
   corrected recovery and grid-inheritance findings. Browser checks remain excluded.
   Hosted full CI, image builds and activation are pending for this follow-up.
+
+
+## 2026-10-28 - Notice workspace and mobile refinement activated
+
+- Sourceb9c79725f55994f5f167832dbcf4af866e8a9d54 passed hosted40623164534:
+  63 core/136 global PostgreSQL16 race cases, zero failed/skipped; all frontend
+  types/lint, SQLc/source/deployment checks and four image publications passed.
+- Fresh encrypted DB/config backups matched SHA256 and PostgreSQL restore catalog.
+  Verified immutable image digests/source labels before sequential global/public/
+  core/admin activation. No migration; schema33 clean. Core engine and organizer
+  identities/start times and private environment retained; all six ready, no OOM.
+- Live HTTP verified the actual public notice and saved-image cover, news cards,
+  detail, core mobile header markup/grid CSS/scalable viewport, City and search
+  feeds. No production notice content, publication state or media was mutated.
+- Local source and global API updated; core preview/session secret retained.
+  Temporary publication variables removed. Browser/visual/pinch and authenticated
+  authoring/upload interactions remain untested under the user's no-browser scope.
+
+- Final running-image checks confirmed workspace/outline/inline-code/shading/image/
+  card assets. Standalone editor rejects anonymous access via login307; real
+  notice API rejects anonymous access401. No authorization boundary was weakened.

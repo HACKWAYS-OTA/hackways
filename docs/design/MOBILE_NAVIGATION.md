@@ -18,3 +18,7 @@ Existing desktop event pinning and theme presentation remain unchanged.
 Source was traced against the supplied screenshots. Actual browser/pinch-zoom,
 responsive rendering and keyboard interaction have not been exercised in this
 pass, following the user's earlier instruction to build without browser checks.
+
+Releaseb9c79725f559 delivered the new core header markup and grid CSS to production;
+HTTP confirmed the scalable viewport and event route. This is not a rendered
+pinch-zoom or keyboard interaction test.

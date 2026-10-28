@@ -177,13 +177,25 @@ utilities/site-content/storage handlers, rich-text validator/renderer and migrat
 33, studio editor and shared 404 families, plus the phase-2 editorial topic-library
 migration 32 and admin component. The 120-topic/12-theme/720-phrase count was
 inspected in migration source and previously recorded against production schema
-33. The recorded live baseline remains release 6b3d46c98eb1; its historical CI,
+33. The earlier live baseline was release 6b3d46c98eb1; its historical CI,
 HTTP and asset checks do not verify this subsequent workspace/image refinement.
 The current pass inspected the protected editor routes, studio/sidebar/outline,
 card-list visibility refresh, editor image node view, shared public image boundary,
 formatting extensions, public news-card directory and paginated cover query in
 source only. The cover response fields are additive and require no migration.
 It ran no browser checks, tests, builds
-or deployments. This follow-up is not claimed activated. Keyboard/focus, resize,
+or deployments. Activation was pending at documentation time; the verified operator record
+follows below. Keyboard/focus, resize,
 responsive rendering, authenticated notice edits and actual Azure upload
 completion remain unverified by this pass.
+
+
+## Activation record - 28 October 2026
+
+Releaseb9c79725f559 is live after hosted CI40623164534 and four independently
+published/digest-verified images. Global Go, admin/public/core web were activated;
+core Go and organizer identities, schema33 and private environment were retained.
+All six services are ready. Public HTTP verified news cards with an actual saved
+cover and notice detail, search feeds, and core icon-header/grid CSS delivery with
+pinch zoom still enabled. The source-only review statements above describe that
+review pass; they do not claim browser rendering or authenticated interactions.

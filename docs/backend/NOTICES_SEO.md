@@ -189,3 +189,8 @@ Guidance: [Google SEO basics](https://developers.google.com/search/docs/fundamen
 [Article data](https://developers.google.com/search/docs/appearance/structured-data/article),
 [Event data](https://developers.google.com/search/docs/appearance/structured-data/event),
 [safe Markdown rendering](https://github.com/remarkjs/react-markdown).
+
+Releaseb9c79725f559 activated the additive cover projection without a migration.
+Hosted PostgreSQL16/race checks passed, including pending-cover exclusion and
+saved-image dimensions. Live HTTP verified the actual published notice/cover
+projection; schema33 and existing authored records were retained.
