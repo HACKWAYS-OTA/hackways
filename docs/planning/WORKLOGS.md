@@ -1776,3 +1776,21 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
 - Final running-image checks confirmed workspace/outline/inline-code/shading/image/
   card assets. Standalone editor rejects anonymous access via login307; real
   notice API rejects anonymous access401. No authorization boundary was weakened.
+
+
+## 2026-10-28 - Legacy .me handoff and host isolation candidate
+
+- User requests ownership/latest-application page for hackways.me, and fixed
+  auth/join/checkin redirects to its root. Observed HTTPS root307 to admin login;
+  running ingress has no default listeners and no .me vhost, so unknown hosts
+  fall through to the first admin vhost. No app or auth policy change is needed.
+- Added static branded handoff HTML, exact ownership copy, real official links,
+  self-canonical distinct announcement, social metadata, Organization/WebPage
+  JSON-LD, robots and one-URL sitemap. No negative application-availability copy.
+- Added explicit legacy host routing, fixed301 path/query-stripping redirects,
+  branded404 for unknown apex URLs, general limits, scoped font-only public proxy,
+  no legacy API or cookies, and default HTTP/TLS rejection for unrecognized hosts.
+- Dedicated Certbot SAN issuance/renewal hook and real Nginx/HTTPS verification
+  are required before activation is complete. Existing six services retained.
+  Source review identified missing server-level general rate limit; corrected.
+  Browser work remains excluded. CI, backups and deployment are pending.
