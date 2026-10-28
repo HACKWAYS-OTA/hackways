@@ -1864,9 +1864,10 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   Six services and Nginx keep exact IDs/start times, healthy, no OOM. Existing
   main landing/discovery/city/notices/sitemap and admin access boundary pass.
   Certificate names/expiry and scoped renewal reload hook remain verified.
-- CI run40691822266 mandatory integration checks passed; image publication is
-  separate and its unused public image will not be activated. Final CI outcome
-  and temporary-variable cleanup are recorded after publication completes.
+- CI run40691822266 completed successfully: all eight jobs, including 63 core
+  and 136 global PostgreSQL 16/race cases, zero failures/skips. Four-app type/lint,
+  shared contracts, SQLc, source/deploy checks and unused public image publication
+  passed. No image activation; temporary publication variables removed.
 - Source reviewer reported no material source defect, but requested desktop/
   mobile recapture for visual approval. Browser/render work remains excluded by
   the user's scope, so no visual approval is claimed. Source-documented colors,
