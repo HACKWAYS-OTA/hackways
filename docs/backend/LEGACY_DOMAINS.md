@@ -93,3 +93,12 @@ proxy. The actual WOFF2 uses one exact same-origin font path mapped to its fixed
 Azure object with upstream TLS trust verification, SNI and no cookies. Existing
 public font routes remain compatible. The application SAS upload workflow is
 unchanged. CSP adds only the necessary Azure image origin; no script is added.
+
+
+The poster candidate 6b8fd72 is verified live. Source/running font/image/grain SHA
+checks passed both from origin operations and a separate external client. Font
+readiness preceded atomic HTML publication. Original ownership metadata and
+robots/sitemap remained valid; only the legacy document and exact font route
+changed. All pre-existing routes, six service identities, environment and ingress
+files outside that pair remain unchanged. See the 2026-10-28 worklog for the
+release/CI evidence. Source-only review does not establish browser appearance.

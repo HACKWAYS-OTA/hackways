@@ -1834,7 +1834,7 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   provenance/seed and immutable asset hashes recorded. Actual Faculty Glyphic
   Latin WOFF2 and SIL OFL sourced from Google Fonts. Assets uploaded directly from
   operator client to existing Azure media container and public SHA verified; no
-  image written to VM disk, no dependency or service added. Font uses an exact
+  VM serving-media/upload store added, no dependency or service added. Font uses an exact
   same-origin Azure proxy with TLS trust/SNI verification and no cookie forwarding.
 - Static source checks: heading glyph advances fit 280?1920 CSS pixels; base
   palette plus worst-case dark grain maintains text contrast at least 4.83:1.
@@ -1844,3 +1844,30 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   requested but remains excluded by the user's no-browser scope, no visual
   approval claimed. Scoped surface brief documents this approved page-only theme.
   CI/recovery backup/live activation still pending.
+
+
+## 2026-10-28 - Lavender poster theme verified live
+
+- Source 6b8fd72 deployed only legacy HTML and its exact font route. Protected
+  schema-33 database/configuration backups were SHA/encryption verified with a
+  valid restore catalog. Nginx configuration passed before reload. New Faculty
+  route was activated and its true WOFF2 SHA verified before publishing HTML,
+  avoiding a first-view font404. No application image was replaced or built on VM.
+- Actual public edge and independent external checks confirm the new Faculty
+  Glyphic poster markup, deep violet/lavender field, cropped supplied globe and
+  Gaussian noise. All three delivered assets match source hashes; font19,512B,
+  globe184,202B and noise16,071B. Public image/grain reads remain direct Azure;
+  exact same-origin font proxy validates upstream TLS. Immutable versioned paths
+  avoid stale asset substitution. Ownership/SEO endpoints and named redirects
+  retain their verified200/301/404 behavior; default unknown-host denial retained.
+- All unrelated ingress files and .env match the protected backup byte-for-byte.
+  Six services and Nginx keep exact IDs/start times, healthy, no OOM. Existing
+  main landing/discovery/city/notices/sitemap and admin access boundary pass.
+  Certificate names/expiry and scoped renewal reload hook remain verified.
+- CI run40691822266 mandatory integration checks passed; image publication is
+  separate and its unused public image will not be activated. Final CI outcome
+  and temporary-variable cleanup are recorded after publication completes.
+- Source reviewer reported no material source defect, but requested desktop/
+  mobile recapture for visual approval. Browser/render work remains excluded by
+  the user's scope, so no visual approval is claimed. Source-documented colors,
+  measured font advances, semantics and contrast were verified as stated above.
