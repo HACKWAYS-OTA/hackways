@@ -1821,3 +1821,26 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   Nginx retain exact container IDs/start times, healthy, no OOM. No runtime image
   swap, migration, business-data mutation or VM frontend build. Preview and source
   mirror synchronized. Browser/visual review remains outside requested scope.
+
+
+## 2026-10-28 - User-pinned .me lavender poster candidate
+
+- Scoped only to hackways.me: user supplies lilac/violet poster, transparent glass
+  globe and Faculty Glyphic font direction, then explicitly requests background
+  noise. Replaced the handoff composition with centered Faculty lettering,
+  cropped alpha globe, outlined brace and deterministic fine Gaussian grain.
+  Main platform branding and default-host/alias/auth protections are unchanged.
+- Source supplied globe pixels/alpha retained, embedded origin metadata; grain
+  provenance/seed and immutable asset hashes recorded. Actual Faculty Glyphic
+  Latin WOFF2 and SIL OFL sourced from Google Fonts. Assets uploaded directly from
+  operator client to existing Azure media container and public SHA verified; no
+  image written to VM disk, no dependency or service added. Font uses an exact
+  same-origin Azure proxy with TLS trust/SNI verification and no cookie forwarding.
+- Static source checks: heading glyph advances fit 280?1920 CSS pixels; base
+  palette plus worst-case dark grain maintains text contrast at least 4.83:1.
+  One H1, real official links, metadata/JSON-LD/ownership verified. PNG provenance
+  scan 2/2; detector palette warning retained because purple is user-pinned.
+  Fresh source reviewer reports no material source defect; rendered review was
+  requested but remains excluded by the user's no-browser scope, no visual
+  approval claimed. Scoped surface brief documents this approved page-only theme.
+  CI/recovery backup/live activation still pending.

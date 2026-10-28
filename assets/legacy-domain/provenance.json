@@ -1,0 +1,34 @@
+{
+  "scope": "hackways.me only",
+  "font_license": "Faculty-Glyphic-OFL.txt",
+  "font_license_source": "https://raw.githubusercontent.com/google/fonts/main/ofl/facultyglyphic/OFL.txt",
+  "assets": [
+    {
+      "file": "glass-globe.png",
+      "bytes": 184202,
+      "sha256": "d22759e84471c35ef47220d1f65d704e480150098231a2758d950965a1874949",
+      "content_type": "image/png",
+      "origin": "User-supplied glass_globe_transparent.png; original pixels and alpha retained",
+      "blob": "brand/legacy-domain/glass-globe-d22759e84471c35e.png",
+      "original_sha256": "d3d6b947cdb71ab20e31dd4e6a95280b8ff949219e86f0a4361c54a44d5fe33b"
+    },
+    {
+      "file": "grain.png",
+      "bytes": 16071,
+      "sha256": "918f49209e2e9b1c44eaaa63cab615aaa6ae6b4f5526199780404ffb99e060c4",
+      "content_type": "image/png",
+      "origin": "Procedural Gaussian luminance, seed 20261028, 128 square, stdlib PNG",
+      "blob": "brand/legacy-domain/grain-918f49209e2e9b1c.png",
+      "original_sha256": "6b996b73e42609c50bdf4d3a465065f93cd4df1953dbfda62f909694d16d6b57"
+    },
+    {
+      "file": "faculty-glyphic-latin.woff2",
+      "bytes": 19512,
+      "sha256": "021b4252e5fb680143a63a037ff0561afee735a96595898f5b294b895437dca7",
+      "content_type": "font/woff2",
+      "origin": "https://fonts.gstatic.com/s/facultyglyphic/v4/RrQIbot2-iBvI2mYSyKIrcgoBuQ4HO2E.woff2",
+      "blob": "brand/legacy-domain/faculty-glyphic-latin-021b4252e5fb6801.woff2",
+      "original_sha256": "021b4252e5fb680143a63a037ff0561afee735a96595898f5b294b895437dca7"
+    }
+  ]
+}

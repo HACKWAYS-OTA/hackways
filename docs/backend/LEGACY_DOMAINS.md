@@ -76,3 +76,20 @@ activation evidence resides in the legacy-domain-final-efd7440ddaf3 release.
 Actual browser appearance and authenticated interaction approval are not claimed.
 Google guidance: https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls
 and https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes
+
+
+## Page-local poster theme
+
+The subsequent user-approved .me design follows their purple/lavender reference,
+Faculty Glyphic display font, cropped supplied glass globe and fine background
+noise. It does not replace the other applications' visual system. The ownership
+notice and official destinations remain. See ../design/legacy-domain.md.
+
+Reproducible source assets, their hashes/origins and font license live under
+assets/legacy-domain. Operator release uploads go directly to the existing Azure
+media container under immutable, hash-bearing brand paths. Public image and grain
+reads go straight to Blob Storage; there is no VM media directory or Go upload
+proxy. The actual WOFF2 uses one exact same-origin font path mapped to its fixed
+Azure object with upstream TLS trust verification, SNI and no cookies. Existing
+public font routes remain compatible. The application SAS upload workflow is
+unchanged. CSP adds only the necessary Azure image origin; no script is added.
