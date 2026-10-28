@@ -29,7 +29,8 @@
     "./mcp.css": "./src/mcp.css",
     "./document": "./src/NoticeDocument.tsx",
     "./not-found": "./src/NotFound.tsx",
-    "./not-found.css": "./src/not-found.css"
+    "./not-found.css": "./src/not-found.css",
+    "./notice-image": "./src/NoticeImage.tsx"
   },
   "sideEffects": [
     "**/*.css"

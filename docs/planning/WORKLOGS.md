@@ -1729,3 +1729,29 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   route redirects to login307 and real keyword-library API rejection401. The
   initial unauthenticated admin HTTP probe followed a login redirect to200; it
   was corrected to check redirect behavior without weakening middleware.
+
+
+## 2026-10-28 - Notice workspace, news cards and mobile navigation candidate
+
+- Replaced embedded notice editor chrome with a full-screen same-URL workspace
+  under the unchanged admin access layout. Create/edit links open a new tab;
+  whole notice cards link to the editor. Collapsible document-only sidebar has a
+  real outline, focus/scroll jumps, publishing/SEO links and word count. Initial
+  empty documents normalize their baseline without false unsaved warnings.
+- Added reserved image skeleton/error/retry states in editor and public renderers,
+  preserving upstream image resize. Cached failure reconciliation and linked-image
+  recovery were reviewed/fixed; retry controls sit outside image links. Inline
+  code/block code and text highlight/paragraph shading are separate operations.
+- Public notices now use normal-scale typography and news cards. A bounded SQLc
+  query paginates published notices before selecting one verified image URL already
+  referenced by saved published content. No schema migration, fake cover or content
+  mutation. Existing mandatory admin case checks pending-cover exclusion and saved
+  URL/dimension inclusion against isolated PostgreSQL.
+- Core mobile app/event headers now show labeled icons in bounded slots. Traced
+  width100% nonshrinking event nav overflow; explicit row/column placement also
+  overrides the old second-row mobile nav rule. Pinch zoom remains enabled.
+- Workspace types/lint, Go targeted notice regression/vet and one-off Node SSR
+  checks passed. SSR covered linked-image skeleton/dimensions/section jumps,
+  independent formatting/schema and standalone workspace markup. Source review
+  corrected recovery and grid-inheritance findings. Browser checks remain excluded.
+  Hosted full CI, image builds and activation are pending for this follow-up.

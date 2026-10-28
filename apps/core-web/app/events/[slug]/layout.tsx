@@ -22,7 +22,7 @@ export default async function EventLayout({ children, params }: { children: Reac
     <header className="event-mobile-header">
       <Link className="event-mobile-brand" href="/discover" aria-label="Hackways home">h.</Link>
       <AppNavigation compact />
-      <div className="event-mobile-account-actions"><Link className="event-mobile-create" href="/create" aria-label="Create event">Create<span className="event-mobile-create-detail"> event</span></Link><Link className="event-mobile-account" href="/account" aria-label="Account" title="Account"><Icon name="account" size={24} /></Link></div>
+      <div className="event-mobile-account-actions"><Link className="event-mobile-create" href="/create" aria-label="Create event" title="Create event"><Icon name="add" size={20}/></Link><Link className="event-mobile-account" href="/account" aria-label="Account" title="Account"><Icon name="account" size={20} /></Link></div>
     </header>
     <div className="event-scene-inner"><Link className="event-back" href="/discover" aria-label="Back to Discover events"><Icon name="arrow" size={16} className="reverse-icon" /><span className="event-back-desktop">Discover events</span><span className="event-back-mobile">Back</span></Link>{children}</div>
   </div></>;

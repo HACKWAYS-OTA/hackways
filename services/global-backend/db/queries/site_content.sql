@@ -1,7 +1,16 @@
 -- name: PublicNotices :many
-SELECT slug,title,summary,published_at,updated_at FROM site_notices
-WHERE status='published' ORDER BY published_at DESC,id
-LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
+WITH page AS MATERIALIZED (
+ SELECT id,slug,title,summary,published_at,updated_at,body FROM site_notices
+ WHERE status='published' ORDER BY published_at DESC,id
+ LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int
+)
+SELECT p.slug,p.title,p.summary,p.published_at,p.updated_at,
+ coalesce(cover.url,'')::text AS cover_url,coalesce(cover.width,0)::int AS cover_width,coalesce(cover.height,0)::int AS cover_height
+FROM page p LEFT JOIN LATERAL (
+ SELECT i.url,i.width,i.height FROM notice_images i
+ WHERE i.notice_id=p.id AND position(i.url in p.body)>0
+ ORDER BY i.created_at,i.id LIMIT 1
+) cover ON true ORDER BY p.published_at DESC,p.id;
 
 -- name: PublicNotice :one
 SELECT slug,title,summary,body,document,body_format,published_at,updated_at FROM site_notices WHERE slug=$1 AND status='published';

@@ -218,3 +218,20 @@ body:has(.event-scene) > .app-footer a:focus-visible { outline-color: var(--even
 @media (max-width: 359px) {
   .event-mobile-create-detail { display: none; }
 }
+
+@media(max-width:640px) {
+ .event-mobile-header { display:grid; grid-template-columns:44px minmax(0,1fr) 88px; min-width:0; width:100%; gap:0; padding-inline:max(6px,env(safe-area-inset-left)) max(6px,env(safe-area-inset-right)); }
+ .event-mobile-header .app-nav-compact { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:auto; min-width:0; gap:0; justify-content:stretch; }
+ .event-mobile-header .app-nav-compact>a { width:auto; min-width:0; min-height:44px; padding:0; text-decoration:none; }
+ .event-mobile-account-actions { display:grid; grid-template-columns:repeat(2,44px); gap:0; margin:0; }
+ .event-mobile-create,.event-mobile-account { display:grid; place-items:center; width:44px; min-height:44px; padding:0; }
+ .event-scene-inner { min-width:0; max-width:100%; }
+ .event-presentation,.event-presentation .event-story { width:100%; min-width:0; }
+ .event-presentation .event-hero-image,.event-presentation .event-title-anchor,.event-presentation .event-visit-details,.event-presentation .event-invitation { width:100%; min-width:0; max-width:100%; }
+}
+
+@media(max-width:640px) {
+ .event-mobile-header>.event-mobile-brand { grid-column:1; grid-row:1; }
+ .event-mobile-header>.app-nav-compact { grid-column:2; grid-row:1; }
+ .event-mobile-header>.event-mobile-account-actions { grid-column:3; grid-row:1; }
+}

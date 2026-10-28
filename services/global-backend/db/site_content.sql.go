@@ -421,9 +421,18 @@ func (q *Queries) PublicNoticeImages(ctx context.Context, slug string) ([]Public
 }
 
 const publicNotices = `-- name: PublicNotices :many
-SELECT slug,title,summary,published_at,updated_at FROM site_notices
-WHERE status='published' ORDER BY published_at DESC,id
-LIMIT $2::int OFFSET $1::int
+WITH page AS MATERIALIZED (
+ SELECT id,slug,title,summary,published_at,updated_at,body FROM site_notices
+ WHERE status='published' ORDER BY published_at DESC,id
+ LIMIT $2::int OFFSET $1::int
+)
+SELECT p.slug,p.title,p.summary,p.published_at,p.updated_at,
+ coalesce(cover.url,'')::text AS cover_url,coalesce(cover.width,0)::int AS cover_width,coalesce(cover.height,0)::int AS cover_height
+FROM page p LEFT JOIN LATERAL (
+ SELECT i.url,i.width,i.height FROM notice_images i
+ WHERE i.notice_id=p.id AND position(i.url in p.body)>0
+ ORDER BY i.created_at,i.id LIMIT 1
+) cover ON true ORDER BY p.published_at DESC,p.id
 `
 
 type PublicNoticesParams struct {
@@ -437,6 +446,9 @@ type PublicNoticesRow struct {
 	Summary     string             `json:"summary"`
 	PublishedAt pgtype.Timestamptz `json:"published_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	CoverUrl    string             `json:"cover_url"`
+	CoverWidth  int32              `json:"cover_width"`
+	CoverHeight int32              `json:"cover_height"`
 }
 
 func (q *Queries) PublicNotices(ctx context.Context, arg PublicNoticesParams) ([]PublicNoticesRow, error) {
@@ -454,6 +466,9 @@ func (q *Queries) PublicNotices(ctx context.Context, arg PublicNoticesParams) ([
 			&i.Summary,
 			&i.PublishedAt,
 			&i.UpdatedAt,
+			&i.CoverUrl,
+			&i.CoverWidth,
+			&i.CoverHeight,
 		); err != nil {
 			return nil, err
 		}

@@ -25,3 +25,21 @@
 .hw-notice-markdown .hw-checkbox { vertical-align:middle; margin-inline-end:8px; }
 
 .hw-notice-document h5,.hw-notice-document h6 { margin:1.8em 0 .7em; line-height:1.4; }.hw-notice-document th,.hw-notice-document td { border:1px solid var(--line,#ddd); vertical-align:top; }.hw-notice-document th { background:var(--soft,#f7f4fa); }.hw-notice-document td>p:last-child,.hw-notice-document th>p:last-child { margin-bottom:0; }
+
+.hw-notice-image { position:relative; display:block; max-width:100%; margin-block:1.5em; overflow:hidden; border-radius:12px; }
+.hw-notice-image img { position:relative; z-index:1; display:block; max-width:100%; height:auto; margin:0; border-radius:inherit; }
+.hw-notice-image[data-image-state="loading"] { min-height:80px; background:var(--soft,#f4eff8); }
+.hw-notice-image[data-image-state="loading"]::before { content:''; position:absolute; inset:0; background:linear-gradient(100deg,transparent 20%,#fff9 50%,transparent 80%); transform:translateX(-100%); animation:hw-notice-image-load 1.8s ease-in-out infinite; }
+.hw-notice-image[data-image-state="loading"]:not([style*="aspect-ratio"]) { aspect-ratio:16/9; }
+.hw-notice-image[data-image-state="error"] { min-height:140px; background:var(--soft,#f4eff8); }
+.hw-notice-image[data-image-state="error"] img { visibility:hidden; }
+.hw-notice-image-error { position:absolute; inset:0; display:flex; flex-wrap:wrap; align-content:center; justify-content:center; gap:8px 16px; padding:20px; color:var(--muted,#655d70); font-size:14px; }
+.hw-notice-image-error button { min-height:44px; }
+.hw-notice-markdown :is(p,h2,h3,h4,h5,h6)[style*="background-color"] { padding:14px 18px; border-radius:8px; }
+.hw-notice-markdown :not(pre)>code { background:var(--soft,#f4eff8); padding:.15em .35em; border-radius:4px; }
+@keyframes hw-notice-image-load { to { transform:translateX(100%); } }
+@media(prefers-reduced-motion:reduce) { .hw-notice-image[data-image-state="loading"]::before { animation:none; transform:none; opacity:.3; } }
+
+.hw-notice-image>a,.hw-notice-image>button { display:block; max-width:100%; padding:0; border:0; background:transparent; }.hw-notice-image[data-image-state="error"]>a,.hw-notice-image[data-image-state="error"]>button { pointer-events:none; }
+
+.hw-notice-image-thumbnail img { width:100%; height:100%; object-fit:cover; }.hw-notice-image-thumbnail>a,.hw-notice-image-thumbnail>button { width:100%; height:100%; }.hw-notice-image-error { z-index:3; }

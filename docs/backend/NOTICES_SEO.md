@@ -75,6 +75,18 @@ internal keywords, notes, actor IDs and revisions. Both source and canonical
 entity targets must be public before their paths appear in metadata/sitemap rules.
 Draft SEO plans can be prepared without exposing their titles or target slugs.
 
+The pending public-directory refinement adds `cover_url`, `cover_width` and
+`cover_height` to each `/site/notices` list item, without a migration. The sqlc
+query first materializes the bounded, published-only notice page, then uses a
+per-row LATERAL query with `LIMIT 1` to choose the earliest recorded image whose
+verified `notice_images.url` is referenced by the currently saved body. It does
+not scan draft/archived bodies for covers or expose pending/unreferenced uploads.
+No match returns an empty cover URL and zero dimensions; the public card omits
+the media region rather than inventing a cover. Directory rendering uses the
+shared image boundary's 16:9 thumbnail mode with loading/error/retry behavior.
+This additive response/query change is source-only here and is not included in
+the recorded live 6b3 baseline until a later release is verified.
+
 The public directory is `/notices`; individual pages use `/notice/{slug}`, such as
 `/notice/notice-2026-10-1`. Public entry links appear only in footers. No new top
 navigation item, homepage promotion or app banner is introduced. Administrators

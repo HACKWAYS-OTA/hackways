@@ -101,9 +101,16 @@ included in `options`; only absent values show the placeholder.
 ## Notice Markdown and server metadata
 
 `@hackways/ui/markdown` and `/markdown.css` share safe CommonMark/GFM presentation
-for legacy public notices. Raw HTML stays disabled; task
-controls use the shared checkbox and in-page actions use section-jump. The
-Public Markdown rendering stays on the server. Image size props preserve known upload dimensions.
+for legacy public notices. Raw HTML stays disabled; task controls use the shared
+checkbox and in-page actions use section-jump. Markdown content renders on the
+server; images use the small shared `NoticeImage` client boundary for load/error
+recovery. Known dimensions reserve their ratio, loading shows a reduced-motion-aware
+skeleton, and failure offers Retry image. Image links wrap the visual only so
+recovery buttons are never nested inside links or section-jump buttons.
+`@hackways/ui/notice-image` also exposes this boundary directly. Its `thumbnail`
+option reserves a full-width 16:9 cover crop while retaining the actual image
+dimensions and load/error/retry behavior. Public notice cards supply real covers
+returned by Go; the component does not invent a cover for notices without one.
 
 `@hackways/ui/seo` is server-only presentation over Go's reviewed public settings.
 It preserves existing metadata on transport failure; private keyword plans are
@@ -116,6 +123,19 @@ and an allowlist of styles and URLs; it never imports the admin Tiptap editor or
 renders arbitrary HTML. Font/colour/alignment, table/list attributes and image
 sizes survive publication. The admin-only document editor imports/exports
 Markdown separately; JSON remains authoritative for richer formatting.
+Inline code marks and code blocks remain distinct. Inline text highlight uses
+the `textStyle` background, while paragraph/heading shading uses the existing
+node `backgroundColor` attribute; both pass through the established Go validation
+and public style allowlist without a new schema or API contract. Rich-text images
+share the same `NoticeImage` boundary as Markdown. Admin image node views extend
+the editor's upstream resize view separately, preserving resize handles while
+adding reserved loading space, failure copy and image retry.
+
+The admin notice studio uses its own full-screen presentation at the existing
+protected editor URLs. Its collapsed sidebar, actual document outline/focus jumps
+and word count belong to the editor; they do not add routing or business logic to
+this package. The current workspace/image refinement is source-only here and is
+not claimed deployed or verified through browser/cloud interaction.
 
 `@hackways/ui/not-found` and `/not-found.css` provide two distinct recovery
 surfaces: public platform and admin console. All four apps install their own

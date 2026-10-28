@@ -11,8 +11,9 @@ export const readNotice = cache(async (slug: string): Promise<PublicNotice> => {
  if (!response.ok) throw new Error('The notice could not be loaded. Please try again.');
  const result=await response.json() as {data:Omit<PublicNotice,'images'>;images:PublicNotice['images']};return {...result.data,images:result.images};
 });
+export type PublicNoticeSummary=Pick<PublicNotice,'slug'|'title'|'summary'|'published_at'|'updated_at'>&{cover_url:string;cover_width:number;cover_height:number};
 export async function noticeList(offset: number) {
  const response = await fetch(`${siteContentApi()}/notices?limit=20&offset=${offset}`, { cache:'no-store', credentials:'omit', signal:AbortSignal.timeout(6000) });
  if (!response.ok) throw new Error('Notices could not be loaded. Please try again.');
- return await response.json() as { data: Omit<PublicNotice,'body'|'images'>[]; has_next:boolean };
+ return await response.json() as { data: PublicNoticeSummary[]; has_next:boolean };
 }

@@ -382,6 +382,18 @@ func TestAdminRecordActions(t *testing.T) {
 		if rec := read("/notices/" + notice.Slug); json.Unmarshal(rec.Body.Bytes(), &beforeImages) != nil || len(beforeImages.Images) != 0 {
 			t.Fatal("unpublished image attachment leaked before content save")
 		}
+		var noticeCards struct {
+			Data []db.PublicNoticesRow `json:"data"`
+		}
+		if rec := read("/notices?limit=100"); json.Unmarshal(rec.Body.Bytes(), &noticeCards) != nil {
+			t.Fatal("notice list decode failed")
+		}
+		for _, card := range noticeCards.Data {
+			if card.Slug == notice.Slug && card.CoverUrl != "" {
+				t.Fatal("pending image leaked as a news card cover")
+			}
+		}
+
 		if got := send("/utilities/notices", raw, "notice-stale-"+nonce[:20], "http://localhost:3003", auth.AdminSessionCookie).Code; got != 409 {
 			t.Fatalf("stale notice edit %d", got)
 		}
@@ -407,6 +419,19 @@ func TestAdminRecordActions(t *testing.T) {
 		if rec := read("/notices/" + notice.Slug); json.Unmarshal(rec.Body.Bytes(), &afterImages) != nil || len(afterImages.Images) != 1 || afterImages.Images[0].Width != 800 {
 			t.Fatal("published image dimensions missing")
 		}
+		foundCover := false
+		if rec := read("/notices?limit=100"); json.Unmarshal(rec.Body.Bytes(), &noticeCards) != nil {
+			t.Fatal("notice list decode failed")
+		}
+		for _, card := range noticeCards.Data {
+			if card.Slug == notice.Slug {
+				foundCover = card.CoverUrl == imageURL && card.CoverWidth == 800 && card.CoverHeight == 450
+			}
+		}
+		if !foundCover {
+			t.Fatal("published news card cover/dimensions missing")
+		}
+
 		keywords := make([]string, 1100)
 		for i := range keywords {
 			keywords[i] = fmt.Sprintf("isolated CI keyword %d", i)

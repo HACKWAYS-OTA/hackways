@@ -179,3 +179,18 @@ textarea.app-input { resize: vertical; min-height: 110px; }
 .ticket-pass img { display: block; width: min(100%, 384px); height: auto; margin: 20px auto; background: #fff; image-rendering: pixelated; }
 .ticket-pass-reference { overflow-wrap: anywhere; }
 .ticket-pass-reference strong { display: block; margin-top: 6px; font-weight: 500; }
+
+.header-brand-short { display:none; }
+/* Seven accessible controls fit in a 320px viewport; no hidden overflow or zoom lock. */
+@media(max-width:900px) {
+ .app-header .app-header-inner { width:auto; margin-inline:max(6px,env(safe-area-inset-left)) max(6px,env(safe-area-inset-right)); min-width:0; grid-template-columns:44px minmax(0,1fr) 88px; gap:0; min-height:60px; }
+ .app-header .app-header-inner>.wordmark { display:grid; place-items:center; min-width:44px; min-height:44px; font-size:23px; }
+ .app-header .header-brand-full { display:none; }.app-header .header-brand-short { display:inline; }
+ .app-header .app-header-inner>.app-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-column:2; grid-row:1; min-width:0; width:auto; gap:0; padding:0; border:0; }
+ .app-header .app-nav>a { display:grid; place-items:center; min-width:0; min-height:44px; padding:0; border-radius:10px; text-decoration:none; }
+ .app-header .app-nav>a>span { display:none; }.app-header .app-nav>a>svg { width:20px; height:20px; }
+ .app-header .app-nav>a[aria-current],.app-header .app-nav>a:hover { background:color-mix(in srgb,currentColor 9%,transparent); }
+ .app-header .app-header-inner>.header-actions { display:grid; grid-template-columns:repeat(2,44px); grid-column:3; grid-row:1; justify-self:stretch; gap:0; }
+ .app-header .header-create,.app-header .header-account { display:grid; place-items:center; width:44px; min-height:44px; padding:0; }
+ .app-header .header-create>svg { display:block; width:20px; height:20px; }.app-header .header-create-label { display:none; }
+}

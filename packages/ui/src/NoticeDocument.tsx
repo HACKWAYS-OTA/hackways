@@ -1,3 +1,4 @@
+import { NoticeImage as LoadedNoticeImage } from './NoticeImage';
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 export type NoticeDocumentNode = { type:string; text?:string; attrs?:{ [key:string]:string|number|boolean|null|number[] }; marks?:{type:string;attrs?:NoticeDocumentNode['attrs']}[]; content?:NoticeDocumentNode[] };
 export type NoticeImage = {url:string;width:number;height:number};
@@ -42,8 +43,7 @@ export function NoticeDocument({document,images=[]}:{document:NoticeDocumentNode
    case 'table':return <div key={key} className="hw-notice-table" tabIndex={0} role="region" aria-label="Notice table"><table><tbody>{children}</tbody></table></div>;
    case 'tableRow':return <tr key={key}>{children}</tr>;
    case 'tableCell':case 'tableHeader':{const Tag=node.type==='tableHeader'?'th':'td';return <Tag key={key} style={styles(a)} colSpan={typeof a.colspan==='number'?a.colspan:1} rowSpan={typeof a.rowspan==='number'?a.rowspan:1}>{children}</Tag>;}
-   // eslint-disable-next-line @next/next/no-img-element
-   case 'image':{const src=safeURL(a.src,true),size=images.find(image=>image.url===src);return src?<img key={key} src={src} alt={typeof a.alt==='string'?a.alt:''} width={typeof a.width==='number'?a.width:size?.width} height={typeof a.height==='number'?a.height:size?.height} loading="lazy" decoding="async"/>:null;}
+   case 'image':{const src=safeURL(a.src,true),size=images.find(image=>image.url===src);return src?<LoadedNoticeImage key={key} src={src} alt={typeof a.alt==='string'?a.alt:''} width={typeof a.width==='number'?a.width:size?.width} height={typeof a.height==='number'?a.height:size?.height}/>:null;}
    default:return null;
   }
  }
