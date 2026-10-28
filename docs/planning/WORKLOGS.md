@@ -1794,3 +1794,30 @@ and the approved any-network admin policy were preserved. CDN stayed unchanged.
   are required before activation is complete. Existing six services retained.
   Source review identified missing server-level general rate limit; corrected.
   Browser work remains excluded. CI, backups and deployment are pending.
+
+
+## 2026-10-28 - Legacy domain routing verified live
+
+- Fixed observed .me admin fallback with explicit default HTTP/TLS rejection;
+  only the five configured legacy names are accepted. Dedicated five-name TLS
+  certificate issued after real HTTP01 edge checks; persisted renewal webroot
+  and actual scoped reload hook verified. No existing .in host policy changed.
+- Candidate efd7440: Release Candidate 40683353480 passed all eight jobs. PostgreSQL
+  16/race coverage: 63 core + 136 global cases, zero failures/skips. Four-app
+  types/lint, shared contracts, SQLc, source and deploy checks passed. Temporary
+  publication variables removed; unused public image was not deployed.
+- Encrypted database/config backups and restore catalog verified at schema 33.
+  Actual origin checks exposed exact-root alias/index processing; source correction
+  878cda7 internally routes / to the existing handoff document. Source audit and
+  real nginx validation/reload/trusted TLS/public checks passed for that correction;
+  the full CI candidate preceded this one-location fix. Protected release records
+  its exact source/config SHA without rewriting the pinned candidate.
+- Public edge and independent external HTTPS: root200 ownership page, auth/join/
+  checkin/www and /login fixed301 with obsolete path/query discarded, unknown apex
+  path404, robots/sitemap/fonts200. Unknown HTTP/TLS and mismatched Host rejected.
+  No legacy admin form or session cookie. Main discovery/city/notices/sitemap and
+  established admin boundary verified unchanged.
+- All existing ingress files and .env byte-identical to backup. Six services and
+  Nginx retain exact container IDs/start times, healthy, no OOM. No runtime image
+  swap, migration, business-data mutation or VM frontend build. Preview and source
+  mirror synchronized. Browser/visual review remains outside requested scope.
