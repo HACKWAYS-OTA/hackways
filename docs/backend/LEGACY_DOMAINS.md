@@ -15,8 +15,8 @@ the legacy root, stripping its query. Other obsolete apex paths show the same
 handoff with404; they are not a collection of fabricated200 pages.
 
 www/auth/join/checkin.hackways.me permanently redirect all paths to
-https://hackways.me/ with no query propagation. The redirect vhost also matches
-other legacy subdomains; supported TLS names are covered by the dedicated cert.
+https://hackways.me/ with no query propagation. Only these explicit legacy hosts are accepted; every accepted TLS name is
+covered by the dedicated certificate.
 Unknown domains cannot fall through to admin: explicit default listeners reject
 HTTP444 and unknown TLS handshakes. Existing recognized .in vhosts and admin
 network/session/Go authorization policies remain unchanged.
@@ -27,11 +27,11 @@ there are no legacy API routes. General rate limits and security headers apply.
 Legacy access logs are off so obsolete auth query tokens are not logged.
 
 Deploy from verified source with recovery backup. HTTP01 challenge files use
-conf.d/legacy/acme/.well-known/acme-challenge with an exception on port80. Issue a
+conf.d/legacy/acme/.well-known/acme-challenge with exceptions on HTTP and HTTPS, including edge-forced HTTPS. Issue a
 separate Certbot SAN certificate for hackways.me, www, auth, join and checkin;
 never replace the existing .in certificate. Validate nginx before reload. The
 scoped deploy hook reloads ingress after this cert renews. Retain challenge routing
-and account settings. A wildcard redirect match is not a wildcard certificate.
+and account settings. Other unconfigured subdomains are rejected by the default host.
 
 The operator may use the existing origin certificate only during the bounded
 HTTP01 bootstrap, matching the observed current edge behavior; completion requires
